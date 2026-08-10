@@ -21,6 +21,7 @@ A working, private, open-source-ready, stateless Bunpro MCP that exposes trustwo
 ## Decisions so far
 
 - [Inventory current Bunpro API evidence](https://github.com/yash-278/bunpro-mcp/issues/2) — Bunpro permits unstable reverse-engineering, but removed `/api/user/**`; no public evidence proves a surviving Account-token study-history route.
+- [Provision safe live research input](https://github.com/yash-278/bunpro-mcp/issues/3) — Use the locally configured zsh secret with known active Study Day `2026-08-10`; never print or persist the token or raw personal payloads.
 
 ## Not yet specified
 
