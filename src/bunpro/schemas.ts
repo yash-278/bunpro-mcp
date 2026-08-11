@@ -14,8 +14,8 @@ export const ConnectionStatusOutputSchema = z.object({
   connected: z.literal(true),
   authentication_method: z.literal("frontend_session"),
   session_resolution: z.enum(["fresh_login", "cached_session", "refreshed_session", "relogged_session"]),
-  authentication_cache: z.literal("process_memory"),
-  credentials_source: z.literal("environment"),
+  authentication_cache: z.enum(["process_memory", "encrypted_store"]),
+  credentials_source: z.enum(["environment", "encrypted_store"]),
   web_session_authenticated: z.literal(true),
   frontend_token_obtained: z.literal(true),
   api_authenticated: z.literal(true),
@@ -25,3 +25,5 @@ export const ConnectionStatusOutputSchema = z.object({
 
 export type ConnectionStatus = z.infer<typeof ConnectionStatusOutputSchema>;
 export type SessionResolution = ConnectionStatus["session_resolution"];
+export type AuthenticationCache = ConnectionStatus["authentication_cache"];
+export type CredentialsSource = ConnectionStatus["credentials_source"];

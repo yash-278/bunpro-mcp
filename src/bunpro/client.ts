@@ -1,7 +1,9 @@
 import { BunproError } from "./errors.js";
 import {
   BunproUserResponseSchema,
+  type AuthenticationCache,
   type ConnectionStatus,
+  type CredentialsSource,
   type SessionResolution
 } from "./schemas.js";
 
@@ -12,6 +14,17 @@ const REQUEST_TIMEOUT_MS = 20_000;
 export interface BunproCredentials {
   username: string;
   password: string;
+}
+
+export interface BunproSessionSnapshot {
+  cookies: Record<string, string>;
+  frontendToken?: string;
+}
+
+export interface BunproClientOptions {
+  initialSession?: BunproSessionSnapshot;
+  authenticationCache?: AuthenticationCache;
+  credentialsSource?: CredentialsSource;
 }
 
 export type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
@@ -43,6 +56,17 @@ class CookieJar {
     this.#cookies.clear();
   }
 
+  hydrate(cookies: Record<string, string>): void {
+    this.#cookies.clear();
+    for (const [name, value] of Object.entries(cookies)) {
+      if (name && !/[;\r\n]/.test(name) && !/[\r\n]/.test(value)) this.#cookies.set(name, value);
+    }
+  }
+
+  snapshot(): Record<string, string> {
+    return Object.fromEntries(this.#cookies);
+  }
+
   toRequestHeader(): string {
     return [...this.#cookies.entries()]
       .map(([name, value]) => `${name}=${value}`)
@@ -68,12 +92,30 @@ export class BunproClient {
   readonly #credentials: BunproCredentials;
   readonly #fetch: FetchLike;
   readonly #cookies = new CookieJar();
+  readonly #authenticationCache: AuthenticationCache;
+  readonly #credentialsSource: CredentialsSource;
   #frontendToken: string | undefined;
   #operationTail: Promise<void> = Promise.resolve();
 
-  constructor(credentials: BunproCredentials, fetchImplementation: FetchLike = fetch) {
+  constructor(
+    credentials: BunproCredentials,
+    fetchImplementation: FetchLike = fetch,
+    options: BunproClientOptions = {}
+  ) {
     this.#credentials = credentials;
     this.#fetch = fetchImplementation;
+    this.#authenticationCache = options.authenticationCache ?? "process_memory";
+    this.#credentialsSource = options.credentialsSource ?? "environment";
+    if (options.initialSession) {
+      this.#cookies.hydrate(options.initialSession.cookies);
+      this.#frontendToken = options.initialSession.frontendToken;
+    }
+  }
+
+  sessionSnapshot(): BunproSessionSnapshot {
+    const snapshot: BunproSessionSnapshot = { cookies: this.#cookies.snapshot() };
+    if (this.#frontendToken) snapshot.frontendToken = this.#frontendToken;
+    return snapshot;
   }
 
   async checkConnection(): Promise<ConnectionStatus> {
@@ -118,8 +160,8 @@ export class BunproClient {
       connected: true,
       authentication_method: "frontend_session",
       session_resolution: sessionResolution,
-      authentication_cache: "process_memory",
-      credentials_source: "environment",
+      authentication_cache: this.#authenticationCache,
+      credentials_source: this.#credentialsSource,
       web_session_authenticated: true,
       frontend_token_obtained: true,
       api_authenticated: true,

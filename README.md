@@ -1,10 +1,15 @@
 # Bunpro MCP
 
-Private MCP project for exposing trustworthy, date-bounded Bunpro study summaries to Atlas and other MCP hosts.
+MCP server for exposing trustworthy, date-bounded Bunpro study summaries to Atlas and other MCP hosts.
 
-The current implementation provides a stdio MCP server with `get_connection_status`. The server logs in lazily, keeps the Bunpro web cookies and frontend API token in process memory, and reuses them across tool calls. If Bunpro rejects the cached token, the client first uses the stored web session to absorb refreshed cookies and retry the API. If that still fails, it clears the cache and performs a fresh credential login. The entire cache disappears when the MCP process exits.
+The first tool is `get_connection_status`. In either transport, the server logs in lazily and reuses the Bunpro web session. If Bunpro rejects a cached token, it first refreshes through the stored web session and only performs a fresh credential login if that fails.
 
-## Configuration
+Two deployment modes are supported:
+
+- Local stdio: one user, with credentials in the MCP host's secret environment configuration.
+- Remote Streamable HTTP: public, multi-user, OAuth-protected, with one independently encrypted Bunpro account per identity.
+
+## Local stdio configuration
 
 Configure these secrets in the MCP host application:
 
@@ -13,7 +18,7 @@ BUNPRO_USERNAME=your Bunpro login email
 BUNPRO_PASSWORD=your Bunpro password
 ```
 
-Do not provide a browser cookie or frontend token. The MCP obtains them during login and never returns or persists them.
+Do not provide a browser cookie or frontend token. The MCP obtains and reuses them during the process lifetime and never returns them.
 
 For an MCP host configuration page, use the equivalent of:
 
@@ -28,7 +33,29 @@ For an MCP host configuration page, use the equivalent of:
 }
 ```
 
-The first available tool is `get_connection_status`. It returns only safe booleans, Bunpro's configured source timezone, and whether authentication used a fresh login, cached session, refreshed session, or fallback re-login.
+The tool returns only safe booleans, Bunpro's configured source timezone, and whether authentication used a fresh login, cached session, refreshed session, or fallback re-login.
+
+## Public Railway deployment
+
+The remote service exposes:
+
+- `GET /healthz` for Railway health checks.
+- `POST /mcp` for stateless Streamable HTTP MCP traffic.
+- OAuth protected-resource metadata under `/.well-known/oauth-protected-resource/mcp`.
+- `/setup` for short-lived, identity-bound Bunpro account linking.
+
+Every MCP request must carry an OAuth access token with `bunpro.read`. The OAuth issuer and audience are validated cryptographically on every request. Each user's Bunpro credentials, cookies, and frontend token are encrypted with AES-256-GCM before they reach Postgres. The Railway deployment must not define `BUNPRO_USERNAME` or `BUNPRO_PASSWORD`.
+
+Required Railway variables are shown in [`.env.example`](.env.example). Generate the two 32-byte secrets independently and store them only as Railway secrets. The service can derive `PUBLIC_BASE_URL` from `RAILWAY_PUBLIC_DOMAIN`; `AUTH_AUDIENCE` should be the final public `/mcp` URL.
+
+Before deploying, configure an OAuth provider that supports authorization code with PKCE and dynamic client registration. For Auth0:
+
+1. Create an API whose identifier is the final `https://<railway-domain>/mcp` URL.
+2. Add the `bunpro.read` permission and enable it for requested access tokens.
+3. Enable OIDC Dynamic Application Registration and at least one user login connection.
+4. Set `AUTHORIZATION_SERVER_URL` to the Auth0 issuer and `AUTH_AUDIENCE` to the API identifier.
+
+The remote transport is deliberately not started unless its database, encryption, public URL, and OAuth settings are complete.
 
 ## Development
 

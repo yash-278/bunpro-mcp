@@ -183,3 +183,38 @@ test("credentials are loaded only from the configured environment names", () => 
     (error: unknown) => error instanceof BunproError && error.code === "BUNPRO_CONFIG_MISSING"
   );
 });
+
+test("an encrypted-store session snapshot hydrates without a fresh login", async () => {
+  const calls: Array<{ url: URL; init: RequestInit }> = [];
+  const mockFetch: FetchLike = async (input, init = {}) => {
+    calls.push({ url: new URL(input instanceof Request ? input.url : input), init });
+    return userResponse();
+  };
+
+  const client = new BunproClient(credentials, mockFetch, {
+    initialSession: {
+      cookies: {
+        _grammar_app_session: "stored-session",
+        frontend_api_token: "stored-token"
+      },
+      frontendToken: "stored-token"
+    },
+    authenticationCache: "encrypted_store",
+    credentialsSource: "encrypted_store"
+  });
+
+  const status = await client.checkConnection();
+  assert.equal(status.session_resolution, "cached_session");
+  assert.equal(status.authentication_cache, "encrypted_store");
+  assert.equal(status.credentials_source, "encrypted_store");
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0]?.url.href, "https://api.bunpro.jp/api/frontend/user");
+  assert.equal(new Headers(calls[0]?.init.headers).get("authorization"), "Token token=stored-token");
+  assert.deepEqual(client.sessionSnapshot(), {
+    cookies: {
+      _grammar_app_session: "stored-session",
+      frontend_api_token: "stored-token"
+    },
+    frontendToken: "stored-token"
+  });
+});
