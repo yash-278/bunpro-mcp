@@ -2,11 +2,15 @@
 
 ## Bunpro Account API Token
 
-A credential generated from Bunpro's account settings page. It is the only Bunpro credential this project accepts.
+A credential generated from Bunpro's account settings page. Bunpro's removed legacy API used it, but no currently tested read endpoint accepts it.
+
+## Bunpro Login Credentials
+
+The email and password a user supplies through the private MCP host environment solely to establish a Bunpro web session. They are never study data and never belong in Atlas or project storage.
 
 ## Frontend Session Token
 
-A credential associated with a logged-in Bunpro browser session. It is not a Bunpro Account API Token and is outside this project's permitted authentication boundary.
+A credential derived from a successful Bunpro web login and held ephemerally only in MCP process memory. It is distinct from the Bunpro Account API Token; its actual lifetime remains unverified.
 
 ## Study Day
 
@@ -31,4 +35,3 @@ Atlas's daily evidence-gathering process. It requests every Study Day after the 
 ## MCP Server
 
 The stateless boundary that authenticates to Bunpro, retrieves study evidence and returns normalized tool results. It does not persist credentials, activity history or watermarks.
-

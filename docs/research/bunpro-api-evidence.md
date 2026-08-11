@@ -2,6 +2,8 @@
 
 Research date: 2026-08-10
 
+> Authentication-boundary update (2026-08-11): the private project phase now permits environment-provided login credentials and an in-memory Frontend Session Token under [ADR 0001](../adr/0001-use-ephemeral-frontend-authentication-for-private-phase.md). The Account-token-only constraint recorded below is historical and has been superseded.
+
 ## Question
 
 What first-party evidence establishes the current Bunpro Account API Token, removed legacy routes, surviving read-only API surfaces, and any explicit permission or constraints relevant to reverse-engineering them?
@@ -34,7 +36,7 @@ Current Bunpro behavior confirms at least one frontend route still exists: an un
 
 Bunpro staff also pointed a community developer to the site's Search API and suggested inspecting the request payload from the current UI. That is evidence of an internal surface in January 2026, but it is a content/search surface and does not establish date-bounded personal study history or Account API Token support. [Permission to reverse engineer the Bunpro API — Sean, 26 January 2026](https://community.bunpro.jp/t/permission-to-reverse-engineer-the-bunpro-api/164173/7)
 
-**Decision consequence:** frontend endpoints are valid research subjects, but this project's standing boundary forbids using the Frontend Session Token. A frontend route is usable only if live testing proves it also accepts the Account API Token.
+**Historical decision consequence:** the project initially forbade the Frontend Session Token. That boundary was superseded on 2026-08-11 for the private phase after Account-token testing failed; see ADR 0001 and the authenticated frontend research note.
 
 ### Bunpro expressly permits reverse-engineering and public documentation, with no stability promise
 
