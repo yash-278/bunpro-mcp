@@ -10,7 +10,7 @@ The email and password a user supplies through the private MCP host environment 
 
 ## Frontend Session Token
 
-A credential derived from a successful Bunpro web login and held ephemerally only in MCP process memory. It is distinct from the Bunpro Account API Token; its actual lifetime remains unverified.
+A credential derived from a successful Bunpro web login and held ephemerally only in MCP process memory. The MCP reuses it until Bunpro rejects it or the process exits, then attempts web-session refresh before a credential re-login. It is distinct from the Bunpro Account API Token; its actual server-side lifetime remains unverified.
 
 ## Study Day
 
@@ -34,4 +34,4 @@ Atlas's daily evidence-gathering process. It requests every Study Day after the 
 
 ## MCP Server
 
-The stateless boundary that authenticates to Bunpro, retrieves study evidence and returns normalized tool results. It does not persist credentials, activity history or watermarks.
+The boundary that authenticates to Bunpro, retrieves study evidence and returns normalized tool results. It keeps only an ephemeral, process-local authentication cache and does not persist credentials, sessions, activity history or watermarks.

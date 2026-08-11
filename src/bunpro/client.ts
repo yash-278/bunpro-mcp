@@ -1,5 +1,9 @@
 import { BunproError } from "./errors.js";
-import { BunproUserResponseSchema, type ConnectionStatus } from "./schemas.js";
+import {
+  BunproUserResponseSchema,
+  type ConnectionStatus,
+  type SessionResolution
+} from "./schemas.js";
 
 const WEB_ORIGIN = "https://bunpro.jp";
 const API_ORIGIN = "https://api.bunpro.jp";
@@ -35,6 +39,10 @@ class CookieJar {
     return this.#cookies.get(name);
   }
 
+  clear(): void {
+    this.#cookies.clear();
+  }
+
   toRequestHeader(): string {
     return [...this.#cookies.entries()]
       .map(([name, value]) => `${name}=${value}`)
@@ -61,6 +69,7 @@ export class BunproClient {
   readonly #fetch: FetchLike;
   readonly #cookies = new CookieJar();
   #frontendToken: string | undefined;
+  #operationTail: Promise<void> = Promise.resolve();
 
   constructor(credentials: BunproCredentials, fetchImplementation: FetchLike = fetch) {
     this.#credentials = credentials;
@@ -68,17 +77,35 @@ export class BunproClient {
   }
 
   async checkConnection(): Promise<ConnectionStatus> {
-    await this.#login();
+    return this.#withExclusiveSession(() => this.#checkConnection());
+  }
 
-    const accountResponse = await this.#webRequest("/settings/account");
-    if (!accountResponse.ok) {
-      throw new BunproError(
-        "BUNPRO_AUTH_FAILED",
-        "Bunpro created a login token but did not accept the authenticated web session. Check the account credentials."
-      );
+  async #checkConnection(): Promise<ConnectionStatus> {
+    let sessionResolution: SessionResolution;
+
+    if (this.#frontendToken) {
+      sessionResolution = "cached_session";
+    } else {
+      await this.#freshLogin();
+      sessionResolution = "fresh_login";
     }
 
-    const userResponse = await this.#apiRequest("/api/frontend/user");
+    let userResponse = await this.#apiRequest("/api/frontend/user");
+    if (isAuthenticationRejection(userResponse)) {
+      const refreshed = await this.#tryRefreshFromWebSession();
+      if (refreshed) {
+        userResponse = await this.#apiRequest("/api/frontend/user");
+        if (!isAuthenticationRejection(userResponse)) sessionResolution = "refreshed_session";
+      }
+
+      if (isAuthenticationRejection(userResponse)) {
+        await this.#freshLogin();
+        sessionResolution = "relogged_session";
+        userResponse = await this.#apiRequest("/api/frontend/user");
+      }
+    }
+
+    this.#ensureApiSuccess(userResponse);
     const userPayload = BunproUserResponseSchema.safeParse(await this.#readJson(userResponse));
     if (!userPayload.success) {
       throw new BunproError(
@@ -90,6 +117,8 @@ export class BunproClient {
     return {
       connected: true,
       authentication_method: "frontend_session",
+      session_resolution: sessionResolution,
+      authentication_cache: "process_memory",
       credentials_source: "environment",
       web_session_authenticated: true,
       frontend_token_obtained: true,
@@ -99,7 +128,10 @@ export class BunproClient {
     };
   }
 
-  async #login(): Promise<void> {
+  async #freshLogin(): Promise<void> {
+    this.#cookies.clear();
+    this.#frontendToken = undefined;
+
     const loginPage = await this.#webRequest("/login");
     if (!loginPage.ok) {
       throw new BunproError(
@@ -129,6 +161,48 @@ export class BunproClient {
         "BUNPRO_AUTH_FAILED",
         "Bunpro rejected the login or did not issue a frontend token. Check the credentials and any login challenge in Bunpro."
       );
+    }
+
+    const webSessionAuthenticated = await this.#refreshFromWebSession();
+    if (!webSessionAuthenticated) {
+      throw new BunproError(
+        "BUNPRO_AUTH_FAILED",
+        "Bunpro created a login token but did not accept the authenticated web session. Check the account credentials."
+      );
+    }
+  }
+
+  async #tryRefreshFromWebSession(): Promise<boolean> {
+    try {
+      return await this.#refreshFromWebSession();
+    } catch {
+      return false;
+    }
+  }
+
+  async #refreshFromWebSession(): Promise<boolean> {
+    const accountResponse = await this.#webRequest("/settings/account", { redirect: "manual" });
+    if (!accountResponse.ok) return false;
+
+    const token = this.#cookies.get("frontend_api_token");
+    if (!token) return false;
+
+    this.#frontendToken = token;
+    return true;
+  }
+
+  async #withExclusiveSession<T>(operation: () => Promise<T>): Promise<T> {
+    const previousOperation = this.#operationTail;
+    let release: () => void = () => undefined;
+    this.#operationTail = new Promise<void>(resolve => {
+      release = resolve;
+    });
+
+    await previousOperation;
+    try {
+      return await operation();
+    } finally {
+      release();
     }
   }
 
@@ -163,10 +237,14 @@ export class BunproClient {
       }
     });
 
-    if (response.status === 401 || response.status === 403) {
+    return response;
+  }
+
+  #ensureApiSuccess(response: Response): void {
+    if (isAuthenticationRejection(response)) {
       throw new BunproError(
         "BUNPRO_AUTH_FAILED",
-        "Bunpro issued a frontend token but rejected it at the API boundary. Try signing in again."
+        "Bunpro rejected the cached, refreshed, and newly logged-in frontend sessions. Check the account credentials."
       );
     }
 
@@ -176,8 +254,6 @@ export class BunproClient {
         `Bunpro's frontend API returned HTTP ${response.status}. Try again later.`
       );
     }
-
-    return response;
   }
 
   async #request(url: URL, init: RequestInit): Promise<Response> {
@@ -208,6 +284,10 @@ export class BunproClient {
       );
     }
   }
+}
+
+function isAuthenticationRejection(response: Response): boolean {
+  return response.status === 401 || response.status === 403;
 }
 
 function extractAuthenticityToken(html: string): string {

@@ -10,6 +10,7 @@ A working, private, open-source-ready, stateless Bunpro MCP that exposes trustwo
 - Runtime and packaging direction: TypeScript on Node.js, local stdio, remote Streamable HTTP, `npx`, and Docker self-hosting.
 - The Account API Token remains unsupported by every tested read surface. During the private phase, hosts may instead provide Bunpro email/password credentials through secret environment configuration.
 - The MCP may use those credentials to establish a Bunpro web session and retain its Frontend Session Token only in process memory. Never print, log, persist, or return login credentials, cookies, CSRF values, or frontend tokens.
+- Each MCP process may reuse its in-memory Bunpro cookies and Frontend Session Token. On `401`/`403`, retry once after refreshing through the cached web session; if that fails, clear the cache and perform a fresh credential login.
 - Reverse-engineering remains limited to read-only requests. Frontend authentication is an unstable private-phase adapter and must be reconsidered before public release.
 - The MCP is always stateless. Atlas owns summaries and watermarks.
 - V1 tools are `get_connection_status` and `get_study_day_summary` only.

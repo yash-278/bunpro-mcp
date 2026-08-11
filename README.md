@@ -2,7 +2,7 @@
 
 Private MCP project for exposing trustworthy, date-bounded Bunpro study summaries to Atlas and other MCP hosts.
 
-The current implementation provides a stdio MCP server with `get_connection_status`. Each invocation performs a fresh Bunpro login from the MCP host environment, keeps the web cookies and frontend API token in memory only, verifies both the authenticated web session and frontend API, and then discards that client instance.
+The current implementation provides a stdio MCP server with `get_connection_status`. The server logs in lazily, keeps the Bunpro web cookies and frontend API token in process memory, and reuses them across tool calls. If Bunpro rejects the cached token, the client first uses the stored web session to absorb refreshed cookies and retry the API. If that still fails, it clears the cache and performs a fresh credential login. The entire cache disappears when the MCP process exits.
 
 ## Configuration
 
@@ -28,7 +28,7 @@ For an MCP host configuration page, use the equivalent of:
 }
 ```
 
-The first available tool is `get_connection_status`. It performs the fresh login and returns only safe booleans plus Bunpro's configured source timezone.
+The first available tool is `get_connection_status`. It returns only safe booleans, Bunpro's configured source timezone, and whether authentication used a fresh login, cached session, refreshed session, or fallback re-login.
 
 ## Development
 

@@ -11,10 +11,16 @@ function response(body: string, init: ResponseInit & { cookies?: string[] } = {}
   return new Response(body, { ...init, headers });
 }
 
-test("fresh login uses web cookies and an API-only frontend token", async () => {
-  const calls: Array<{ url: URL; init: RequestInit }> = [];
-  const responses = [
-    response('<input name="authenticity_token" value="csrf&amp;token">', {
+function userResponse(): Response {
+  return response(JSON.stringify({ user: { data: { attributes: { time_zone_iana: "Asia/Kolkata" } } } }), {
+    status: 200,
+    headers: { "content-type": "application/json" }
+  });
+}
+
+function freshSessionResponses(token = "frontend-token", csrf = "csrf&amp;token"): Response[] {
+  return [
+    response(`<input name="authenticity_token" value="${csrf}">`, {
       status: 200,
       cookies: ["_grammar_app_session=session-before; Path=/; HttpOnly"]
     }),
@@ -23,14 +29,19 @@ test("fresh login uses web cookies and an API-only frontend token", async () => 
       headers: { location: "/dashboard" },
       cookies: [
         "_grammar_app_session=session-after; Path=/; HttpOnly",
-        "frontend_api_token=frontend-token; Path=/; Secure"
+        `frontend_api_token=${token}; Path=/; Secure`
       ]
     }),
     response("account", { status: 200 }),
-    response(JSON.stringify({ user: { data: { attributes: { time_zone_iana: "Asia/Kolkata" } } } }), {
-      status: 200,
-      headers: { "content-type": "application/json" }
-    })
+    userResponse()
+  ];
+}
+
+test("one fresh login is serialized and reused by concurrent calls", async () => {
+  const calls: Array<{ url: URL; init: RequestInit }> = [];
+  const responses = [
+    ...freshSessionResponses(),
+    userResponse()
   ];
 
   const mockFetch: FetchLike = async (input, init = {}) => {
@@ -40,11 +51,17 @@ test("fresh login uses web cookies and an API-only frontend token", async () => 
     return next;
   };
 
-  const result = await new BunproClient(credentials, mockFetch).checkConnection();
+  const client = new BunproClient(credentials, mockFetch);
+  const [firstResult, secondResult] = await Promise.all([
+    client.checkConnection(),
+    client.checkConnection()
+  ]);
 
-  assert.deepEqual(result, {
+  assert.deepEqual(firstResult, {
     connected: true,
     authentication_method: "frontend_session",
+    session_resolution: "fresh_login",
+    authentication_cache: "process_memory",
     credentials_source: "environment",
     web_session_authenticated: true,
     frontend_token_obtained: true,
@@ -52,7 +69,9 @@ test("fresh login uses web cookies and an API-only frontend token", async () => 
     source_timezone: "Asia/Kolkata",
     stateless: true
   });
-  assert.equal(calls.length, 4);
+  assert.equal(secondResult.session_resolution, "cached_session");
+  assert.equal(calls.length, 5);
+  assert.equal(calls.filter(call => call.init.method === "POST").length, 1);
 
   const signIn = calls[1];
   assert.ok(signIn);
@@ -72,6 +91,68 @@ test("fresh login uses web cookies and an API-only frontend token", async () => 
   assert.equal(api.url.href, "https://api.bunpro.jp/api/frontend/user");
   assert.equal(apiHeaders.get("authorization"), "Token token=frontend-token");
   assert.equal(apiHeaders.get("cookie"), null, "web cookies must never be sent to the API host");
+
+  const cachedApi = calls[4];
+  assert.ok(cachedApi);
+  assert.equal(new Headers(cachedApi.init.headers).get("authorization"), "Token token=frontend-token");
+});
+
+test("an API rejection refreshes the token through the cached web session", async () => {
+  const calls: Array<{ url: URL; init: RequestInit }> = [];
+  const responses = [
+    ...freshSessionResponses("initial-token"),
+    response("unauthorized", { status: 401 }),
+    response("account", {
+      status: 200,
+      cookies: [
+        "_grammar_app_session=refreshed-session; Path=/; HttpOnly",
+        "frontend_api_token=refreshed-token; Path=/; Secure"
+      ]
+    }),
+    userResponse()
+  ];
+  const mockFetch: FetchLike = async (input, init = {}) => {
+    calls.push({ url: new URL(input instanceof Request ? input.url : input), init });
+    const next = responses.shift();
+    assert.ok(next, "unexpected request");
+    return next;
+  };
+
+  const client = new BunproClient(credentials, mockFetch);
+  await client.checkConnection();
+  const refreshed = await client.checkConnection();
+
+  assert.equal(refreshed.session_resolution, "refreshed_session");
+  assert.equal(calls.filter(call => call.init.method === "POST").length, 1);
+  assert.equal(new Headers(calls[4]?.init.headers).get("authorization"), "Token token=initial-token");
+  assert.equal(calls[5]?.url.href, "https://bunpro.jp/settings/account");
+  assert.equal(new Headers(calls[6]?.init.headers).get("authorization"), "Token token=refreshed-token");
+});
+
+test("a failed cached-session refresh falls back to a fresh login", async () => {
+  const calls: Array<{ url: URL; init: RequestInit }> = [];
+  const secondLogin = freshSessionResponses("second-token", "second-csrf");
+  const responses = [
+    ...freshSessionResponses("initial-token"),
+    response("unauthorized", { status: 401 }),
+    response("", { status: 302, headers: { location: "/login" } }),
+    ...secondLogin
+  ];
+  const mockFetch: FetchLike = async (input, init = {}) => {
+    calls.push({ url: new URL(input instanceof Request ? input.url : input), init });
+    const next = responses.shift();
+    assert.ok(next, "unexpected request");
+    return next;
+  };
+
+  const client = new BunproClient(credentials, mockFetch);
+  await client.checkConnection();
+  const relogged = await client.checkConnection();
+
+  assert.equal(relogged.session_resolution, "relogged_session");
+  assert.equal(calls.filter(call => call.init.method === "POST").length, 2);
+  assert.equal(calls[6]?.url.href, "https://bunpro.jp/login");
+  assert.equal(new Headers(calls[9]?.init.headers).get("authorization"), "Token token=second-token");
 });
 
 test("rejected login returns a sanitized authentication error", async () => {
