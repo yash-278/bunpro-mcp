@@ -1,12 +1,14 @@
 export interface HttpConfig {
   port: number;
   publicBaseUrl: URL;
+  allowLocalHosts?: boolean;
 }
 
 export function loadHttpConfig(environment: NodeJS.ProcessEnv = process.env): HttpConfig {
   return {
     port: parsePort(environment.PORT),
-    publicBaseUrl: resolvePublicBaseUrl(environment)
+    publicBaseUrl: resolvePublicBaseUrl(environment),
+    allowLocalHosts: environment.NODE_ENV !== "production"
   };
 }
 

@@ -8,10 +8,57 @@ import {
 const API_ORIGIN = "https://api.bunpro.jp";
 const FRONTEND_API_PREFIX = "/api/frontend/";
 const ACCOUNT_TOKEN_OPT_IN = "dangerously_authenticate_using_api_token";
-const REQUEST_TIMEOUT_MS = 20_000;
+const REQUEST_TIMEOUT_MS = 10_000;
+const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
+
+export interface BunproRequestGateOptions {
+  maximumConcurrent: number;
+  maximumQueued: number;
+}
+
+export class BunproRequestGate {
+  readonly #maximumConcurrent: number;
+  readonly #maximumQueued: number;
+  readonly #queue: Array<() => void> = [];
+  #active = 0;
+
+  constructor(options: BunproRequestGateOptions) {
+    if (!Number.isInteger(options.maximumConcurrent) || options.maximumConcurrent < 1) {
+      throw new TypeError("maximumConcurrent must be a positive integer.");
+    }
+    if (!Number.isInteger(options.maximumQueued) || options.maximumQueued < 0) {
+      throw new TypeError("maximumQueued must be a non-negative integer.");
+    }
+    this.#maximumConcurrent = options.maximumConcurrent;
+    this.#maximumQueued = options.maximumQueued;
+  }
+
+  async run<T>(operation: () => Promise<T>): Promise<T> {
+    if (this.#active >= this.#maximumConcurrent) {
+      if (this.#queue.length >= this.#maximumQueued) {
+        throw new BunproError(
+          "BUNPRO_BUSY",
+          "The Bunpro request budget is currently full. Wait briefly before trying again."
+        );
+      }
+      await new Promise<void>(resolve => this.#queue.push(resolve));
+    }
+
+    this.#active += 1;
+    try {
+      return await operation();
+    } finally {
+      this.#active -= 1;
+      this.#queue.shift()?.();
+    }
+  }
+}
 
 export interface BunproClientOptions {
   tokenSource?: TokenSource;
+  requestGate?: BunproRequestGate;
+  requestTimeoutMs?: number;
+  maximumResponseBytes?: number;
 }
 
 export type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
@@ -31,6 +78,9 @@ export class BunproClient {
   readonly #apiToken: string;
   readonly #fetch: FetchLike;
   readonly #tokenSource: TokenSource;
+  readonly #requestGate: BunproRequestGate | undefined;
+  readonly #requestTimeoutMs: number;
+  readonly #maximumResponseBytes: number;
 
   constructor(
     apiToken: string,
@@ -40,6 +90,9 @@ export class BunproClient {
     this.#apiToken = validateApiToken(apiToken);
     this.#fetch = fetchImplementation;
     this.#tokenSource = options.tokenSource ?? "environment";
+    this.#requestGate = options.requestGate;
+    this.#requestTimeoutMs = options.requestTimeoutMs ?? REQUEST_TIMEOUT_MS;
+    this.#maximumResponseBytes = options.maximumResponseBytes ?? MAX_RESPONSE_BYTES;
   }
 
   async checkConnection(): Promise<ConnectionStatus> {
@@ -120,10 +173,11 @@ export class BunproClient {
 
   async #request(url: URL, init: RequestInit): Promise<Response> {
     try {
-      return await this.#fetch(url, {
+      const request = (): Promise<Response> => this.#fetch(url, {
         ...init,
-        signal: init.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+        signal: init.signal ?? AbortSignal.timeout(this.#requestTimeoutMs)
       });
+      return await (this.#requestGate ? this.#requestGate.run(request) : request());
     } catch (error) {
       if (error instanceof BunproError) throw error;
 
@@ -137,7 +191,15 @@ export class BunproClient {
 
   async #readJson(response: Response): Promise<unknown> {
     try {
-      return await response.json();
+      const contentLength = Number(response.headers.get("content-length"));
+      if (Number.isFinite(contentLength) && contentLength > this.#maximumResponseBytes) {
+        throw new RangeError("Bunpro response exceeds the configured byte limit.");
+      }
+      const body = await response.arrayBuffer();
+      if (body.byteLength > this.#maximumResponseBytes) {
+        throw new RangeError("Bunpro response exceeds the configured byte limit.");
+      }
+      return JSON.parse(new TextDecoder().decode(body));
     } catch (error) {
       throw new BunproError(
         "BUNPRO_CONTRACT_CHANGED",
