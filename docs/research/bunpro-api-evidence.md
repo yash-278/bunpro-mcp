@@ -2,7 +2,7 @@
 
 Research date: 2026-08-10
 
-> Authentication-boundary update (2026-08-11): the private project phase now permits environment-provided login credentials and an in-memory Frontend Session Token under [ADR 0001](../adr/0001-use-ephemeral-frontend-authentication-for-private-phase.md). The Account-token-only constraint recorded below is historical and has been superseded.
+> Authentication-boundary update (2026-08-12): Bunpro's private community has since supplied a temporary Account API Token authentication mechanism for Frontend API routes. Authorized testing confirmed the Atlas-required contract in [Bunpro Account API Token request contract](./bunpro-account-token-api.md). The evidence gaps and intermediate browser-login choice recorded below are historical and superseded.
 
 ## Question
 

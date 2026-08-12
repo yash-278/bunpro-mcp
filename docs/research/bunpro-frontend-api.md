@@ -2,6 +2,8 @@
 
 Research date: 2026-08-11
 
+> Authentication update (2026-08-12): the browser-login and frontend-cookie authentication conclusion in this historical note is superseded by [Bunpro Account API Token request contract](./bunpro-account-token-api.md). The route shapes and Study Day source limitations remain relevant. The target MCP now uses only `BUNPRO_API_TOKEN` with Bunpro's temporary opt-in query parameter.
+
 ## Question
 
 Can environment-provided Bunpro login credentials establish an authenticated frontend API session entirely in memory, and which current read-only endpoints can support an Atlas Study Day Summary?
@@ -15,7 +17,7 @@ The credential flow works with `BUNPRO_USERNAME` (or `BUNPRO_EMAIL`) and `BUNPRO
 3. Bunpro sets a `frontend_api_token` cookie.
 4. `Authorization: Token token=<frontend_api_token>` authenticates requests to `https://api.bunpro.jp/api/frontend/**`.
 
-The research scripts keep login credentials, cookies, authenticity values, and the frontend token only in process memory. They print neither secrets nor raw response bodies. The Account API Token is not used by this flow and remains unsupported by the tested frontend endpoints.
+The research scripts kept login credentials, cookies, authenticity values, and the frontend token only in process memory. They printed neither secrets nor raw response bodies. This historical flow did not use the Account API Token. Later authorized testing confirmed that the Account API Token authenticates the required frontend endpoints when Bunpro's temporary opt-in query parameter is supplied; see the superseding research note above.
 
 ## Current read-only study surfaces
 
@@ -65,15 +67,13 @@ A missing key in a sparse heatmap has not yet been proven equivalent to zero. Un
 ## Compatibility and security constraints
 
 - These are private frontend contracts, not a supported public API. Bunpro may change them without notice.
-- Authentication must fail closed. The MCP must never return, print, log, or persist credentials, cookies, authenticity values, or frontend tokens.
+- Authentication must fail closed. The MCP must never return, print, or log tokens. Cookies, authenticity values, and frontend-cookie tokens are no longer part of the target design.
 - All Bunpro calls remain read-only and low volume.
-- The frontend token is an in-memory implementation detail and must never become an MCP input or output.
-- The login adapter does not yet handle multi-factor authentication, bot challenges, token expiry, or account lockout behavior.
-- Public deployments must isolate OAuth identities and encrypt per-user authentication material as defined in [ADR 0003](../adr/0003-public-multi-user-remote-mcp.md).
+- Local mode reads the Account API Token from `BUNPRO_API_TOKEN`; hosted deployments isolate OAuth identities and encrypt each identity's Account API Token at rest.
 
 ## Answer
 
-Yes. Environment-provided login credentials can establish a Bunpro session and procure the frontend token entirely in memory. The current frontend API provides trustworthy historical daily aggregate review counts and new-content counts, plus a shorter accuracy window. That is enough to proceed with the Atlas-facing Study Day mapping, provided unsupported measures remain explicitly unavailable and sparse-key semantics are resolved before implementation.
+The route research established trustworthy historical daily aggregate review counts and new-content counts, plus a shorter accuracy window. Its username/password authentication design is superseded by the Account API Token contract. The sources are enough to proceed with the Atlas-facing Study Day mapping, provided unsupported measures remain explicitly unavailable and sparse-key semantics are resolved before implementation.
 
 ## Sources
 
