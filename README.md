@@ -10,13 +10,15 @@ An unofficial, stateless, read-only Model Context Protocol (MCP) server for conn
 
 ## Project status
 
-The direct Account API Token connection is implemented. The date-bounded study-summary tool is still under development.
+The direct Account API Token connection and date-bounded study summaries are implemented.
 
-Available tool:
+Available tools:
 
 - `get_connection_status` verifies that the caller's Bunpro Account API Token can access Bunpro and returns the source timezone.
+- `get_study_day_summary` returns source-backed activity evidence for one exact Bunpro calendar day.
+- `get_study_range_summary` returns every inclusive calendar day in a bounded range using one upstream evidence fetch.
 
-The prioritized tool catalog and explicit non-goals are tracked in [docs/tool-roadmap.md](docs/tool-roadmap.md). The next implementation target is `get_study_day_summary`, followed by a bounded range variant for Atlas catch-up.
+The prioritized tool catalog and explicit non-goals are tracked in [docs/tool-roadmap.md](docs/tool-roadmap.md).
 
 All Bunpro requests are read-only. The server does not submit reviews, start lessons, change progress, or modify account settings.
 
