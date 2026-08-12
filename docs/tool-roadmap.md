@@ -1,6 +1,6 @@
 # Bunpro MCP tool roadmap
 
-Status: design inventory for the private, read-only MCP
+Status: implemented catalog for the private, read-only MCP
 
 This roadmap translates the confirmed Bunpro Frontend API surfaces into agent-facing workflows. It is intentionally not a one-tool-per-endpoint wrapper. Each tool should answer a recognizable user question, return structured content, disclose source coverage, and stay within a conservative Bunpro request budget.
 
@@ -63,7 +63,7 @@ This is a separate tool because it makes catch-up cheap and prevents an agent fr
 
 ## Priority 1: current review planning
 
-These tools are useful to people directly, but they are not required for the first Atlas ingestion milestone. Their routes were successful in the earlier authenticated Frontend API inventory; Account API Token access and current response schemas must be revalidated with one low-volume probe per route before implementation.
+These tools are useful directly to Bunpro learners and are independent of any Atlas integration.
 
 ### `get_review_schedule` — implemented
 
@@ -94,22 +94,22 @@ Answers: "What did I review recently?" or "What happened in the last 24 hours?"
 
 ## Priority 2: progress and trends
 
-### `get_learning_progress`
+### `get_learning_progress` — implemented
 
 Answers: "How far along am I in Bunpro?"
 
-- Candidate sources: `/api/frontend/user_stats/base_stats`, `/api/frontend/user_stats/jlpt_progress_mixed`, `/api/frontend/user_stats/total_review_stats`, `/api/frontend/user_stats/total_cram_stats`
-- Input: optional view selection only if it reduces output materially
-- Output: normalized JLPT/SRS progress, supported account aggregates, review totals, cram totals, and coverage
+- Sources: `/api/frontend/user_stats/base_stats`, `/api/frontend/user_stats/jlpt_progress_mixed`, `/api/frontend/user_stats/total_review_stats`, `/api/frontend/user_stats/total_cram_stats`
+- Input: none
+- Output: normalized account facts, JLPT N5-N1 SRS-stage progress, JLPT review totals, and cram aggregates
 - Important boundary: avoid returning cosmetic, subscription, or unrelated profile fields from `/user`
 
-### `get_activity_trend`
+### `get_activity_trend` — implemented
 
 Answers: "How has my study consistency and accuracy changed over the last 30 days?"
 
-- Candidate sources: `/api/frontend/user_stats/activity_daily`, `/api/frontend/user_stats/review_heatmap`, `/api/frontend/user_stats/new_content_heatmap`, `/api/frontend/user_stats/accuracy_over_time`
+- Sources: `/api/frontend/user_stats/review_heatmap`, `/api/frontend/user_stats/new_content_heatmap`, `/api/frontend/user_stats/accuracy_over_time`
 - Input: inclusive bounded range, initially no more than 93 days
-- Output: daily series, active-day count, supported aggregates, and independent coverage windows for activity and accuracy
+- Output: preserved daily review, new-content, and accuracy evidence; source-record-day counts; supported totals and averages; and independent coverage windows
 - Important boundary: this tool may derive trends but must preserve the underlying daily values and label every derived measure
 
 ## Deliberately excluded tools
@@ -123,14 +123,14 @@ Do not create these under the current project contract:
 - tools claiming study duration, exact correct/incorrect daily totals, or complete historical item lists without a proven source;
 - separate tools for badges, cosmetics, profile decoration, subscription state, or unrelated account metadata.
 
-## Implementation order
+## Implementation history
 
-1. Resolve the Study Day source-to-summary vocabulary and sparse-key behavior.
-2. Implement the shared daily-series parser and `get_study_day_summary` with schema, mapping, and failure tests.
-3. Add `get_study_range_summary` using the same fetched payloads and mapper.
-4. Prototype the Atlas ingestion contract and watermark behavior against the two tools.
-5. Implement the verified review schedule, study-deck, and recent-activity contracts.
-6. Revalidate and implement Priority 2 progress/trend tools only after the Atlas path is functional.
+1. Resolved the Study Day source-to-summary vocabulary and sparse-key behavior.
+2. Implemented the shared daily-series parser and Study Day/range summaries.
+3. Implemented review schedule, study-deck, and recent-activity contracts.
+4. Revalidated and implemented learning-progress and activity-trend tools.
+
+Atlas integration remains a separate consumer project. The MCP does not own Atlas files or watermarks.
 
 ## Minimum test matrix for every new tool
 

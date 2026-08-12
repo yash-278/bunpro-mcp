@@ -1,36 +1,43 @@
-# Private preview checklist
+# Hosted community release checklist
 
-Keep the repository private and share the connection only inside the approved Bunpro community group.
+The hosted MCP may be announced publicly. The repository and Bunpro-specific request mechanism must remain private.
 
-## Repository
+## Repository boundary
 
-- [x] MIT license present.
-- [x] README documents hosted, local, and self-hosted setup.
-- [x] Privacy, security, contribution, and conduct policies present.
-- [x] Current tree and Git history scanned for committed credentials.
-- [x] Account API Token request contract captured in a confidential research note.
-- [x] Confirm no active documentation instructs users to provide a Bunpro password, Auth0 login, database, or setup link.
-- [x] Run the full verification suite after the direct-token cutover.
+- [x] Repository policy explicitly requires GitHub visibility to remain private.
+- [x] Public documentation excludes private routes, authentication translation, opt-in parameters, schemas, reverse-engineering notes, and source code.
+- [x] README documents the implemented read-only catalog and maintainer setup.
+- [x] Privacy, security, contribution, and conduct policies are present.
+- [ ] Re-scan the current tree and Git history for credentials immediately before merge.
+- [ ] Confirm `yash-278/bunpro-mcp` reports `PRIVATE` before and after the release merge.
 
 ## Hosted service
 
-- [ ] Remove obsolete Auth0, PostgreSQL, encryption-key, setup-token, username, and password variables from Railway.
-- [ ] Redeploy the direct-token build.
-- [ ] Confirm `GET /healthz` returns HTTP 200.
-- [ ] Confirm a missing Bearer token receives HTTP 401 without leaking request data.
-- [ ] Confirm one valid caller token reaches `get_connection_status` and is not persisted.
-- [ ] Confirm one invalid token produces a sanitized Bunpro authentication error.
+- [ ] Railway deploys automatically from the private repository's `main` branch.
+- [ ] Set `PUBLIC_BASE_URL=https://bunpro.yashkadam.com`.
+- [ ] Remove obsolete Auth0, database, encryption-key, setup-token, username, password, and deployment-wide Bunpro token variables.
+- [ ] Confirm `GET /healthz` returns HTTP 200 on the canonical domain.
+- [ ] Confirm the generated Railway domain is not an alternate public entry point after the canonical domain works.
+- [ ] Confirm a missing or malformed Bearer token receives HTTP 401 without leaking request data.
+- [ ] Run one low-volume live smoke pass across every published tool with a valid caller token.
+- [ ] Confirm one invalid token produces a sanitized authentication error.
+- [ ] Review edge rate limits and abuse controls without logging Authorization headers or response bodies.
 
-## Atlas acceptance
+## Product behavior
 
-- [ ] Implement the date-bounded Study Day Summary using only whitelisted read routes.
-- [ ] Compare at least one known Study Day with Bunpro.
-- [ ] Simulate authentication, throttling, or route-drift failure and verify Atlas does not advance its Bunpro Watermark.
+- [x] All published tools are read-only, stateless, bounded, and annotated as non-destructive.
+- [x] Authentication, throttling, route removal, and schema drift fail closed.
+- [x] Sparse historical absence is not silently represented as zero study.
+- [x] The server stores no caller credential, session, cookie, account profile, watermark, or study history.
+- [ ] Complete the final automated verification suite and private pull-request review.
 
-## Sharing boundary
+## Public announcement
 
-- [ ] Keep the GitHub repository private.
-- [ ] Recheck every link in the README and private community draft.
-- [ ] Share [the draft](community-post.md) only in the approved private Bunpro community group.
+- [x] The draft explains setup using only the hosted URL and standard protected Bearer header.
+- [x] The draft explains all eight capabilities in user-facing language.
+- [x] The draft discloses the unofficial/experimental status, partial failures, throttling, hosted-operator trust boundary, best-effort availability, and token rotation.
+- [x] The draft does not link to or describe how to reproduce the private implementation.
+- [x] Reader-test [the public announcement draft](community-post.md) for clarity and accidental disclosure.
+- [ ] Publish only after every hosted-service gate above is complete.
 
-Do not publish the temporary token mechanism in a public forum.
+Atlas integration is intentionally out of scope for this release. Do not edit the Atlas vault or infer an Atlas watermark from MCP output during release work.

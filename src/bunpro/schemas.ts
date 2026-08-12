@@ -213,3 +213,88 @@ export const RecentActivityOutputSchema = z.object({
 
 export type RecentActivityInput = z.infer<typeof RecentActivityInputSchema>;
 export type RecentActivityOutput = z.infer<typeof RecentActivityOutputSchema>;
+
+const SrsStageCountsSchema = z.object({
+  beginner: z.number().int().nonnegative(),
+  seasoned: z.number().int().nonnegative(),
+  adept: z.number().int().nonnegative(),
+  expert: z.number().int().nonnegative(),
+  master: z.number().int().nonnegative(),
+  total_count: z.number().int().nonnegative()
+});
+
+const ReviewAggregateSchema = z.object({
+  accuracy: z.number(),
+  correct: z.number().int().nonnegative(),
+  incorrect: z.number().int().nonnegative(),
+  total: z.number().int().nonnegative()
+});
+
+export const LearningProgressOutputSchema = z.object({
+  retrieved_at: z.string().datetime(),
+  base: z.object({
+    days_studied: z.number().int().nonnegative(),
+    grammar_studied: z.number().int().nonnegative(),
+    vocabulary_studied: z.number().int().nonnegative(),
+    current_streak: z.number().int().nonnegative(),
+    total_badges: z.number().int().nonnegative(),
+    weekly_streak: z.array(z.object({ day: z.string(), studied: z.boolean() }))
+  }),
+  jlpt_progress: z.array(z.object({
+    jlpt_level: z.enum(["N5", "N4", "N3", "N2", "N1"]),
+    grammar: SrsStageCountsSchema,
+    vocabulary: SrsStageCountsSchema,
+    combined: SrsStageCountsSchema.extend({ derived: z.literal(true) })
+  })).length(5),
+  review_totals: z.array(z.object({
+    jlpt_level: z.enum(["N5", "N4", "N3", "N2", "N1"]),
+    grammar: ReviewAggregateSchema,
+    vocabulary: ReviewAggregateSchema,
+    mixed: ReviewAggregateSchema.extend({ source_supplied: z.literal(true) })
+  })).length(5),
+  cram: z.object({
+    items: ReviewAggregateSchema,
+    sessions: z.object({
+      average_time: z.string(),
+      reviews_per_session: z.number().int().nonnegative(),
+      session_count: z.number().int().nonnegative(),
+      total_time: z.string()
+    })
+  })
+});
+
+export type LearningProgress = z.infer<typeof LearningProgressOutputSchema>;
+
+export const ActivityTrendOutputSchema = z.object({
+  requested_start_date: IsoDateSchema,
+  requested_end_date: IsoDateSchema,
+  source_timezone: z.string().min(1),
+  expected_timezone: z.string().min(1).nullable(),
+  timezone_matches: z.boolean().nullable(),
+  overall_query_status: z.enum(["complete", "partial"]),
+  days: z.array(StudyDayEvidenceSchema).max(93),
+  metrics: z.object({
+    reviews: z.object({
+      source_record_days: z.number().int().nonnegative(),
+      total: z.number().int().nonnegative(),
+      average_per_source_record_day: z.number().nullable()
+    }),
+    new_content: z.object({
+      source_record_days: z.number().int().nonnegative(),
+      total: z.number().int().nonnegative(),
+      average_per_source_record_day: z.number().nullable()
+    }),
+    accuracy: z.object({
+      source_record_days: z.number().int().nonnegative(),
+      average_percent: z.number().nullable()
+    })
+  }),
+  derived_measures_labeled: z.literal(true),
+  source_coverage: z.object({
+    reviews: SourceCoverageSchema,
+    new_content: SourceCoverageSchema,
+    accuracy: SourceCoverageSchema
+  })
+});
+
+export type ActivityTrend = z.infer<typeof ActivityTrendOutputSchema>;

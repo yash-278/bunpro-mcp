@@ -10,7 +10,7 @@ An unofficial, stateless, read-only Model Context Protocol (MCP) server for conn
 
 ## Project status
 
-The direct Account API Token connection and date-bounded study summaries are implemented.
+The direct Account API Token connection and the complete read-only tool catalog are implemented.
 
 Available tools:
 
@@ -20,6 +20,8 @@ Available tools:
 - `get_review_schedule` returns reviews due now and Bunpro's current daily forecast.
 - `list_study_decks` returns bounded active study-deck goals and completion counts.
 - `get_recent_activity` returns a bounded last-24-hours or latest-attempts view.
+- `get_learning_progress` returns normalized account totals, JLPT progress, review totals, and cram aggregates.
+- `get_activity_trend` returns preserved daily evidence plus explicitly derived range totals and averages.
 
 The prioritized tool catalog and explicit non-goals are tracked in [docs/tool-roadmap.md](docs/tool-roadmap.md).
 
@@ -119,9 +121,10 @@ The opt-in live connection test uses your own Account API Token and performs rea
 ```bash
 BUNPRO_API_TOKEN="your token" npm run live:test:auth
 BUNPRO_API_TOKEN="your token" npm run live:test:http
+BUNPRO_API_TOKEN="your token" npm run live:test:tools
 ```
 
-The first command tests stdio. The second tests the HTTP Bearer-token passthrough against the real Bunpro API without opening a network listener. Both print only normalized connection status. Do not attach raw Bunpro responses or secrets to issues.
+The first command tests stdio. The second tests the HTTP Bearer-token passthrough. The third makes one deliberately paced pass through every published tool. All use the real Bunpro API without opening a network listener, and the tool sweep prints only tool names and success states. Do not attach raw Bunpro responses or secrets to issues.
 
 ## Contributing
 
