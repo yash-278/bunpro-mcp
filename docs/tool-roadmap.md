@@ -65,7 +65,7 @@ This is a separate tool because it makes catch-up cheap and prevents an agent fr
 
 These tools are useful to people directly, but they are not required for the first Atlas ingestion milestone. Their routes were successful in the earlier authenticated Frontend API inventory; Account API Token access and current response schemas must be revalidated with one low-volume probe per route before implementation.
 
-### `get_review_schedule`
+### `get_review_schedule` — implemented
 
 Answers: "How many reviews are due now, and what does the next week look like?"
 
@@ -74,7 +74,7 @@ Answers: "How many reviews are due now, and what does the next week look like?"
 - Output: due-now summary, daily forecast buckets, source timezone, generated-at time, and coverage
 - Important boundary: forecast values are projections, not completed study activity
 
-### `list_study_decks`
+### `list_study_decks` — implemented
 
 Answers: "Which Bunpro study decks are active, and what are their goals and completion counts?"
 
@@ -83,7 +83,7 @@ Answers: "Which Bunpro study decks are active, and what are their goals and comp
 - Output: bounded deck identity, active status, batch size, daily goals, and grammar/vocabulary completion counts plus `count` and `has_more`
 - Important boundary: never describe these records as queued review items or return an unbounded raw payload
 
-### `get_recent_activity`
+### `get_recent_activity` — implemented
 
 Answers: "What did I review recently?" or "What happened in the last 24 hours?"
 

@@ -7,9 +7,15 @@ import {
   StudyDayInputSchema,
   StudyDaySummaryOutputSchema,
   StudyRangeInputSchema,
-  StudyRangeSummaryOutputSchema
+  StudyRangeSummaryOutputSchema,
+  ReviewScheduleOutputSchema,
+  ListStudyDecksInputSchema,
+  ListStudyDecksOutputSchema,
+  RecentActivityInputSchema,
+  RecentActivityOutputSchema
 } from "./bunpro/schemas.js";
 import { getStudyDaySummary, getStudyRangeSummary } from "./bunpro/study.js";
+import { getRecentActivity, getReviewSchedule, listStudyDecks } from "./bunpro/planning.js";
 
 export interface BunproAccountAccess {
   checkConnection(operationSignal?: AbortSignal): Promise<ConnectionStatus>;
@@ -108,6 +114,99 @@ export function createServer(
     async input => {
       try {
         const structuredContent = await getStudyRangeSummary(getClient(), input);
+        return {
+          content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
+          structuredContent
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: connectionErrorMessage(error) }]
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    "get_review_schedule",
+    {
+      title: "Get Bunpro review schedule",
+      description:
+        "Return current grammar and vocabulary reviews due plus Bunpro's forecast from later today through its current daily horizon. Forecast values are projections, not completed study.",
+      inputSchema: z.object({}).strict(),
+      outputSchema: ReviewScheduleOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true
+      }
+    },
+    async () => {
+      try {
+        const structuredContent = await getReviewSchedule(getClient());
+        return {
+          content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
+          structuredContent
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: connectionErrorMessage(error) }]
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    "list_study_decks",
+    {
+      title: "List Bunpro study decks",
+      description:
+        "List bounded Bunpro study-deck configuration, goals, progress, and content counts. These are study decks, not queued review items.",
+      inputSchema: ListStudyDecksInputSchema,
+      outputSchema: ListStudyDecksOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true
+      }
+    },
+    async input => {
+      try {
+        const structuredContent = await listStudyDecks(getClient(), input);
+        return {
+          content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
+          structuredContent
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: connectionErrorMessage(error) }]
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    "get_recent_activity",
+    {
+      title: "Get recent Bunpro activity",
+      description:
+        "Return a bounded rolling last-24-hours view or latest-attempts view. The source does not guarantee complete history or pagination.",
+      inputSchema: RecentActivityInputSchema,
+      outputSchema: RecentActivityOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true
+      }
+    },
+    async input => {
+      try {
+        const structuredContent = await getRecentActivity(getClient(), input);
         return {
           content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
           structuredContent
