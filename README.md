@@ -44,12 +44,12 @@ In the ChatGPT/Codex desktop app:
 1. Open **Settings → Plugins → MCPs → Add custom MCP**.
 2. Enter `Bunpro MCP`, choose **Streamable HTTP**, and paste the URL above.
 3. Leave **Bearer token env var** blank.
-4. Add a protected custom header named `Authorization` with the value `Bearer <your Bunpro API token>`.
+4. Add a protected custom header named `X-Bunpro-Token` and paste your Bunpro API token as its value.
 5. Save and ask: `Check my Bunpro connection.`
 
-There is no Auth0 login, Bunpro password form, account-link page, database, or server-side token store. The MCP host attaches the token as an HTTP Bearer credential. The server uses it for that request and does not persist it.
+There is no Auth0 login, Bunpro password form, account-link page, database, or server-side token store. The MCP host attaches the token as a protected request header. The server uses it for that request and does not persist it.
 
-If a client has a dedicated protected bearer-secret field, use it instead of a custom header. Never put the token in the URL or a tool argument.
+Existing clients configured with `Authorization: Bearer <token>` remain compatible, but new connections should use `X-Bunpro-Token`. Do not configure both headers. Never put the token in the URL or a tool argument.
 
 ## Run it locally
 
@@ -85,18 +85,18 @@ Use the MCP client's secret environment fields when available. The MCP does not 
 
 The remote transport is stateless Streamable HTTP. It requires no Auth0 tenant, OAuth setup, PostgreSQL service, encryption key, or Bunpro credential configured on the deployment. See [docs/self-hosting.md](docs/self-hosting.md).
 
-Each caller must configure their own Bunpro Account API Token as the connection's Bearer token. Never set a deployment-wide `BUNPRO_API_TOKEN` for HTTP mode.
+Each caller must configure their own Bunpro Account API Token in the connection's `X-Bunpro-Token` protected header. Never set a deployment-wide `BUNPRO_API_TOKEN` for HTTP mode.
 
 ## Request contract
 
-For each allowed read-only Frontend API route, the adapter transforms the incoming Bearer token into Bunpro's temporary request contract:
+For each allowed read-only Frontend API route, the adapter transforms the incoming protected token into Bunpro's temporary request contract:
 
 ```http
 GET /api/frontend/<route>?dangerously_authenticate_using_api_token=true
 Authorization: Token token=<account-api-token>
 ```
 
-The token remains in request memory only. Missing or malformed bearer credentials fail with HTTP 401. Bunpro authentication failures, throttling, unavailable routes, and schema drift fail closed without login fallback or automatic retry.
+The token remains in request memory only. Missing, malformed, or ambiguous credentials fail with HTTP 401. Bunpro authentication failures, throttling, unavailable routes, and schema drift fail closed without login fallback or automatic retry.
 
 ## Security and limitations
 
@@ -125,7 +125,7 @@ BUNPRO_API_TOKEN="your token" npm run live:test:tools
 BUNPRO_API_TOKEN="your token" BUNPRO_MCP_URL="https://your-host.example/mcp" npm run live:test:tools
 ```
 
-The first command tests stdio. The second tests the HTTP Bearer-token passthrough. The third makes one deliberately paced pass through every published tool in process; adding `BUNPRO_MCP_URL` runs the same sweep against a deployed Streamable HTTP endpoint. All use the real Bunpro API, and the tool sweep prints only tool names and success states. Do not attach raw Bunpro responses or secrets to issues.
+The first command tests stdio. The second tests the HTTP `X-Bunpro-Token` passthrough. The third makes one deliberately paced pass through every published tool in process; adding `BUNPRO_MCP_URL` runs the same sweep against a deployed Streamable HTTP endpoint. All use the real Bunpro API, and the tool sweep prints only tool names and success states. Do not attach raw Bunpro responses or secrets to issues.
 
 ## Contributing
 

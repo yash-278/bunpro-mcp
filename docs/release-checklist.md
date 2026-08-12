@@ -18,10 +18,10 @@ The hosted MCP may be announced publicly. The repository and Bunpro-specific req
 - [ ] Remove obsolete Auth0, database, encryption-key, setup-token, username, password, and deployment-wide Bunpro token variables.
 - [x] Confirm `GET /healthz` returns HTTP 200 on the canonical domain.
 - [x] Confirm the generated Railway domain is not an alternate public entry point after the canonical domain works.
-- [x] Confirm a missing or malformed Bearer token receives HTTP 401 without leaking request data.
+- [x] Confirm a missing, malformed, or ambiguous token header receives HTTP 401 without leaking request data.
 - [x] Run one low-volume live smoke pass across every published tool with a valid caller token.
 - [x] Confirm one invalid token produces a sanitized authentication error.
-- [ ] Review edge rate limits and abuse controls without logging Authorization headers or response bodies.
+- [ ] Review edge rate limits and abuse controls without logging token-bearing headers or response bodies.
 
 ## Product behavior
 
@@ -33,7 +33,7 @@ The hosted MCP may be announced publicly. The repository and Bunpro-specific req
 
 ## Public announcement
 
-- [x] The draft explains setup using only the hosted URL and standard protected Bearer header.
+- [x] The draft explains setup using only the hosted URL and protected `X-Bunpro-Token` header.
 - [x] The draft explains all eight capabilities in user-facing language.
 - [x] The draft discloses the unofficial/experimental status, partial failures, throttling, hosted-operator trust boundary, best-effort availability, and token rotation.
 - [x] The draft does not link to or describe how to reproduce the private implementation.

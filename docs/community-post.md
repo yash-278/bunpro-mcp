@@ -26,10 +26,10 @@ These steps use the ChatGPT desktop app. If your version does not show the custo
    - **Type:** Streamable HTTP
    - **URL:** `https://bunpro.yashkadam.com/mcp`
    - **Bearer token environment variable:** leave this blank
-   - **Protected header name:** `Authorization`
-   - **Protected header value:** `Bearer <your Bunpro Account API Token>`
+   - **Protected header name:** `X-Bunpro-Token`
+   - **Protected header value:** paste your Bunpro Account API Token here
 
-Replace `<your Bunpro Account API Token>` with the token you copied. Do not include the angle brackets. The final value should be the word `Bearer`, one space, and then your token.
+The header value is just the token you copied. You do not need to add `Bearer` or anything else before it.
 
 Save it, then try:
 
@@ -38,11 +38,11 @@ Save it, then try:
 If it does not connect, check these four things:
 
 - the URL is exactly `https://bunpro.yashkadam.com/mcp`;
-- `Authorization` is spelled correctly;
-- there is one space between `Bearer` and the token; and
+- `X-Bunpro-Token` is spelled correctly;
+- the header value contains only the token; and
 - the token is still current in Bunpro.
 
-Other MCP-compatible apps can use the same URL and Authorization header, although their menus may look different.
+Other MCP-compatible apps can use the same URL and protected header, although their menus may look different.
 
 Please put the token only in the protected connection field. Never paste it into a chat message, screenshot, URL, support post, or tool argument.
 
@@ -67,7 +67,7 @@ This is an unofficial community project. It is not affiliated with or endorsed b
 
 It relies on experimental Bunpro functionality, so Bunpro changes, rate limits, or outages may make a tool temporarily stop working or return incomplete information. I’m running the server for free, so please treat it as a useful community tool rather than a guaranteed service. I may limit or pause it if that is necessary to avoid putting too much traffic on Bunpro.
 
-Your MCP app sends your Bunpro token to the server over HTTPS when it requests data. The connector does not have a token database, create user accounts, or save your study history. Its application logs are designed not to include tokens, Authorization headers, or returned study data.
+Your MCP app sends your Bunpro token to the server over HTTPS when it requests data. The connector does not have a token database, create user accounts, or save your study history. Its application logs are designed not to include tokens, protected token headers, or returned study data.
 
 The server is hosted on Railway. As with any hosted service, I and the hosting provider could technically inspect data while a request is being handled. Please connect only if you are comfortable trusting both of us. If you are not, do not use the hosted version.
 
@@ -79,6 +79,6 @@ To stop ChatGPT from sending the token, open **Settings → Plugins → MCPs →
 
 Removing the connection does not invalidate the token. If the token was exposed, or you no longer trust where it was saved, rotate it from **Bunpro → Settings → API**. Rotating it invalidates the old token. If you want to reconnect later, save the new token in the protected header field.
 
-If something goes wrong, send me a private message here with the tool you were using, the approximate time, and the sanitized error message. Please do not send your token, Authorization header, credential screenshots, or raw account data.
+If something goes wrong, send me a private message here with the tool you were using, the approximate time, and the sanitized error message. Please do not send your token, token header, credential screenshots, or raw account data.
 
 I’d love to hear what you use it for and what read-only information would be most useful next.

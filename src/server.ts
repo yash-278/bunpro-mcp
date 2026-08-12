@@ -30,7 +30,7 @@ export type BunproClientFactory = () => BunproAccountAccess;
 export function createServer(
   clientFactory: BunproClientFactory = () => new BunproClient(apiTokenFromEnvironment())
 ): McpServer {
-  const server = new McpServer({ name: "bunpro-mcp-server", version: "0.2.0" });
+  const server = new McpServer({ name: "bunpro-mcp-server", version: "0.3.0" });
   let sharedClient: BunproAccountAccess | undefined;
   const getClient = (): BunproAccountAccess => {
     sharedClient ??= clientFactory();
@@ -42,7 +42,7 @@ export function createServer(
     {
       title: "Check Bunpro connection",
       description:
-        "Verify that the caller's Bunpro Account API Token can access the read-only Frontend API. The token comes from BUNPRO_API_TOKEN in stdio mode or the request Bearer header in HTTP mode. The MCP never returns or stores the token.",
+        "Verify that the caller's Bunpro Account API Token can access the read-only Frontend API. The token comes from BUNPRO_API_TOKEN in stdio mode or X-Bunpro-Token in HTTP mode. The MCP never returns or stores the token.",
       inputSchema: z.object({}).strict(),
       outputSchema: ConnectionStatusOutputSchema,
       annotations: {

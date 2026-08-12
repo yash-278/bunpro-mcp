@@ -69,7 +69,7 @@ A missing key in a sparse heatmap has not yet been proven equivalent to zero. Un
 - These are private frontend contracts, not a supported public API. Bunpro may change them without notice.
 - Authentication must fail closed. The MCP must never return, print, log, or persist Account API Tokens. Cookies, authenticity values, and frontend-cookie tokens are no longer part of the target design.
 - All Bunpro calls remain read-only and low volume.
-- Local mode reads the Account API Token from `BUNPRO_API_TOKEN`; hosted mode receives it per request from the MCP host's Bearer-token configuration and does not persist it.
+- Local mode reads the Account API Token from `BUNPRO_API_TOKEN`; hosted mode receives it per request from the MCP host's protected `X-Bunpro-Token` configuration and does not persist it.
 
 ## Answer
 
