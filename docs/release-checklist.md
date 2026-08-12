@@ -11,7 +11,7 @@ Complete these steps in order. Preparing the repository does not change its GitH
 - [x] Internal scratch planning files removed from the release tree.
 - [x] Current tree and Git history scanned for committed credentials.
 - [ ] Decide whether to publish the existing development history or create a clean public release history. Deleted planning files remain visible in existing Git history even though no credential was found in them.
-- [ ] Commit and push the release-preparation changes while the repository is still private.
+- [x] Commit and push the release-preparation changes while the repository is still private.
 
 ## Hosted service
 
