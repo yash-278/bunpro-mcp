@@ -8,19 +8,19 @@ The hosted MCP may be announced publicly. The repository and Bunpro-specific req
 - [x] Public documentation excludes private routes, authentication translation, opt-in parameters, schemas, reverse-engineering notes, and source code.
 - [x] README documents the implemented read-only catalog and maintainer setup.
 - [x] Privacy, security, contribution, and conduct policies are present.
-- [ ] Re-scan the current tree and Git history for credentials immediately before merge.
-- [ ] Confirm `yash-278/bunpro-mcp` reports `PRIVATE` before and after the release merge.
+- [x] Re-scan the current tree and Git history for credentials immediately before merge.
+- [x] Confirm `yash-278/bunpro-mcp` reports `PRIVATE` before and after the release merge.
 
 ## Hosted service
 
-- [ ] Railway deploys automatically from the private repository's `main` branch.
-- [ ] Set `PUBLIC_BASE_URL=https://bunpro.yashkadam.com`.
+- [x] Railway deploys automatically from the private repository's `main` branch.
+- [x] Set `PUBLIC_BASE_URL=https://bunpro.yashkadam.com`.
 - [ ] Remove obsolete Auth0, database, encryption-key, setup-token, username, password, and deployment-wide Bunpro token variables.
-- [ ] Confirm `GET /healthz` returns HTTP 200 on the canonical domain.
-- [ ] Confirm the generated Railway domain is not an alternate public entry point after the canonical domain works.
-- [ ] Confirm a missing or malformed Bearer token receives HTTP 401 without leaking request data.
-- [ ] Run one low-volume live smoke pass across every published tool with a valid caller token.
-- [ ] Confirm one invalid token produces a sanitized authentication error.
+- [x] Confirm `GET /healthz` returns HTTP 200 on the canonical domain.
+- [x] Confirm the generated Railway domain is not an alternate public entry point after the canonical domain works.
+- [x] Confirm a missing or malformed Bearer token receives HTTP 401 without leaking request data.
+- [x] Run one low-volume live smoke pass across every published tool with a valid caller token.
+- [x] Confirm one invalid token produces a sanitized authentication error.
 - [ ] Review edge rate limits and abuse controls without logging Authorization headers or response bodies.
 
 ## Product behavior
@@ -29,7 +29,7 @@ The hosted MCP may be announced publicly. The repository and Bunpro-specific req
 - [x] Authentication, throttling, route removal, and schema drift fail closed.
 - [x] Sparse historical absence is not silently represented as zero study.
 - [x] The server stores no caller credential, session, cookie, account profile, watermark, or study history.
-- [ ] Complete the final automated verification suite and private pull-request review.
+- [x] Complete the final automated verification suite and private pull-request review.
 
 ## Public announcement
 
