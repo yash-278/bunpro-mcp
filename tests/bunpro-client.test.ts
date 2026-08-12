@@ -1,14 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { BunproClient, credentialsFromEnvironment, type FetchLike } from "../src/bunpro/client.js";
+import { BunproClient, apiTokenFromEnvironment, type FetchLike } from "../src/bunpro/client.js";
 import { BunproError } from "../src/bunpro/errors.js";
 
-const credentials = { username: "test@example.com", password: "test-password" };
+const apiToken = "test-account-api-token";
 
-function response(body: string, init: ResponseInit & { cookies?: string[] } = {}): Response {
-  const headers = new Headers(init.headers);
-  for (const cookie of init.cookies ?? []) headers.append("set-cookie", cookie);
-  return new Response(body, { ...init, headers });
+function response(body: string, init: ResponseInit = {}): Response {
+  return new Response(body, init);
 }
 
 function userResponse(): Response {
@@ -18,203 +16,109 @@ function userResponse(): Response {
   });
 }
 
-function freshSessionResponses(token = "frontend-token", csrf = "csrf&amp;token"): Response[] {
-  return [
-    response(`<input name="authenticity_token" value="${csrf}">`, {
-      status: 200,
-      cookies: ["_grammar_app_session=session-before; Path=/; HttpOnly"]
-    }),
-    response("", {
-      status: 302,
-      headers: { location: "/dashboard" },
-      cookies: [
-        "_grammar_app_session=session-after; Path=/; HttpOnly",
-        `frontend_api_token=${token}; Path=/; Secure`
-      ]
-    }),
-    response("account", { status: 200 }),
-    userResponse()
-  ];
-}
-
-test("one fresh login is serialized and reused by concurrent calls", async () => {
-  const calls: Array<{ url: URL; init: RequestInit }> = [];
-  const responses = [
-    ...freshSessionResponses(),
-    userResponse()
-  ];
-
-  const mockFetch: FetchLike = async (input, init = {}) => {
-    calls.push({ url: new URL(input instanceof Request ? input.url : input), init });
-    const next = responses.shift();
-    assert.ok(next, "unexpected request");
-    return next;
-  };
-
-  const client = new BunproClient(credentials, mockFetch);
-  const [firstResult, secondResult] = await Promise.all([
-    client.checkConnection(),
-    client.checkConnection()
-  ]);
-
-  assert.deepEqual(firstResult, {
-    connected: true,
-    authentication_method: "frontend_session",
-    session_resolution: "fresh_login",
-    authentication_cache: "process_memory",
-    credentials_source: "environment",
-    web_session_authenticated: true,
-    frontend_token_obtained: true,
-    api_authenticated: true,
-    source_timezone: "Asia/Kolkata",
-    stateless: true
-  });
-  assert.equal(secondResult.session_resolution, "cached_session");
-  assert.equal(calls.length, 5);
-  assert.equal(calls.filter(call => call.init.method === "POST").length, 1);
-
-  const signIn = calls[1];
-  assert.ok(signIn);
-  assert.equal(signIn.url.href, "https://bunpro.jp/users/sign_in");
-  assert.match(new Headers(signIn.init.headers).get("cookie") ?? "", /_grammar_app_session=session-before/);
-  assert.equal(signIn.init.body?.toString(), "authenticity_token=csrf%26token&user%5Bemail%5D=test%40example.com&user%5Bpassword%5D=test-password&user%5Bremember_me%5D=0");
-
-  const account = calls[2];
-  assert.ok(account);
-  const accountCookies = new Headers(account.init.headers).get("cookie") ?? "";
-  assert.match(accountCookies, /_grammar_app_session=session-after/);
-  assert.match(accountCookies, /frontend_api_token=frontend-token/);
-
-  const api = calls[3];
-  assert.ok(api);
-  const apiHeaders = new Headers(api.init.headers);
-  assert.equal(api.url.href, "https://api.bunpro.jp/api/frontend/user");
-  assert.equal(apiHeaders.get("authorization"), "Token token=frontend-token");
-  assert.equal(apiHeaders.get("cookie"), null, "web cookies must never be sent to the API host");
-
-  const cachedApi = calls[4];
-  assert.ok(cachedApi);
-  assert.equal(new Headers(cachedApi.init.headers).get("authorization"), "Token token=frontend-token");
-});
-
-test("an API rejection refreshes the token through the cached web session", async () => {
-  const calls: Array<{ url: URL; init: RequestInit }> = [];
-  const responses = [
-    ...freshSessionResponses("initial-token"),
-    response("unauthorized", { status: 401 }),
-    response("account", {
-      status: 200,
-      cookies: [
-        "_grammar_app_session=refreshed-session; Path=/; HttpOnly",
-        "frontend_api_token=refreshed-token; Path=/; Secure"
-      ]
-    }),
-    userResponse()
-  ];
-  const mockFetch: FetchLike = async (input, init = {}) => {
-    calls.push({ url: new URL(input instanceof Request ? input.url : input), init });
-    const next = responses.shift();
-    assert.ok(next, "unexpected request");
-    return next;
-  };
-
-  const client = new BunproClient(credentials, mockFetch);
-  await client.checkConnection();
-  const refreshed = await client.checkConnection();
-
-  assert.equal(refreshed.session_resolution, "refreshed_session");
-  assert.equal(calls.filter(call => call.init.method === "POST").length, 1);
-  assert.equal(new Headers(calls[4]?.init.headers).get("authorization"), "Token token=initial-token");
-  assert.equal(calls[5]?.url.href, "https://bunpro.jp/settings/account");
-  assert.equal(new Headers(calls[6]?.init.headers).get("authorization"), "Token token=refreshed-token");
-});
-
-test("a failed cached-session refresh falls back to a fresh login", async () => {
-  const calls: Array<{ url: URL; init: RequestInit }> = [];
-  const secondLogin = freshSessionResponses("second-token", "second-csrf");
-  const responses = [
-    ...freshSessionResponses("initial-token"),
-    response("unauthorized", { status: 401 }),
-    response("", { status: 302, headers: { location: "/login" } }),
-    ...secondLogin
-  ];
-  const mockFetch: FetchLike = async (input, init = {}) => {
-    calls.push({ url: new URL(input instanceof Request ? input.url : input), init });
-    const next = responses.shift();
-    assert.ok(next, "unexpected request");
-    return next;
-  };
-
-  const client = new BunproClient(credentials, mockFetch);
-  await client.checkConnection();
-  const relogged = await client.checkConnection();
-
-  assert.equal(relogged.session_resolution, "relogged_session");
-  assert.equal(calls.filter(call => call.init.method === "POST").length, 2);
-  assert.equal(calls[6]?.url.href, "https://bunpro.jp/login");
-  assert.equal(new Headers(calls[9]?.init.headers).get("authorization"), "Token token=second-token");
-});
-
-test("rejected login returns a sanitized authentication error", async () => {
-  const mockFetch: FetchLike = async (_input, init = {}) => {
-    if (init.method === "POST") return response("invalid credentials", { status: 200 });
-    return response('<input name="authenticity_token" value="csrf">', { status: 200 });
-  };
-
-  await assert.rejects(
-    new BunproClient(credentials, mockFetch).checkConnection(),
-    (error: unknown) => {
-      assert.ok(error instanceof BunproError);
-      assert.equal(error.code, "BUNPRO_AUTH_FAILED");
-      assert.doesNotMatch(error.message, /test-password|test@example\.com/);
-      return true;
-    }
-  );
-});
-
-test("credentials are loaded only from the configured environment names", () => {
-  assert.deepEqual(
-    credentialsFromEnvironment({ BUNPRO_USERNAME: "name", BUNPRO_PASSWORD: "password" }),
-    { username: "name", password: "password" }
-  );
-
-  assert.throws(
-    () => credentialsFromEnvironment({}),
-    (error: unknown) => error instanceof BunproError && error.code === "BUNPRO_CONFIG_MISSING"
-  );
-});
-
-test("an encrypted-store session snapshot hydrates without a fresh login", async () => {
+test("the Account API Token and opt-in flag are sent on every Frontend API request", async () => {
   const calls: Array<{ url: URL; init: RequestInit }> = [];
   const mockFetch: FetchLike = async (input, init = {}) => {
     calls.push({ url: new URL(input instanceof Request ? input.url : input), init });
     return userResponse();
   };
 
-  const client = new BunproClient(credentials, mockFetch, {
-    initialSession: {
-      cookies: {
-        _grammar_app_session: "stored-session",
-        frontend_api_token: "stored-token"
-      },
-      frontendToken: "stored-token"
-    },
-    authenticationCache: "encrypted_store",
-    credentialsSource: "encrypted_store"
-  });
+  const client = new BunproClient(apiToken, mockFetch, { tokenSource: "request_bearer" });
+  const first = await client.checkConnection();
+  const second = await client.checkConnection();
 
-  const status = await client.checkConnection();
-  assert.equal(status.session_resolution, "cached_session");
-  assert.equal(status.authentication_cache, "encrypted_store");
-  assert.equal(status.credentials_source, "encrypted_store");
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0]?.url.href, "https://api.bunpro.jp/api/frontend/user");
-  assert.equal(new Headers(calls[0]?.init.headers).get("authorization"), "Token token=stored-token");
-  assert.deepEqual(client.sessionSnapshot(), {
-    cookies: {
-      _grammar_app_session: "stored-session",
-      frontend_api_token: "stored-token"
-    },
-    frontendToken: "stored-token"
+  assert.deepEqual(first, {
+    connected: true,
+    authentication_method: "account_api_token",
+    token_source: "request_bearer",
+    token_persisted_by_server: false,
+    api_authenticated: true,
+    source_timezone: "Asia/Kolkata",
+    stateless: true
   });
+  assert.deepEqual(second, first);
+  assert.equal(calls.length, 2);
+
+  for (const call of calls) {
+    assert.equal(
+      call.url.href,
+      "https://api.bunpro.jp/api/frontend/user?dangerously_authenticate_using_api_token=true"
+    );
+    const headers = new Headers(call.init.headers);
+    assert.equal(call.init.method, "GET");
+    assert.equal(headers.get("authorization"), `Token token=${apiToken}`);
+    assert.equal(headers.get("cookie"), null);
+  }
+});
+
+test("existing query parameters are retained when the Account Token opt-in is added", async () => {
+  let requestedUrl: URL | undefined;
+  const mockFetch: FetchLike = async input => {
+    requestedUrl = new URL(input instanceof Request ? input.url : input);
+    return response("{}", { status: 200, headers: { "content-type": "application/json" } });
+  };
+
+  await new BunproClient(apiToken, mockFetch).getFrontendJson("/api/frontend/example?page=2");
+  assert.equal(requestedUrl?.searchParams.get("page"), "2");
+  assert.equal(requestedUrl?.searchParams.get("dangerously_authenticate_using_api_token"), "true");
+});
+
+test("the client rejects routes outside Bunpro's read-only Frontend API namespace", async () => {
+  let called = false;
+  const mockFetch: FetchLike = async () => {
+    called = true;
+    return userResponse();
+  };
+
+  await assert.rejects(
+    new BunproClient(apiToken, mockFetch).getFrontendJson("https://example.com/collect"),
+    (error: unknown) => error instanceof BunproError && error.code === "BUNPRO_CONTRACT_CHANGED"
+  );
+  assert.equal(called, false);
+});
+
+test("a rejected token returns a sanitized authentication error without retrying", async () => {
+  let calls = 0;
+  const mockFetch: FetchLike = async () => {
+    calls += 1;
+    return response(`invalid token ${apiToken}`, { status: 401 });
+  };
+
+  await assert.rejects(
+    new BunproClient(apiToken, mockFetch).checkConnection(),
+    (error: unknown) => {
+      assert.ok(error instanceof BunproError);
+      assert.equal(error.code, "BUNPRO_AUTH_FAILED");
+      assert.doesNotMatch(error.message, new RegExp(apiToken));
+      return true;
+    }
+  );
+  assert.equal(calls, 1);
+});
+
+test("rate limiting fails closed without an automatic retry", async () => {
+  let calls = 0;
+  const mockFetch: FetchLike = async () => {
+    calls += 1;
+    return response("slow down", { status: 429, headers: { "retry-after": "60" } });
+  };
+
+  await assert.rejects(
+    new BunproClient(apiToken, mockFetch).checkConnection(),
+    (error: unknown) => error instanceof BunproError && error.code === "BUNPRO_RATE_LIMITED"
+  );
+  assert.equal(calls, 1);
+});
+
+test("the Account API Token is loaded only from BUNPRO_API_TOKEN", () => {
+  assert.equal(apiTokenFromEnvironment({ BUNPRO_API_TOKEN: " account-token " }), "account-token");
+
+  assert.throws(
+    () => apiTokenFromEnvironment({ BUNPRO_USERNAME: "name", BUNPRO_PASSWORD: "password" }),
+    (error: unknown) => error instanceof BunproError && error.code === "BUNPRO_CONFIG_MISSING"
+  );
+  assert.throws(
+    () => apiTokenFromEnvironment({ BUNPRO_API_TOKEN: "bad token" }),
+    (error: unknown) => error instanceof BunproError && error.code === "BUNPRO_CONFIG_MISSING"
+  );
 });

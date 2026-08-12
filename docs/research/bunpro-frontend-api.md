@@ -2,7 +2,7 @@
 
 Research date: 2026-08-11
 
-> Authentication update (2026-08-12): the browser-login and frontend-cookie authentication conclusion in this historical note is superseded by [Bunpro Account API Token request contract](./bunpro-account-token-api.md). The route shapes and Study Day source limitations remain relevant. The target MCP now uses only `BUNPRO_API_TOKEN` with Bunpro's temporary opt-in query parameter.
+> Authentication update (2026-08-12): the browser-login and frontend-cookie authentication conclusion in this historical note is superseded by [Bunpro Account API Token request contract](./bunpro-account-token-api.md). The route shapes and Study Day source limitations remain relevant. The target MCP now uses only the caller's Account API Token with Bunpro's temporary opt-in query parameter.
 
 ## Question
 
@@ -67,9 +67,9 @@ A missing key in a sparse heatmap has not yet been proven equivalent to zero. Un
 ## Compatibility and security constraints
 
 - These are private frontend contracts, not a supported public API. Bunpro may change them without notice.
-- Authentication must fail closed. The MCP must never return, print, or log tokens. Cookies, authenticity values, and frontend-cookie tokens are no longer part of the target design.
+- Authentication must fail closed. The MCP must never return, print, log, or persist Account API Tokens. Cookies, authenticity values, and frontend-cookie tokens are no longer part of the target design.
 - All Bunpro calls remain read-only and low volume.
-- Local mode reads the Account API Token from `BUNPRO_API_TOKEN`; hosted deployments isolate OAuth identities and encrypt each identity's Account API Token at rest.
+- Local mode reads the Account API Token from `BUNPRO_API_TOKEN`; hosted mode receives it per request from the MCP host's Bearer-token configuration and does not persist it.
 
 ## Answer
 

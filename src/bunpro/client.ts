@@ -1,292 +1,112 @@
 import { BunproError } from "./errors.js";
 import {
   BunproUserResponseSchema,
-  type AuthenticationCache,
   type ConnectionStatus,
-  type CredentialsSource,
-  type SessionResolution
+  type TokenSource
 } from "./schemas.js";
 
-const WEB_ORIGIN = "https://bunpro.jp";
 const API_ORIGIN = "https://api.bunpro.jp";
+const FRONTEND_API_PREFIX = "/api/frontend/";
+const ACCOUNT_TOKEN_OPT_IN = "dangerously_authenticate_using_api_token";
 const REQUEST_TIMEOUT_MS = 20_000;
 
-export interface BunproCredentials {
-  username: string;
-  password: string;
-}
-
-export interface BunproSessionSnapshot {
-  cookies: Record<string, string>;
-  frontendToken?: string;
-}
-
 export interface BunproClientOptions {
-  initialSession?: BunproSessionSnapshot;
-  authenticationCache?: AuthenticationCache;
-  credentialsSource?: CredentialsSource;
+  tokenSource?: TokenSource;
 }
 
 export type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
-class CookieJar {
-  readonly #cookies = new Map<string, string>();
-
-  absorb(headers: Headers): void {
-    const setCookieHeaders = headers.getSetCookie();
-
-    for (const header of setCookieHeaders) {
-      const pair = header.split(";", 1)[0];
-      if (!pair) continue;
-
-      const separator = pair.indexOf("=");
-      if (separator <= 0) continue;
-
-      const name = pair.slice(0, separator).trim();
-      const value = pair.slice(separator + 1);
-      this.#cookies.set(name, value);
-    }
-  }
-
-  get(name: string): string | undefined {
-    return this.#cookies.get(name);
-  }
-
-  clear(): void {
-    this.#cookies.clear();
-  }
-
-  hydrate(cookies: Record<string, string>): void {
-    this.#cookies.clear();
-    for (const [name, value] of Object.entries(cookies)) {
-      if (name && !/[;\r\n]/.test(name) && !/[\r\n]/.test(value)) this.#cookies.set(name, value);
-    }
-  }
-
-  snapshot(): Record<string, string> {
-    return Object.fromEntries(this.#cookies);
-  }
-
-  toRequestHeader(): string {
-    return [...this.#cookies.entries()]
-      .map(([name, value]) => `${name}=${value}`)
-      .join("; ");
-  }
-}
-
-export function credentialsFromEnvironment(environment: NodeJS.ProcessEnv = process.env): BunproCredentials {
-  const username = environment.BUNPRO_USERNAME ?? environment.BUNPRO_EMAIL;
-  const password = environment.BUNPRO_PASSWORD;
-
-  if (!username || !password) {
+export function apiTokenFromEnvironment(environment: NodeJS.ProcessEnv = process.env): string {
+  const token = environment.BUNPRO_API_TOKEN?.trim();
+  if (!token) {
     throw new BunproError(
       "BUNPRO_CONFIG_MISSING",
-      "Set BUNPRO_USERNAME (or BUNPRO_EMAIL) and BUNPRO_PASSWORD in the MCP host's secret environment configuration."
+      "Set BUNPRO_API_TOKEN in the MCP host's secret environment configuration."
     );
   }
-
-  return { username, password };
+  return validateApiToken(token);
 }
 
 export class BunproClient {
-  readonly #credentials: BunproCredentials;
+  readonly #apiToken: string;
   readonly #fetch: FetchLike;
-  readonly #cookies = new CookieJar();
-  readonly #authenticationCache: AuthenticationCache;
-  readonly #credentialsSource: CredentialsSource;
-  #frontendToken: string | undefined;
-  #operationTail: Promise<void> = Promise.resolve();
+  readonly #tokenSource: TokenSource;
 
   constructor(
-    credentials: BunproCredentials,
+    apiToken: string,
     fetchImplementation: FetchLike = fetch,
     options: BunproClientOptions = {}
   ) {
-    this.#credentials = credentials;
+    this.#apiToken = validateApiToken(apiToken);
     this.#fetch = fetchImplementation;
-    this.#authenticationCache = options.authenticationCache ?? "process_memory";
-    this.#credentialsSource = options.credentialsSource ?? "environment";
-    if (options.initialSession) {
-      this.#cookies.hydrate(options.initialSession.cookies);
-      this.#frontendToken = options.initialSession.frontendToken;
-    }
-  }
-
-  sessionSnapshot(): BunproSessionSnapshot {
-    const snapshot: BunproSessionSnapshot = { cookies: this.#cookies.snapshot() };
-    if (this.#frontendToken) snapshot.frontendToken = this.#frontendToken;
-    return snapshot;
+    this.#tokenSource = options.tokenSource ?? "environment";
   }
 
   async checkConnection(): Promise<ConnectionStatus> {
-    return this.#withExclusiveSession(() => this.#checkConnection());
-  }
-
-  async #checkConnection(): Promise<ConnectionStatus> {
-    let sessionResolution: SessionResolution;
-
-    if (this.#frontendToken) {
-      sessionResolution = "cached_session";
-    } else {
-      await this.#freshLogin();
-      sessionResolution = "fresh_login";
-    }
-
-    let userResponse = await this.#apiRequest("/api/frontend/user");
-    if (isAuthenticationRejection(userResponse)) {
-      const refreshed = await this.#tryRefreshFromWebSession();
-      if (refreshed) {
-        userResponse = await this.#apiRequest("/api/frontend/user");
-        if (!isAuthenticationRejection(userResponse)) sessionResolution = "refreshed_session";
-      }
-
-      if (isAuthenticationRejection(userResponse)) {
-        await this.#freshLogin();
-        sessionResolution = "relogged_session";
-        userResponse = await this.#apiRequest("/api/frontend/user");
-      }
-    }
-
-    this.#ensureApiSuccess(userResponse);
-    const userPayload = BunproUserResponseSchema.safeParse(await this.#readJson(userResponse));
+    const payload = await this.getFrontendJson("/api/frontend/user");
+    const userPayload = BunproUserResponseSchema.safeParse(payload);
     if (!userPayload.success) {
       throw new BunproError(
         "BUNPRO_CONTRACT_CHANGED",
-        "Bunpro authenticated successfully, but the user response shape changed. Update the MCP before using study data."
+        "Bunpro accepted the Account API Token, but the user response shape changed. Update the MCP before using study data."
       );
     }
 
     return {
       connected: true,
-      authentication_method: "frontend_session",
-      session_resolution: sessionResolution,
-      authentication_cache: this.#authenticationCache,
-      credentials_source: this.#credentialsSource,
-      web_session_authenticated: true,
-      frontend_token_obtained: true,
+      authentication_method: "account_api_token",
+      token_source: this.#tokenSource,
+      token_persisted_by_server: false,
       api_authenticated: true,
       source_timezone: userPayload.data.user.data.attributes.time_zone_iana,
       stateless: true
     };
   }
 
-  async #freshLogin(): Promise<void> {
-    this.#cookies.clear();
-    this.#frontendToken = undefined;
-
-    const loginPage = await this.#webRequest("/login");
-    if (!loginPage.ok) {
+  async getFrontendJson(path: string): Promise<unknown> {
+    const url = new URL(path, API_ORIGIN);
+    if (url.origin !== API_ORIGIN || !url.pathname.startsWith(FRONTEND_API_PREFIX)) {
       throw new BunproError(
-        "BUNPRO_UPSTREAM_UNAVAILABLE",
-        `Bunpro's login page returned HTTP ${loginPage.status}. Try again later.`
+        "BUNPRO_CONTRACT_CHANGED",
+        "The Bunpro client only permits read-only Frontend API routes."
       );
     }
+    url.searchParams.set(ACCOUNT_TOKEN_OPT_IN, "true");
 
-    const authenticityToken = extractAuthenticityToken(await loginPage.text());
-    const body = new URLSearchParams({
-      authenticity_token: authenticityToken,
-      "user[email]": this.#credentials.username,
-      "user[password]": this.#credentials.password,
-      "user[remember_me]": "0"
-    });
-
-    const signInResponse = await this.#webRequest("/users/sign_in", {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body,
-      redirect: "manual"
-    });
-
-    this.#frontendToken = this.#cookies.get("frontend_api_token");
-    if (signInResponse.status < 300 || signInResponse.status >= 400 || !this.#frontendToken) {
-      throw new BunproError(
-        "BUNPRO_AUTH_FAILED",
-        "Bunpro rejected the login or did not issue a frontend token. Check the credentials and any login challenge in Bunpro."
-      );
-    }
-
-    const webSessionAuthenticated = await this.#refreshFromWebSession();
-    if (!webSessionAuthenticated) {
-      throw new BunproError(
-        "BUNPRO_AUTH_FAILED",
-        "Bunpro created a login token but did not accept the authenticated web session. Check the account credentials."
-      );
-    }
-  }
-
-  async #tryRefreshFromWebSession(): Promise<boolean> {
-    try {
-      return await this.#refreshFromWebSession();
-    } catch {
-      return false;
-    }
-  }
-
-  async #refreshFromWebSession(): Promise<boolean> {
-    const accountResponse = await this.#webRequest("/settings/account", { redirect: "manual" });
-    if (!accountResponse.ok) return false;
-
-    const token = this.#cookies.get("frontend_api_token");
-    if (!token) return false;
-
-    this.#frontendToken = token;
-    return true;
-  }
-
-  async #withExclusiveSession<T>(operation: () => Promise<T>): Promise<T> {
-    const previousOperation = this.#operationTail;
-    let release: () => void = () => undefined;
-    this.#operationTail = new Promise<void>(resolve => {
-      release = resolve;
-    });
-
-    await previousOperation;
-    try {
-      return await operation();
-    } finally {
-      release();
-    }
-  }
-
-  async #webRequest(path: string, init: RequestInit = {}): Promise<Response> {
-    const headers = new Headers(init.headers);
-    headers.set("accept", "application/json, text/html;q=0.9");
-    headers.set("user-agent", "bunpro-mcp-server/0.1");
-
-    const cookieHeader = this.#cookies.toRequestHeader();
-    if (cookieHeader) headers.set("cookie", cookieHeader);
-
-    const response = await this.#request(new URL(path, WEB_ORIGIN), {
-      ...init,
-      headers
-    });
-    this.#cookies.absorb(response.headers);
-    return response;
-  }
-
-  async #apiRequest(path: string): Promise<Response> {
-    if (!this.#frontendToken) {
-      throw new BunproError("BUNPRO_AUTH_FAILED", "Bunpro API authentication was attempted before login completed.");
-    }
-
-    const response = await this.#request(new URL(path, API_ORIGIN), {
+    const response = await this.#request(url, {
+      method: "GET",
       headers: {
         accept: "application/json",
-        authorization: `Token token=${this.#frontendToken}`,
-        origin: WEB_ORIGIN,
-        referer: `${WEB_ORIGIN}/`,
+        authorization: `Token token=${this.#apiToken}`,
+        origin: "https://bunpro.jp",
+        referer: "https://bunpro.jp/",
         "user-agent": "bunpro-mcp-server/0.1"
       }
     });
 
-    return response;
+    this.#ensureApiSuccess(response);
+    return this.#readJson(response);
   }
 
   #ensureApiSuccess(response: Response): void {
-    if (isAuthenticationRejection(response)) {
+    if (response.status === 401 || response.status === 403) {
       throw new BunproError(
         "BUNPRO_AUTH_FAILED",
-        "Bunpro rejected the cached, refreshed, and newly logged-in frontend sessions. Check the account credentials."
+        "Bunpro rejected the Account API Token. Configure a current token from Bunpro Settings > API."
+      );
+    }
+
+    if (response.status === 429) {
+      throw new BunproError(
+        "BUNPRO_RATE_LIMITED",
+        "Bunpro rate-limited the request. Wait before trying again; the MCP will not retry automatically."
+      );
+    }
+
+    if (response.status === 404) {
+      throw new BunproError(
+        "BUNPRO_CONTRACT_CHANGED",
+        "The Bunpro Frontend API route is unavailable. Bunpro may have changed or restricted its temporary route whitelist."
       );
     }
 
@@ -321,41 +141,20 @@ export class BunproClient {
     } catch (error) {
       throw new BunproError(
         "BUNPRO_CONTRACT_CHANGED",
-        "Bunpro authenticated successfully, but the API response was not valid JSON.",
+        "Bunpro accepted the Account API Token, but the API response was not valid JSON.",
         { cause: error }
       );
     }
   }
 }
 
-function isAuthenticationRejection(response: Response): boolean {
-  return response.status === 401 || response.status === 403;
-}
-
-function extractAuthenticityToken(html: string): string {
-  const match = html.match(/name=["']authenticity_token["'][^>]*value=["']([^"']+)["']/i);
-  if (!match?.[1]) {
+function validateApiToken(token: string): string {
+  const normalized = token.trim();
+  if (!normalized || normalized.length > 2048 || /[\s\r\n]/.test(normalized)) {
     throw new BunproError(
-      "BUNPRO_CONTRACT_CHANGED",
-      "Bunpro's login form no longer contains the expected authenticity token."
+      "BUNPRO_CONFIG_MISSING",
+      "The Bunpro Account API Token is missing or malformed."
     );
   }
-
-  return decodeHtmlEntities(match[1]);
-}
-
-function decodeHtmlEntities(value: string): string {
-  const namedEntities: Record<string, string> = {
-    amp: "&",
-    quot: '"',
-    apos: "'",
-    lt: "<",
-    gt: ">"
-  };
-
-  return value.replace(/&(#x[0-9a-f]+|#\d+|amp|quot|apos|lt|gt);/gi, (entity, code: string) => {
-    if (code.startsWith("#x")) return String.fromCodePoint(Number.parseInt(code.slice(2), 16));
-    if (code.startsWith("#")) return String.fromCodePoint(Number.parseInt(code.slice(1), 10));
-    return namedEntities[code.toLowerCase()] ?? entity;
-  });
+  return normalized;
 }

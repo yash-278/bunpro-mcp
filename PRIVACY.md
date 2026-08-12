@@ -1,46 +1,31 @@
 # Privacy
 
-This document explains how Bunpro MCP handles authentication data. It applies to the source code and to the hosted preview at `https://bunpro-mcp-production.up.railway.app/mcp`.
+This document explains how Bunpro MCP handles the Bunpro Account API Token and study data. It applies to the source code and to the hosted preview at `https://bunpro-mcp-production.up.railway.app/mcp`.
 
-## Local mode
+## Local stdio mode
 
-In local stdio mode:
+- Your MCP host supplies `BUNPRO_API_TOKEN` through its secret environment configuration.
+- The MCP reads the token into process memory only while it runs.
+- The MCP does not persist the token, cookies, sessions, study data, or raw Bunpro responses.
+- Your MCP host may persist its environment configuration according to that application's own privacy and security behavior.
 
-- Your Bunpro login is supplied by your MCP host through `BUNPRO_USERNAME` and `BUNPRO_PASSWORD`.
-- The MCP keeps Bunpro web cookies and the derived frontend token in process memory.
-- The MCP itself does not persist credentials, sessions, or study data.
-- Restarting the MCP process clears its derived session.
+## Hosted Streamable HTTP mode
 
-Your MCP host may persist environment configuration according to that application's own privacy and security behavior.
+- Your MCP host sends your Account API Token in the HTTPS `Authorization: Bearer ...` header.
+- The server transforms it into Bunpro's Account API Token header for that request.
+- The application does not create an identity profile, account link, setup session, or database record.
+- The application does not intentionally log or persist the Authorization header, token, Bunpro response body, or study history.
 
-## Hosted mode
-
-The hosted service handles two separate identities:
-
-1. Auth0 authenticates you to the MCP.
-2. A short-lived, identity-bound setup link lets you connect one Bunpro account.
-
-The service stores:
-
-- a one-way hash derived from the validated OAuth issuer and subject;
-- your Bunpro username and password;
-- the Bunpro web cookies and frontend token obtained after login; and
-- the time the encrypted payload was last updated.
-
-The Bunpro authentication payload is encrypted with AES-256-GCM before it is written to PostgreSQL. The application does not intentionally store Bunpro study history or raw API responses.
-
-The hosted operator controls the application and encryption key and can technically decrypt the payload. Encryption protects the database contents from being useful without that key; it does not remove the need to trust the operator. Use local mode or self-host if you do not accept that trust model.
-
-## Removing hosted data
-
-Run `disconnect_bunpro_account` and confirm the destructive action. The service deletes the linked account row and clears its process cache. Reconnecting requires entering your Bunpro credentials again.
-
-Infrastructure backups, if enabled by the deployment provider, may retain deleted encrypted rows for the provider's backup-retention period. Changing your Bunpro password invalidates the stored password independently of deletion.
+The hosted operator and infrastructure provider can technically inspect application memory or traffic where TLS terminates. Stateless passthrough reduces retained data; it does not eliminate the need to trust the hosted service. Use local mode or self-host if that trust boundary is unacceptable.
 
 ## Logs and telemetry
 
-The application does not include analytics or advertising code. It logs sanitized operational errors, not credentials, cookies, setup tokens, frontend tokens, or raw Bunpro responses. Hosting, OAuth, MCP-client, and network providers may process their normal connection metadata under their own policies.
+The application includes no analytics or advertising code. It logs coarse operational error names, not request headers, token values, or raw Bunpro responses. Hosting, MCP-client, and network providers may process normal connection metadata under their own policies.
+
+## Revocation
+
+There is no MCP-side account data to disconnect or delete. To invalidate a token, rotate it through Bunpro Settings → API and update the secret in your MCP host.
 
 ## Security reports
 
-Do not post credentials or security-sensitive data in a public issue. Follow the private reporting process in [SECURITY.md](SECURITY.md).
+Do not post tokens or security-sensitive data in an issue. Follow the private reporting process in [SECURITY.md](SECURITY.md).

@@ -21,7 +21,7 @@ Accept: application/json
 
 The query parameter is part of the authentication contract, not an optional feature flag. The same valid Account API Token returned HTTP 401 when the parameter was omitted. No Bunpro username, password, web cookie, frontend-cookie token, login scrape, or refresh lifecycle is required.
 
-A standard `Authorization: Bearer <BUNPRO_API_TOKEN>` header also returned HTTP 200 in the bounded live check. This is useful compatibility evidence, but the MCP should use `Token token=...`: it matches Bunpro's existing Frontend API authorization syntax and avoids depending on a second undocumented form.
+A standard `Authorization: Bearer <BUNPRO_API_TOKEN>` header also returned HTTP 200 in the bounded live check. This is useful compatibility evidence, but the MCP should use `Token token=...` upstream because it matches Bunpro's existing Frontend API authorization syntax. Remote MCP callers use their connection's Bearer-token field only to transport the same secret to the stateless adapter.
 
 ## Required Atlas routes
 
@@ -62,9 +62,10 @@ This is absence of an observed signal, not evidence that throttling is absent. T
 ## Implementation consequences
 
 - Local stdio must read only `BUNPRO_API_TOKEN` from the MCP host's secret environment configuration.
+- Remote HTTP must receive the caller-owned token through the MCP connection's Bearer header and must not persist it.
 - Every Frontend API request must add the query parameter without deleting existing route query parameters.
 - Every request must send the token only in the Authorization header; never include it in a URL, MCP input/output, log, error, fixture, or committed file.
-- Hosted transport may retain Auth0 for MCP-user identity and store one Account API Token per identity encrypted at rest. It needs no Bunpro browser-session state.
+- The hosted transport needs no Auth0 identity, credential database, account-link flow, or Bunpro browser-session state.
 - Keep calls read-only, sequential or conservatively bounded, and cache a single fetched payload within an MCP operation when multiple output fields derive from it.
 - Treat HTTP 401 as an authentication/configuration failure, HTTP 429 as a non-retryable-in-request throttling result with any safe retry timing preserved, and 404/schema mismatch as possible whitelist or contract drift.
 - Continue validating response schemas and report coverage explicitly. Do not invent zeroes or unsupported study facts.

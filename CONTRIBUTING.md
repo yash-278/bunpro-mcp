@@ -5,7 +5,7 @@ Thanks for helping improve Bunpro MCP.
 ## Before opening an issue
 
 - Search existing issues first.
-- Remove all personal data, Bunpro credentials, cookies, frontend tokens, setup links, and raw API responses.
+- Remove all personal data, Account API Tokens, Authorization headers, and raw API responses.
 - Include the MCP transport (`stdio` or `Streamable HTTP`), Node.js version, client, and a sanitized error message.
 - For a Bunpro compatibility problem, say when it occurred and which read-only workflow failed without pasting the response body.
 
@@ -23,6 +23,7 @@ npm run check
 ## Pull-request expectations
 
 - Keep Bunpro integration read-only.
+- Keep authentication stateless: direct Account API Token passthrough only, with no login scraping or credential storage.
 - Use the modern MCP `registerTool` API with strict Zod input and output schemas.
 - Add correct MCP annotations, especially for destructive operations.
 - Return structured content and actionable, sanitized errors.
