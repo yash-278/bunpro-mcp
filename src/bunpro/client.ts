@@ -173,11 +173,17 @@ export class BunproClient {
   }
 
   async #request(url: URL, init: RequestInit): Promise<Response> {
+    const timeoutController = new AbortController();
+    const timeout = setTimeout(
+      () => timeoutController.abort(new DOMException("The Bunpro request timed out.", "TimeoutError")),
+      this.#requestTimeoutMs
+    );
     try {
-      const requestTimeout = AbortSignal.timeout(this.#requestTimeoutMs);
       const request = (): Promise<Response> => this.#fetch(url, {
         ...init,
-        signal: init.signal ? AbortSignal.any([init.signal, requestTimeout]) : requestTimeout
+        signal: init.signal
+          ? AbortSignal.any([init.signal, timeoutController.signal])
+          : timeoutController.signal
       });
       return await (this.#requestGate ? this.#requestGate.run(request) : request());
     } catch (error) {
@@ -188,6 +194,8 @@ export class BunproClient {
         "Bunpro could not be reached before the request timeout. Try again later.",
         { cause: error }
       );
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
