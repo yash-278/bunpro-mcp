@@ -1,6 +1,6 @@
 # Privacy
 
-This document explains how Bunpro MCP handles the Bunpro Account API Token and study data. It applies to the source code and to the hosted preview at `https://bunpro-mcp-production.up.railway.app/mcp`.
+This document explains how Bunpro MCP handles the Bunpro Account API Token and study data. It applies to the source code and to the hosted service at `https://bunpro.yashkadam.com/mcp`.
 
 ## Local stdio mode
 
@@ -20,7 +20,7 @@ The hosted operator and infrastructure provider can technically inspect applicat
 
 ## Logs and telemetry
 
-The application includes no analytics or advertising code. It logs coarse operational error names, not request headers, token values, or raw Bunpro responses. Hosting, MCP-client, and network providers may process normal connection metadata under their own policies.
+The application includes no analytics or advertising code. It emits bounded operational telemetry containing a generated request ID, method/path, status, duration, and active-request count. It does not intentionally log request headers, token values, MCP arguments, raw Bunpro responses, or returned study data. Hosting, MCP-client, and network providers may process normal connection metadata under their own policies.
 
 ## Revocation
 

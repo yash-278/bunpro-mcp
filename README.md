@@ -16,6 +16,8 @@ Available tool:
 
 - `get_connection_status` verifies that the caller's Bunpro Account API Token can access Bunpro and returns the source timezone.
 
+The prioritized tool catalog and explicit non-goals are tracked in [docs/tool-roadmap.md](docs/tool-roadmap.md). The next implementation target is `get_study_day_summary`, followed by a bounded range variant for Atlas catch-up.
+
 All Bunpro requests are read-only. The server does not submit reviews, start lessons, change progress, or modify account settings.
 
 ## Get your Bunpro token
@@ -27,21 +29,20 @@ Open **Bunpro → Settings → API** and copy your Account API Token. Treat it l
 The hosted Streamable HTTP endpoint is:
 
 ```text
-https://bunpro-mcp-production.up.railway.app/mcp
+https://bunpro.yashkadam.com/mcp
 ```
 
 In the ChatGPT/Codex desktop app:
 
-1. Make `BUNPRO_API_TOKEN` available as a secret environment variable to the MCP host.
-2. Open **Settings → Plugins → MCPs → Add custom MCP**.
-3. Enter `Bunpro MCP`, choose **Streamable HTTP**, and paste the URL above.
-4. Set **Bearer token env var** to `BUNPRO_API_TOKEN`.
-5. Leave custom headers empty and save.
-6. Ask: `Check my Bunpro connection.`
+1. Open **Settings → Plugins → MCPs → Add custom MCP**.
+2. Enter `Bunpro MCP`, choose **Streamable HTTP**, and paste the URL above.
+3. Leave **Bearer token env var** blank.
+4. Add a protected custom header named `Authorization` with the value `Bearer <your Bunpro API token>`.
+5. Save and ask: `Check my Bunpro connection.`
 
 There is no Auth0 login, Bunpro password form, account-link page, database, or server-side token store. The MCP host attaches the token as an HTTP Bearer credential. The server uses it for that request and does not persist it.
 
-If a client accepts a bearer secret directly instead of an environment-variable name, use its protected secret field. Never put the token in the URL or a tool argument.
+If a client has a dedicated protected bearer-secret field, use it instead of a custom header. Never put the token in the URL or a tool argument.
 
 ## Run it locally
 

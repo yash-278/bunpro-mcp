@@ -25,7 +25,7 @@ No database service is required.
 
 1. Deploy this private repository using the included Dockerfile.
 2. Set `TRANSPORT=http`.
-3. Generate a Railway public domain or set `PUBLIC_BASE_URL` to the HTTPS domain.
+3. Set `PUBLIC_BASE_URL` to the canonical HTTPS domain users will configure.
 4. Remove obsolete Auth0, database, setup-token, encryption-key, Bunpro username, and Bunpro password variables from the service.
 5. Confirm `GET /healthz` returns HTTP 200.
 
@@ -37,9 +37,9 @@ Use:
 https://mcp.example.com/mcp
 ```
 
-Configure the caller's Bunpro Account API Token as the MCP connection's Bearer token. In clients that offer **Bearer token env var**, store the token in a secret environment variable such as `BUNPRO_API_TOKEN` and enter that variable name in the field.
+Configure the caller's Bunpro Account API Token as the MCP connection's Bearer token. In ChatGPT/Codex, leave **Bearer token env var** blank and add the protected custom header `Authorization: Bearer <token>`. Clients with a dedicated protected bearer-secret field may use that instead.
 
-Do not add an Authorization custom header in addition to the bearer configuration, and never place the token in the URL or tool arguments.
+Configure only one bearer mechanism, and never place the token in the URL or tool arguments.
 
 ## Smoke checks
 
