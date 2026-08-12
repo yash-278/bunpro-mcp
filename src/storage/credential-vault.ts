@@ -15,6 +15,7 @@ export interface CredentialVault {
   load(principalId: string): Promise<StoredBunproAccount | undefined>;
   save(principalId: string, account: StoredBunproAccount): Promise<void>;
   exists(principalId: string): Promise<boolean>;
+  remove(principalId: string): Promise<boolean>;
   close(): Promise<void>;
 }
 
@@ -66,6 +67,14 @@ export class PostgresCredentialVault implements CredentialVault {
 
   async exists(principalId: string): Promise<boolean> {
     const result = await this.#pool.query("SELECT 1 FROM bunpro_accounts WHERE principal_id = $1", [principalId]);
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async remove(principalId: string): Promise<boolean> {
+    const result = await this.#pool.query(
+      "DELETE FROM bunpro_accounts WHERE principal_id = $1",
+      [principalId]
+    );
     return (result.rowCount ?? 0) > 0;
   }
 

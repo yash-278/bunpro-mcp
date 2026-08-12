@@ -37,8 +37,9 @@ export async function serveHttp(environment: NodeJS.ProcessEnv = process.env): P
   const mcp = createMcpHandler(
     context => {
       if (!context.authInfo) throw new Error("Authenticated MCP request context is missing.");
-      return createBunproMcpServer(() => sessions.checkerFor(context.authInfo as AuthInfo), {
-        oauthScopes: [config.authScope]
+      return createBunproMcpServer(() => sessions.accountFor(context.authInfo as AuthInfo), {
+        oauthScopes: [config.authScope],
+        allowAccountDisconnect: true
       });
     },
     {
