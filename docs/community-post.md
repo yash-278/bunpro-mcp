@@ -66,7 +66,7 @@ Removing the connection stops the app from sending your token, but it does not i
 
 ### Important limitations
 
-This project is unofficial and is not affiliated with or endorsed by Bunpro. Bunpro does not promise that this connection will keep working. It may become unavailable, be rate-limited, or return incomplete results after future changes. If a date has no available record, the MCP reports that uncertainty instead of claiming you studied zero items.
+This project is unofficial and is not affiliated with or endorsed by Bunpro. It depends on experimental Bunpro functionality that is not supported as a stable public integration. It may become unavailable, be rate-limited, or return incomplete results after future changes. If a date has no available record, the MCP reports that uncertainty instead of claiming you studied zero items.
 
 The hosted server is a free, best-effort community service with no uptime or support guarantee. Access may be limited or suspended if necessary to avoid putting excessive traffic on Bunpro. The MCP remains read-only even when a request fails.
 

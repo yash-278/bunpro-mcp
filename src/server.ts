@@ -30,7 +30,7 @@ export type BunproClientFactory = () => BunproAccountAccess;
 export function createServer(
   clientFactory: BunproClientFactory = () => new BunproClient(apiTokenFromEnvironment())
 ): McpServer {
-  const server = new McpServer({ name: "bunpro-mcp-server", version: "0.1.0" });
+  const server = new McpServer({ name: "bunpro-mcp-server", version: "0.2.0" });
   let sharedClient: BunproAccountAccess | undefined;
   const getClient = (): BunproAccountAccess => {
     sharedClient ??= clientFactory();

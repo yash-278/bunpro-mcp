@@ -94,7 +94,6 @@ test("get_learning_progress normalizes JLPT progress and omits unrelated or unex
       grammar_studied: 120,
       vocabulary_studied: 50,
       current_streak: 7,
-      total_badges: 9,
       weekly_streak: [{ day: "Mon", studied: true }, { day: "Tue", studied: false }]
     });
     assert.deepEqual(output.jlpt_progress.map((item: any) => item.jlpt_level), ["N5", "N4", "N3", "N2", "N1"]);
@@ -103,7 +102,7 @@ test("get_learning_progress normalizes JLPT progress and omits unrelated or unex
     assert.equal(output.review_totals[0].jlpt_level, "N5");
     assert.equal(output.review_totals[0].mixed.source_supplied, true);
     assert.deepEqual(output.cram.items, { accuracy: 75, correct: 30, incorrect: 10, total: 40 });
-    assert.doesNotMatch(JSON.stringify(output), /private-badge|last_session|global/);
+    assert.doesNotMatch(JSON.stringify(output), /private-badge|total_badges|last_session|global/);
     assert.deepEqual(paths, [
       "/api/frontend/user",
       "/api/frontend/user_stats/base_stats",
@@ -204,3 +203,78 @@ test("get_learning_progress fails closed when Bunpro changes its JLPT groups", a
     assert.doesNotMatch(message, /account-token|beginner|global/i);
   });
 });
+
+test("get_learning_progress rejects out-of-range accuracy", async () => {
+  const paths: string[] = [];
+  const fixtures = validProgressFixtures();
+  const reviewTotals = fixtures["/api/frontend/user_stats/total_review_stats"] as any;
+  reviewTotals.grammar[5].accuracy = 175;
+
+  await withMcpClient(fixtureFetch(fixtures, paths), async client => {
+    const result = await client.callTool({ name: "get_learning_progress", arguments: {} });
+    assert.equal(result.isError, true);
+    const message = result.content
+      .filter(item => item.type === "text")
+      .map(item => item.text)
+      .join("\n");
+    assert.match(message, /response shape changed/i);
+    assert.doesNotMatch(message, /175|account-token/i);
+  });
+});
+
+test("get_learning_progress rejects an oversized weekly streak", async () => {
+  const paths: string[] = [];
+  const fixtures = validProgressFixtures();
+  const base = fixtures["/api/frontend/user_stats/base_stats"] as any;
+  base.facts.weekly_streak = Array.from({ length: 8 }, (_, index) => ({
+    day: `day-${index}`,
+    val: index % 2 === 0
+  }));
+
+  await withMcpClient(fixtureFetch(fixtures, paths), async client => {
+    const result = await client.callTool({ name: "get_learning_progress", arguments: {} });
+    assert.equal(result.isError, true);
+    const message = result.content
+      .filter(item => item.type === "text")
+      .map(item => item.text)
+      .join("\n");
+    assert.match(message, /response shape changed/i);
+    assert.doesNotMatch(message, /day-7|account-token/i);
+  });
+});
+
+function validProgressFixtures(): Record<string, unknown> {
+  const levelStages = Object.fromEntries([1, 2, 3, 4, 5].map(level => [String(level), stages(level)]));
+  const totals = Object.fromEntries([1, 2, 3, 4, 5].map(level => [String(level), reviewStats(level)]));
+  return {
+    "/api/frontend/user": userFixture,
+    "/api/frontend/user_stats/base_stats": {
+      facts: {
+        days_studied: 10,
+        grammar_studied: 20,
+        vocab_studied: 30,
+        streak: 2,
+        total_badges: 1,
+        weekly_streak: [{ day: "Mon", val: true }]
+      }
+    },
+    "/api/frontend/user_stats/jlpt_progress_mixed": {
+      grammar: levelStages,
+      vocab: levelStages
+    },
+    "/api/frontend/user_stats/total_review_stats": {
+      grammar: totals,
+      vocab: totals,
+      mixed: totals
+    },
+    "/api/frontend/user_stats/total_cram_stats": {
+      items: { accuracy: 75, correct: 30, incorrect: 10, total: 40 },
+      sessions: {
+        average_time: "00:10:00",
+        reviews_per_session: 20,
+        session_count: 2,
+        total_time: "00:20:00"
+      }
+    }
+  };
+}

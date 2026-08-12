@@ -190,7 +190,6 @@ const fixtures: Record<string, unknown> = {
       grammar_studied: 400,
       vocab_studied: 250,
       streak: 7,
-      total_badges: 12,
       weekly_streak: [
         { day: "Mon", val: true },
         { day: "Tue", val: true },

@@ -18,7 +18,7 @@ const StageCountsSchema = z.object({
   total_count: z.number().int().nonnegative()
 }).loose();
 const ReviewAggregateSourceSchema = z.object({
-  accuracy: z.number(),
+  accuracy: z.number().min(0).max(100),
   correct: z.number().int().nonnegative(),
   incorrect: z.number().int().nonnegative(),
   total: z.number().int().nonnegative()
@@ -29,8 +29,7 @@ const BaseStatsSchema = z.object({
     grammar_studied: z.number().int().nonnegative(),
     vocab_studied: z.number().int().nonnegative(),
     streak: z.number().int().nonnegative(),
-    total_badges: z.number().int().nonnegative(),
-    weekly_streak: z.array(z.object({ day: z.string(), val: z.boolean() }).loose())
+    weekly_streak: z.array(z.object({ day: z.string(), val: z.boolean() }).loose()).max(7)
   }).loose()
 }).loose();
 const JlptProgressSchema = z.object({
@@ -87,7 +86,6 @@ export async function getLearningProgress(
       grammar_studied: base.facts.grammar_studied,
       vocabulary_studied: base.facts.vocab_studied,
       current_streak: base.facts.streak,
-      total_badges: base.facts.total_badges,
       weekly_streak: base.facts.weekly_streak.map(day => ({ day: day.day, studied: day.val }))
     },
     jlpt_progress: JLPT_KEYS.map(key => {

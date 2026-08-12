@@ -224,7 +224,7 @@ const SrsStageCountsSchema = z.object({
 });
 
 const ReviewAggregateSchema = z.object({
-  accuracy: z.number(),
+  accuracy: z.number().min(0).max(100),
   correct: z.number().int().nonnegative(),
   incorrect: z.number().int().nonnegative(),
   total: z.number().int().nonnegative()
@@ -237,8 +237,7 @@ export const LearningProgressOutputSchema = z.object({
     grammar_studied: z.number().int().nonnegative(),
     vocabulary_studied: z.number().int().nonnegative(),
     current_streak: z.number().int().nonnegative(),
-    total_badges: z.number().int().nonnegative(),
-    weekly_streak: z.array(z.object({ day: z.string(), studied: z.boolean() }))
+    weekly_streak: z.array(z.object({ day: z.string(), studied: z.boolean() })).max(7)
   }),
   jlpt_progress: z.array(z.object({
     jlpt_level: z.enum(["N5", "N4", "N3", "N2", "N1"]),
