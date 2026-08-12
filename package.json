@@ -1,6 +1,6 @@
 {
   "name": "bunpro-mcp-server",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Unofficial stateless, read-only Bunpro MCP with direct Account API Token passthrough",
   "type": "module",
   "private": true,
@@ -38,7 +38,8 @@
     "start": "node dist/index.js",
     "start:http": "TRANSPORT=http node dist/index.js",
     "live:test:auth": "npm run build && node --import tsx scripts/live-mcp-auth-smoke.ts",
-    "live:test:http": "npm run build && node --import tsx scripts/live-http-passthrough-smoke.ts"
+    "live:test:http": "npm run build && node --import tsx scripts/live-http-passthrough-smoke.ts",
+    "live:test:tools": "npm run build && node --import tsx scripts/live-all-tools-smoke.ts"
   },
   "engines": {
     "node": ">=20"

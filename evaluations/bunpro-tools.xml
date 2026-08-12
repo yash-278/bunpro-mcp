@@ -1,0 +1,42 @@
+<evaluation>
+  <qa_pair>
+    <question>For the synthetic account, inspect 2026-07-01 through 2026-07-07 with both the range and trend tools. On the day with the highest review total, what was the reported accuracy percentage? Answer with only the number.</question>
+    <answer>75</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Use the range summary and verify individual days as needed for 2026-07-01 through 2026-07-07. How many days have both a review source record and a new-content source record? Answer with only the number.</question>
+    <answer>3</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Compare the review and new-content aggregates from both the range summary and activity trend for 2026-07-01 through 2026-07-07. What is total reviews minus total new content? Answer with only the number.</question>
+    <answer>45</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Find the active study deck with the largest combined grammar and vocabulary content count, then compare its daily goal with the account's current streak from learning progress. By how much does the goal exceed the streak? Answer with only the number.</question>
+    <answer>18</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Use the review schedule and active study-deck list. If reviews currently due were distributed evenly across the active decks, how many reviews would each deck receive? Answer with only the number.</question>
+    <answer>10</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Compute the correct percentage across all records in the latest-attempts view, then compare it with the average historical accuracy from the activity trend for 2026-07-01 through 2026-07-07. What is the absolute difference in percentage points? Answer with only the number.</question>
+    <answer>11</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Use the last-24-hours activity view and the current review schedule. By how much does the total XP gained across the returned sessions exceed the total reviews due now? Answer with only the number.</question>
+    <answer>30</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Compare N5 combined content progress with the largest active study deck's combined grammar and vocabulary content count. What percentage is the N5 total of that deck total? Answer with only the whole number.</question>
+    <answer>20</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>For 2026-07-01 through 2026-07-07, add the number of days having a review source record to the number of incorrect records in the complete latest-attempts result. Answer with only the number.</question>
+    <answer>6</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Check the connection timezone, then request the 2026-07-01 through 2026-07-07 range with Asia/Kolkata as the expected timezone. Do both the connection and range result confirm the same boundary? Answer True or False.</question>
+    <answer>True</answer>
+  </qa_pair>
+</evaluation>

@@ -1,53 +1,73 @@
-# Draft private Bunpro community post
+# Public announcement draft
 
-## Title
+## A read-only Bunpro connection for ChatGPT and other MCP clients
 
-I built a private, read-only Bunpro MCP with Account API Token passthrough
+I’ve built a small, unofficial MCP server that lets ChatGPT, Codex, and other MCP-compatible apps read your Bunpro study data.
 
-## Post
+It is useful for questions such as:
 
-Hey everyone — I've been working on a small, unofficial MCP server for Bunpro.
+- How many reviews are due, and what does the forecast look like?
+- What did I study on a particular day or during a date range?
+- Which study decks are active, and how am I progressing through them?
+- What have I reviewed recently?
+- How is my JLPT progress or study trend changing?
 
-The goal is to let ChatGPT, Codex, or another MCP client read useful Bunpro study information without manually copying it over. The repository is staying private, and I'm sharing this only in the Bunpro community group where the temporary Account API Token workaround was documented.
+The connection is read-only. It cannot answer reviews, start lessons, run crams, change your SRS state, or edit your Bunpro account.
 
-The project is read-only. It does not submit reviews, start lessons, or change anything in your Bunpro account.
+### Connect it to ChatGPT
 
-Source code: https://github.com/yash-278/bunpro-mcp
+First, copy your Account API Token from **Bunpro → Settings → API**. Treat this token like a password.
 
-### Hosted version
+In the ChatGPT desktop app, open **Settings → Plugins → MCPs → Add custom MCP**. Enter these settings:
 
-Add this as a Streamable HTTP MCP:
+- **Name:** Bunpro MCP
+- **Type:** Streamable HTTP
+- **URL:** `https://bunpro.yashkadam.com/mcp`
+- **Bearer token environment variable:** leave blank
+- **Protected header name:** `Authorization`
+- **Protected header value:** `Bearer <your Bunpro Account API Token>`
 
-`https://bunpro-mcp-production.up.railway.app/mcp`
+Replace everything inside `<...>` with the token itself; do not include the angle brackets. For example, the value should begin with `Bearer ` followed immediately by your token.
 
-In the ChatGPT/Codex desktop app:
+Save the connection and ask: **“Use Bunpro to check my connection.”** If it fails, reopen the connection and check the URL, the `Authorization` spelling, the space after `Bearer`, and whether the token is still valid.
 
-1. Store the token from Bunpro Settings → API as a secret environment variable named `BUNPRO_API_TOKEN`.
-2. Go to Settings → Plugins → MCPs → Add custom MCP.
-3. Choose Streamable HTTP and paste the URL above.
-4. Set Bearer token env var to `BUNPRO_API_TOKEN`.
-5. Leave custom headers empty, save, and ask it to check your Bunpro connection.
+Other MCP apps can use the same URL and Authorization header, although their menu and field names may differ.
 
-There is no Auth0 login or Bunpro password form. The MCP host sends your Account API Token with each request, and the server does not save it in a database or create a browser session.
+The protected header is connection configuration, not something you should paste into a chat message. Never put your token in a prompt, screenshot, URL, support post, or tool argument.
 
-The hosted operator and platform can technically inspect request memory, so use the local option if you do not want to trust that boundary.
+### What is available
 
-### Local version
+The MCP currently provides eight read-only tools:
 
-```bash
-git clone https://github.com/yash-278/bunpro-mcp.git
-cd bunpro-mcp
-npm ci
-npm run build
-```
+- connection status;
+- one-day study summaries;
+- date-range summaries of up to 93 days, including both dates you choose;
+- reviews due now and the current forecast;
+- active study decks and their goals;
+- recent activity from the last 24 hours or the latest reviews Bunpro provides;
+- account and JLPT learning progress; and
+- daily activity trends with review, new-content, and accuracy coverage.
 
-Then add `dist/index.js` as an STDIO MCP and provide `BUNPRO_API_TOKEN` through your MCP client's secret environment configuration.
+Some useful prompts to try:
 
-### Current limitations
+- “How many Bunpro reviews are due, and what does the next week look like?”
+- “Summarize my Bunpro activity for yesterday.”
+- “Compare my study activity over the last 14 days.”
+- “Show my progress from N5 through N1.”
+- “Which Bunpro study decks are currently active?”
 
-- This is an early private preview. The connection check works; the date-based study-summary tool is next.
-- It uses Bunpro's experimental, undocumented Frontend API token mechanism, so routes or response shapes may change without warning.
-- Bunpro has added stricter throttling and plans to move to a route whitelist. The MCP stays read-only and low-volume and does not retry aggressively.
-- The server cannot promise that today's available routes will remain available.
+### Privacy and security
 
-If something fails, please share only a sanitized error. Never post your Account API Token, Authorization header, or raw account responses.
+Your MCP app sends your token to the hosted server over HTTPS whenever it asks for Bunpro data. The application uses the token for that request and has no token database, user profile, or saved study history. Its own application logs are designed not to include tokens, request headers, or returned study data.
+
+This is still my hosted service, running through a hosting provider. Anyone with privileged access to that infrastructure could technically inspect data while a request is being handled. Only connect if you are comfortable trusting both me and the hosting provider. “Read-only” describes the actions exposed by this MCP; your token can still reveal private Bunpro account and study information, so continue to treat it like a password.
+
+Removing the connection stops the app from sending your token, but it does not invalidate the token. To revoke an exposed or previously saved token, rotate it from **Bunpro → Settings → API**. Update the saved header only if you want to reconnect with the new token.
+
+### Important limitations
+
+This project is unofficial and is not affiliated with or endorsed by Bunpro. It depends on experimental Bunpro functionality that is not supported as a stable public integration. It may become unavailable, be rate-limited, or return incomplete results after future changes. If a date has no available record, the MCP reports that uncertainty instead of claiming you studied zero items.
+
+The hosted server is a free, best-effort community service with no uptime or support guarantee. Access may be limited or suspended if necessary to avoid putting excessive traffic on Bunpro. The MCP remains read-only even when a request fails.
+
+If you run into a problem, reply or contact me privately with the tool name, approximate time, and a sanitized error message. Please never send your token, Authorization header, screenshots containing credentials, or raw account data.

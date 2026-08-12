@@ -12,10 +12,13 @@ import {
   ListStudyDecksInputSchema,
   ListStudyDecksOutputSchema,
   RecentActivityInputSchema,
-  RecentActivityOutputSchema
+  RecentActivityOutputSchema,
+  LearningProgressOutputSchema,
+  ActivityTrendOutputSchema
 } from "./bunpro/schemas.js";
 import { getStudyDaySummary, getStudyRangeSummary } from "./bunpro/study.js";
 import { getRecentActivity, getReviewSchedule, listStudyDecks } from "./bunpro/planning.js";
+import { getActivityTrend, getLearningProgress } from "./bunpro/progress.js";
 
 export interface BunproAccountAccess {
   checkConnection(operationSignal?: AbortSignal): Promise<ConnectionStatus>;
@@ -27,7 +30,7 @@ export type BunproClientFactory = () => BunproAccountAccess;
 export function createServer(
   clientFactory: BunproClientFactory = () => new BunproClient(apiTokenFromEnvironment())
 ): McpServer {
-  const server = new McpServer({ name: "bunpro-mcp-server", version: "0.1.0" });
+  const server = new McpServer({ name: "bunpro-mcp-server", version: "0.2.0" });
   let sharedClient: BunproAccountAccess | undefined;
   const getClient = (): BunproAccountAccess => {
     sharedClient ??= clientFactory();
@@ -207,6 +210,68 @@ export function createServer(
     async input => {
       try {
         const structuredContent = await getRecentActivity(getClient(), input);
+        return {
+          content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
+          structuredContent
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: connectionErrorMessage(error) }]
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    "get_learning_progress",
+    {
+      title: "Get Bunpro learning progress",
+      description:
+        "Return normalized account study facts, JLPT N5-N1 SRS-stage progress, JLPT review totals, and cram aggregates without badge or profile details.",
+      inputSchema: z.object({}).strict(),
+      outputSchema: LearningProgressOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true
+      }
+    },
+    async () => {
+      try {
+        const structuredContent = await getLearningProgress(getClient());
+        return {
+          content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
+          structuredContent
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: connectionErrorMessage(error) }]
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    "get_activity_trend",
+    {
+      title: "Get Bunpro activity trend",
+      description:
+        "Return preserved daily review, new-content, and accuracy evidence plus explicitly derived totals and source-present-day averages for a range of at most 93 days.",
+      inputSchema: StudyRangeInputSchema,
+      outputSchema: ActivityTrendOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true
+      }
+    },
+    async input => {
+      try {
+        const structuredContent = await getActivityTrend(getClient(), input);
         return {
           content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
           structuredContent
