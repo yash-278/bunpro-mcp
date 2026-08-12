@@ -99,7 +99,13 @@ async function routeRequest(
 ): Promise<void> {
   try {
     const url = new URL(request.url ?? "/", dependencies.config.publicBaseUrl);
-    const allowedHosts = [dependencies.config.publicBaseUrl.hostname, "localhost", "127.0.0.1", "[::1]"];
+    const allowedHosts = [
+      dependencies.config.publicBaseUrl.hostname,
+      "healthcheck.railway.app",
+      "localhost",
+      "127.0.0.1",
+      "[::1]"
+    ];
     const hostResult = validateHostHeader(headerValue(request.headers.host), allowedHosts);
     if (!hostResult.ok) return sendJson(response, 403, { error: "invalid_host" });
 
