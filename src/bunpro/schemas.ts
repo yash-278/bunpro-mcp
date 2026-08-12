@@ -122,3 +122,94 @@ export type StudyDaySummary = z.infer<typeof StudyDaySummaryOutputSchema>;
 export type StudyDayEvidence = z.infer<typeof StudyDayEvidenceSchema>;
 export type StudyRangeInput = z.infer<typeof StudyRangeInputSchema>;
 export type StudyRangeSummary = z.infer<typeof StudyRangeSummaryOutputSchema>;
+
+export const ReviewScheduleOutputSchema = z.object({
+  source_timezone: z.string().min(1),
+  retrieved_at: z.string().datetime(),
+  due_now: z.object({
+    grammar: z.number().int().nonnegative(),
+    vocabulary: z.number().int().nonnegative(),
+    total: z.number().int().nonnegative()
+  }),
+  forecast: z.array(z.object({
+    bucket: z.enum(["later_today", "tomorrow", "date"]),
+    date: IsoDateSchema,
+    grammar: z.number().int().nonnegative(),
+    vocabulary: z.number().int().nonnegative(),
+    total: z.number().int().nonnegative()
+  })).max(14),
+  forecast_is_projection: z.literal(true)
+});
+
+export type ReviewSchedule = z.infer<typeof ReviewScheduleOutputSchema>;
+
+export const ListStudyDecksInputSchema = z.object({
+  active_only: z.boolean().default(true).describe("Return only decks currently marked actively studying."),
+  limit: z.number().int().min(1).max(100).default(50).describe("Maximum number of decks to return.")
+}).strict();
+
+export const StudyDeckSchema = z.object({
+  deck_id: z.string().min(1),
+  title: z.string(),
+  slug: z.string(),
+  deck_type: z.string(),
+  actively_studying: z.boolean(),
+  batch_size: z.number().int().nonnegative(),
+  daily_goal: z.number().int().nonnegative(),
+  daily_goal_progress: z.object({
+    grammar: z.number().int().nonnegative(),
+    vocabulary: z.number().int().nonnegative()
+  }),
+  completed: z.object({
+    grammar: z.number().int().nonnegative(),
+    vocabulary: z.number().int().nonnegative()
+  }),
+  content: z.object({
+    grammar: z.number().int().nonnegative(),
+    vocabulary: z.number().int().nonnegative()
+  })
+});
+
+export const ListStudyDecksOutputSchema = z.object({
+  active_only: z.boolean(),
+  count: z.number().int().nonnegative(),
+  total_matching: z.number().int().nonnegative(),
+  has_more: z.boolean(),
+  decks: z.array(StudyDeckSchema).max(100)
+});
+
+export type ListStudyDecksInput = z.infer<typeof ListStudyDecksInputSchema>;
+export type ListStudyDecksOutput = z.infer<typeof ListStudyDecksOutputSchema>;
+
+export const RecentActivityInputSchema = z.object({
+  view: z.enum(["last_24_hours", "latest_attempts"]).default("last_24_hours"),
+  limit: z.number().int().min(1).max(100).default(20)
+}).strict();
+
+export const RecentActivityOutputSchema = z.object({
+  source_timezone: z.string().min(1),
+  view: z.enum(["last_24_hours", "latest_attempts"]),
+  count: z.number().int().nonnegative(),
+  total_available: z.number().int().nonnegative(),
+  has_more: z.boolean(),
+  completeness: z.enum([
+    "upstream_rolling_window_not_guaranteed_complete",
+    "latest_source_records_not_guaranteed_complete"
+  ]),
+  attempts: z.array(z.object({
+    attempt_id: z.string(),
+    time: z.string().min(1),
+    correct: z.boolean(),
+    content_type: z.string().min(1),
+    content_id: z.string().min(1),
+    label: z.string().nullable()
+  })).max(100),
+  sessions: z.object({
+    count: z.number().int().nonnegative(),
+    xp_delta: z.number().int(),
+    buncoin_delta: z.number().int()
+  }).nullable()
+});
+
+export type RecentActivityInput = z.infer<typeof RecentActivityInputSchema>;
+export type RecentActivityOutput = z.infer<typeof RecentActivityOutputSchema>;

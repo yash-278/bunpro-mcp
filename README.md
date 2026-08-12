@@ -17,6 +17,9 @@ Available tools:
 - `get_connection_status` verifies that the caller's Bunpro Account API Token can access Bunpro and returns the source timezone.
 - `get_study_day_summary` returns source-backed activity evidence for one exact Bunpro calendar day.
 - `get_study_range_summary` returns every inclusive calendar day in a bounded range using one upstream evidence fetch.
+- `get_review_schedule` returns reviews due now and Bunpro's current daily forecast.
+- `list_study_decks` returns bounded active study-deck goals and completion counts.
+- `get_recent_activity` returns a bounded last-24-hours or latest-attempts view.
 
 The prioritized tool catalog and explicit non-goals are tracked in [docs/tool-roadmap.md](docs/tool-roadmap.md).
 
