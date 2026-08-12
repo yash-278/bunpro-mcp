@@ -1,7 +1,7 @@
 {
   "name": "bunpro-mcp-server",
   "version": "0.1.0",
-  "description": "Unofficial read-only Bunpro MCP with local and OAuth-protected hosted transports",
+  "description": "Unofficial stateless, read-only Bunpro MCP with direct Account API Token passthrough",
   "type": "module",
   "private": true,
   "license": "MIT",
@@ -37,21 +37,19 @@
     "check": "npm run typecheck && npm test && npm run build",
     "start": "node dist/index.js",
     "start:http": "TRANSPORT=http node dist/index.js",
-    "live:test:auth": "npm run build && node --import tsx scripts/live-mcp-auth-smoke.ts"
+    "live:test:auth": "npm run build && node --import tsx scripts/live-mcp-auth-smoke.ts",
+    "live:test:http": "npm run build && node --import tsx scripts/live-http-passthrough-smoke.ts"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.0.0",
-    "jose": "^6.2.8",
-    "pg": "^8.23.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@modelcontextprotocol/client": "^2.0.0",
     "@types/node": "^24.0.0",
-    "@types/pg": "^8.21.0",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2"
   }

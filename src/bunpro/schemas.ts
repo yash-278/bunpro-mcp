@@ -12,25 +12,13 @@ export const BunproUserResponseSchema = z.object({
 
 export const ConnectionStatusOutputSchema = z.object({
   connected: z.literal(true),
-  authentication_method: z.literal("frontend_session"),
-  session_resolution: z.enum(["fresh_login", "cached_session", "refreshed_session", "relogged_session"]),
-  authentication_cache: z.enum(["process_memory", "encrypted_store"]),
-  credentials_source: z.enum(["environment", "encrypted_store"]),
-  web_session_authenticated: z.literal(true),
-  frontend_token_obtained: z.literal(true),
+  authentication_method: z.literal("account_api_token"),
+  token_source: z.enum(["environment", "request_bearer"]),
+  token_persisted_by_server: z.literal(false),
   api_authenticated: z.literal(true),
   source_timezone: z.string().min(1),
   stateless: z.literal(true)
 });
 
-export const DisconnectOutputSchema = z.object({
-  disconnected: z.literal(true),
-  account_was_linked: z.boolean(),
-  stored_authentication_present: z.literal(false)
-});
-
 export type ConnectionStatus = z.infer<typeof ConnectionStatusOutputSchema>;
-export type DisconnectStatus = z.infer<typeof DisconnectOutputSchema>;
-export type SessionResolution = ConnectionStatus["session_resolution"];
-export type AuthenticationCache = ConnectionStatus["authentication_cache"];
-export type CredentialsSource = ConnectionStatus["credentials_source"];
+export type TokenSource = ConnectionStatus["token_source"];

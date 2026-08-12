@@ -1,33 +1,36 @@
-# Public release checklist
+# Private preview checklist
 
-Complete these steps in order. Preparing the repository does not change its GitHub visibility or publish the community post.
+Keep the repository private and share the connection only inside the approved Bunpro community group.
 
 ## Repository
 
 - [x] MIT license present.
 - [x] README documents hosted, local, and self-hosted setup.
 - [x] Privacy, security, contribution, and conduct policies present.
-- [x] CI and dependency-update configuration present.
-- [x] Internal scratch planning files removed from the release tree.
 - [x] Current tree and Git history scanned for committed credentials.
-- [ ] Decide whether to publish the existing development history or create a clean public release history. Deleted planning files remain visible in existing Git history even though no credential was found in them.
-- [x] Commit and push the release-preparation changes while the repository is still private.
+- [x] Account API Token request contract captured in a confidential research note.
+- [x] Confirm no active documentation instructs users to provide a Bunpro password, Auth0 login, database, or setup link.
+- [x] Run the full verification suite after the direct-token cutover.
 
 ## Hosted service
 
-- [x] Health endpoint returns HTTP 200.
-- [x] protected-resource metadata advertises the correct Auth0 issuer and `bunpro.read` scope.
-- [x] unauthenticated MCP requests receive an OAuth challenge.
-- [ ] Verify the post-deployment tool list includes `disconnect_bunpro_account`.
-- [ ] Link and disconnect a disposable Bunpro test account; confirm its database row is removed.
-- [ ] Confirm Auth0 sign-up, consent, and Dynamic Client Registration work for a user who is not the tenant administrator.
-- [ ] Enable GitHub private vulnerability reporting.
+- [ ] Remove obsolete Auth0, PostgreSQL, encryption-key, setup-token, username, and password variables from Railway.
+- [ ] Redeploy the direct-token build.
+- [ ] Confirm `GET /healthz` returns HTTP 200.
+- [ ] Confirm a missing Bearer token receives HTTP 401 without leaking request data.
+- [ ] Confirm one valid caller token reaches `get_connection_status` and is not persisted.
+- [ ] Confirm one invalid token produces a sanitized Bunpro authentication error.
 
-## Publication
+## Atlas acceptance
 
-- [ ] Change the GitHub repository visibility from private to public.
-- [ ] Clone the public repository without GitHub credentials and complete the local quick start.
-- [ ] Recheck every link in the README and community post.
-- [ ] Post [the Bunpro community draft](community-post.md).
+- [ ] Implement the date-bounded Study Day Summary using only whitelisted read routes.
+- [ ] Compare at least one known Study Day with Bunpro.
+- [ ] Simulate authentication, throttling, or route-drift failure and verify Atlas does not advance its Bunpro Watermark.
 
-Do not publish the community post while the GitHub source link is private or before the updated hosted deployment has been verified.
+## Sharing boundary
+
+- [ ] Keep the GitHub repository private.
+- [ ] Recheck every link in the README and private community draft.
+- [ ] Share [the draft](community-post.md) only in the approved private Bunpro community group.
+
+Do not publish the temporary token mechanism in a public forum.

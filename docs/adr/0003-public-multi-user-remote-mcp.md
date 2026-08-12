@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for the Railway deployment.
+Superseded by [ADR 0004](0004-direct-account-token-passthrough.md).
 
 ## Context
 
@@ -28,3 +28,5 @@ ChatGPT remote MCP connections support OAuth, while Bunpro does not currently ex
 The MCP protocol layer remains stateless and safe to scale across instances, while user-specific upstream authentication persists securely. Running more than one instance may produce occasional duplicate refreshes because no distributed session lock is held; successful results converge in the encrypted store.
 
 An external OAuth provider is required before the public endpoint can be attached to ChatGPT. The first deployment uses Auth0 because the official OpenAI authenticated-app example documents that integration and recommends an established identity provider.
+
+The project later adopted Bunpro's temporary Account API Token mechanism. Direct per-request token passthrough removes the identity, setup, database, encryption, and browser-session requirements described here.

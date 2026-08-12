@@ -1,24 +1,30 @@
 # Bunpro MCP
 
-An unofficial, read-only Model Context Protocol (MCP) server for connecting Bunpro to ChatGPT, Codex, and other MCP clients.
+An unofficial, stateless, read-only Model Context Protocol (MCP) server for connecting Bunpro to ChatGPT, Codex, and other MCP clients.
 
 > [!IMPORTANT]
-> This project uses Bunpro's private frontend interface because the legacy public API is no longer available. It is not affiliated with or endorsed by Bunpro, and Bunpro can change the interface without notice.
+> This private project uses Bunpro's experimental Account API Token support for its undocumented Frontend API. It is not affiliated with or endorsed by Bunpro. Routes, schemas, throttling, and whitelist access may change without notice.
+
+> [!CAUTION]
+> The repository must remain private. Do not publish, mirror, package, or publicly document the temporary Account API Token mechanism unless Bunpro provides new written permission specifically allowing public disclosure. The agent-enforced policy is recorded in [AGENTS.md](AGENTS.md).
 
 ## Project status
 
-This is an early preview. The authentication and account-isolation layer is working, but the date-bounded study-summary tool is still under development.
+The direct Account API Token connection is implemented. The date-bounded study-summary tool is still under development.
 
-Available tools:
+Available tool:
 
-- `get_connection_status` verifies the linked Bunpro account and reports whether the MCP used a cached, refreshed, or new frontend session.
-- `disconnect_bunpro_account` removes the current user's encrypted Bunpro credentials and session from active hosted storage. This tool is not needed in local mode because local authentication is never persisted by the MCP.
+- `get_connection_status` verifies that the caller's Bunpro Account API Token can access Bunpro and returns the source timezone.
 
 All Bunpro requests are read-only. The server does not submit reviews, start lessons, change progress, or modify account settings.
 
+## Get your Bunpro token
+
+Open **Bunpro → Settings → API** and copy your Account API Token. Treat it like a password. Do not paste it into chat, tool arguments, repository files, screenshots, logs, or support posts.
+
 ## Use the hosted version
 
-The hosted preview is the easiest way to try the connection:
+The hosted Streamable HTTP endpoint is:
 
 ```text
 https://bunpro-mcp-production.up.railway.app/mcp
@@ -26,23 +32,20 @@ https://bunpro-mcp-production.up.railway.app/mcp
 
 In the ChatGPT/Codex desktop app:
 
-1. Open **Settings → Plugins → MCPs → Add custom MCP**.
-2. Enter `Bunpro MCP`, select **Streamable HTTP**, and paste the URL above.
-3. Leave the bearer-token and custom-header fields empty, then save.
-4. Select **Authenticate**. This signs you into the MCP through Auth0; it is separate from your Bunpro login.
-5. Ask: `Check my Bunpro connection.`
-6. If no Bunpro account is linked, open the short-lived setup URL returned by the tool and enter your Bunpro login there.
-7. Run the connection check again.
+1. Make `BUNPRO_API_TOKEN` available as a secret environment variable to the MCP host.
+2. Open **Settings → Plugins → MCPs → Add custom MCP**.
+3. Enter `Bunpro MCP`, choose **Streamable HTTP**, and paste the URL above.
+4. Set **Bearer token env var** to `BUNPRO_API_TOKEN`.
+5. Leave custom headers empty and save.
+6. Ask: `Check my Bunpro connection.`
 
-OpenAI's current MCP setup instructions are available in the [official ChatGPT and Codex documentation](https://learn.chatgpt.com/docs/extend/mcp).
+There is no Auth0 login, Bunpro password form, account-link page, database, or server-side token store. The MCP host attaches the token as an HTTP Bearer credential. The server uses it for that request and does not persist it.
 
-The hosted operator controls the encryption key and can technically decrypt stored authentication data. If that trust model is not acceptable, use the local version or self-host it. Read [PRIVACY.md](PRIVACY.md) before linking an account.
-
-To remove a hosted account link, ask the client to `Disconnect my Bunpro account` and explicitly approve the destructive tool call.
+If a client accepts a bearer secret directly instead of an environment-variable name, use its protected secret field. Never put the token in the URL or a tool argument.
 
 ## Run it locally
 
-Local mode runs over stdio for one Bunpro account. Bunpro credentials remain in the MCP host's secret configuration; derived cookies and the frontend token remain only in process memory.
+Local mode runs over stdio and reads the same Account API Token from the MCP host's secret environment configuration.
 
 Requirements:
 
@@ -56,39 +59,47 @@ npm ci
 npm run build
 ```
 
-Add an **STDIO** MCP server using the absolute paths on your machine:
+Add an **STDIO** MCP server using absolute paths on your machine:
 
 ```json
 {
   "command": "/absolute/path/to/node",
   "args": ["/absolute/path/to/bunpro-mcp/dist/index.js"],
   "env": {
-    "BUNPRO_USERNAME": "your Bunpro login email",
-    "BUNPRO_PASSWORD": "your Bunpro password"
+    "BUNPRO_API_TOKEN": "your Bunpro Account API Token"
   }
 }
 ```
 
-Use the MCP client's secret environment fields when they are available. Never commit credentials to this repository or place them in tool arguments.
-
-The MCP logs in lazily. It reuses the in-memory session, attempts a web-session refresh after an authentication rejection, and performs a fresh credential login only if refresh fails. Restarting the local process clears the derived session.
+Use the MCP client's secret environment fields when available. The MCP does not create cookies, perform a browser login, refresh a session, or write the token to disk.
 
 ## Self-host the remote version
 
-The remote transport is stateless Streamable HTTP with OAuth, per-user account isolation, encrypted PostgreSQL storage, and short-lived setup links. See [docs/self-hosting.md](docs/self-hosting.md) for the Auth0 and Railway configuration.
+The remote transport is stateless Streamable HTTP. It requires no Auth0 tenant, OAuth setup, PostgreSQL service, encryption key, or Bunpro credential configured on the deployment. See [docs/self-hosting.md](docs/self-hosting.md).
 
-Do not put a shared `BUNPRO_USERNAME` or `BUNPRO_PASSWORD` in a public deployment. Every OAuth identity must link its own Bunpro account.
+Each caller must configure their own Bunpro Account API Token as the connection's Bearer token. Never set a deployment-wide `BUNPRO_API_TOKEN` for HTTP mode.
 
-## Security model and limitations
+## Request contract
 
-- Bunpro credentials, web cookies, and the frontend token are never returned by an MCP tool.
-- Local mode keeps derived authentication in process memory only.
-- Hosted mode encrypts each user's authentication payload with AES-256-GCM before saving it to PostgreSQL.
-- OAuth issuer, audience, scope, and token signatures are validated for every hosted MCP request.
-- The current adapter may not handle MFA, CAPTCHA, bot challenges, or future Bunpro login changes.
-- Bunpro has not published stability, pagination, or rate-limit guarantees for these frontend endpoints. Keep usage low volume.
+For each allowed read-only Frontend API route, the adapter transforms the incoming Bearer token into Bunpro's temporary request contract:
 
-See [SECURITY.md](SECURITY.md) for vulnerability reporting and [PRIVACY.md](PRIVACY.md) for the complete data-handling disclosure.
+```http
+GET /api/frontend/<route>?dangerously_authenticate_using_api_token=true
+Authorization: Token token=<account-api-token>
+```
+
+The token remains in request memory only. Missing or malformed bearer credentials fail with HTTP 401. Bunpro authentication failures, throttling, unavailable routes, and schema drift fail closed without login fallback or automatic retry.
+
+## Security and limitations
+
+- The model never receives the Account API Token; the MCP host attaches it at the transport layer.
+- The application does not persist tokens, sessions, cookies, study history, or raw Bunpro responses.
+- A hosted operator and infrastructure provider can technically inspect request memory or traffic termination. Use local mode if that trust boundary is unacceptable.
+- Use HTTPS for every non-local HTTP deployment.
+- Bunpro has announced stricter throttling and a future route whitelist. Keep calls low-volume and do not retry aggressively.
+- Absence of study data is not automatically evidence of zero activity.
+
+See [SECURITY.md](SECURITY.md) and [PRIVACY.md](PRIVACY.md) for the full disclosures.
 
 ## Development
 
@@ -97,17 +108,18 @@ npm ci
 npm run check
 ```
 
-The opt-in live authentication test uses your own Bunpro account and performs read-only requests:
+The opt-in live connection test uses your own Account API Token and performs read-only requests:
 
 ```bash
-BUNPRO_USERNAME="your login" BUNPRO_PASSWORD="your password" npm run live:test:auth
+BUNPRO_API_TOKEN="your token" npm run live:test:auth
+BUNPRO_API_TOKEN="your token" npm run live:test:http
 ```
 
-It prints only normalized authentication status. Do not attach raw Bunpro responses or secrets to issues.
+The first command tests stdio. The second tests the HTTP Bearer-token passthrough against the real Bunpro API without opening a network listener. Both print only normalized connection status. Do not attach raw Bunpro responses or secrets to issues.
 
 ## Contributing
 
-Bug reports, compatibility reports, and focused pull requests are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md) first.
+Bug reports, compatibility reports, and focused pull requests are welcome within the private project. Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md) first.
 
 ## License
 

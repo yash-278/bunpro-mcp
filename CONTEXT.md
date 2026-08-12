@@ -2,31 +2,27 @@
 
 ## Account API Token
 
-A secret generated for a Bunpro user on the Settings > API page. It is the only Bunpro credential accepted by the target MCP design. It is distinct from the temporary token formerly issued in a browser cookie.
+A secret generated for a Bunpro user on the Settings > API page. It is the only Bunpro credential accepted by the MCP. It is distinct from the temporary token formerly issued in a browser cookie.
 
 ## Frontend API
 
 Bunpro's private, undocumented `/api/frontend/*` interface. Its routes, response shapes, authentication behavior, whitelist, and throttling may change without notice.
 
+## Direct Token Passthrough
+
+The remote MCP host sends the caller's Account API Token in the HTTP Bearer header. The MCP reads that value for one request, translates it into Bunpro's expected Account API Token header, and does not persist it. Local stdio obtains the same token from `BUNPRO_API_TOKEN`.
+
 ## Token-Authenticated Frontend Request
 
-A read-only Frontend API request that presents the user's Account API Token and opts into Bunpro's temporary Account API Token authentication mechanism. It does not create or refresh a Bunpro browser session.
+A read-only Frontend API request that presents the Account API Token and adds `dangerously_authenticate_using_api_token=true`. It does not create or refresh a Bunpro browser session.
 
 ## Frontend Cookie Token
 
-A short-lived credential issued through Bunpro's browser-login flow. It is not the Account API Token and is excluded from the target MCP design.
-
-## MCP Principal
-
-An identity authenticated by the remote MCP host. A principal may link one Bunpro Account API Token. It is not a Bunpro user record and is never inferred from an email supplied by a client.
-
-## Hosted Credential Link
-
-The private association between one MCP Principal and one protected Bunpro Account API Token. The link is credential state, not study history or MCP protocol-session state.
+A short-lived credential issued through Bunpro's browser-login flow. It is not the Account API Token and is excluded from the MCP.
 
 ## Stateless MCP
 
-An MCP whose requests do not depend on a Bunpro browser session, process-local cookies, conversational state, stored study history, or an MCP-owned watermark. A Hosted Credential Link does not make the MCP protocol stateful.
+An MCP whose requests do not depend on user identity, a Bunpro browser session, process-local cookies, stored credentials, conversational state, stored study history, or an MCP-owned watermark.
 
 ## Study Day
 
