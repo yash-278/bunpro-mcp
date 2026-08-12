@@ -122,9 +122,10 @@ The opt-in live connection test uses your own Account API Token and performs rea
 BUNPRO_API_TOKEN="your token" npm run live:test:auth
 BUNPRO_API_TOKEN="your token" npm run live:test:http
 BUNPRO_API_TOKEN="your token" npm run live:test:tools
+BUNPRO_API_TOKEN="your token" BUNPRO_MCP_URL="https://your-host.example/mcp" npm run live:test:tools
 ```
 
-The first command tests stdio. The second tests the HTTP Bearer-token passthrough. The third makes one deliberately paced pass through every published tool. All use the real Bunpro API without opening a network listener, and the tool sweep prints only tool names and success states. Do not attach raw Bunpro responses or secrets to issues.
+The first command tests stdio. The second tests the HTTP Bearer-token passthrough. The third makes one deliberately paced pass through every published tool in process; adding `BUNPRO_MCP_URL` runs the same sweep against a deployed Streamable HTTP endpoint. All use the real Bunpro API, and the tool sweep prints only tool names and success states. Do not attach raw Bunpro responses or secrets to issues.
 
 ## Contributing
 
