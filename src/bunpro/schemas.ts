@@ -13,7 +13,7 @@ export const BunproUserResponseSchema = z.object({
 export const ConnectionStatusOutputSchema = z.object({
   connected: z.literal(true),
   authentication_method: z.literal("account_api_token"),
-  token_source: z.enum(["environment", "request_bearer"]),
+  token_source: z.enum(["environment", "request_header", "request_bearer"]),
   token_persisted_by_server: z.literal(false),
   api_authenticated: z.literal(true),
   source_timezone: z.string().min(1),

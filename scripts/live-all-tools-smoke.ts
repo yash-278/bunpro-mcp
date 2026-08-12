@@ -8,7 +8,7 @@ assert.ok(apiToken, "BUNPRO_API_TOKEN must be configured for the live tool smoke
 const remoteUrl = process.env.BUNPRO_MCP_URL;
 const handler = remoteUrl === undefined ? createHttpMcpHandler() : undefined;
 const transport = new StreamableHTTPClientTransport(new URL(remoteUrl ?? "https://local-smoke.invalid/mcp"), {
-  authProvider: { token: async () => apiToken },
+  requestInit: { headers: { "X-Bunpro-Token": apiToken } },
   fetch: handler === undefined
     ? fetch
     : (input, init) => handler.fetch(new Request(input, init))

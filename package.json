@@ -1,6 +1,6 @@
 {
   "name": "bunpro-mcp-server",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Unofficial stateless, read-only Bunpro MCP with direct Account API Token passthrough",
   "type": "module",
   "private": true,

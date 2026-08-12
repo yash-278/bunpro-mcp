@@ -11,10 +11,10 @@ This document explains how Bunpro MCP handles the Bunpro Account API Token and s
 
 ## Hosted Streamable HTTP mode
 
-- Your MCP host sends your Account API Token in the HTTPS `Authorization: Bearer ...` header.
+- Your MCP host sends your Account API Token in the HTTPS `X-Bunpro-Token` header.
 - The server transforms it into Bunpro's Account API Token header for that request.
 - The application does not create an identity profile, account link, setup session, or database record.
-- The application does not intentionally log or persist the Authorization header, token, Bunpro response body, or study history.
+- The application does not intentionally log or persist token-bearing request headers, the token, Bunpro response bodies, or study history.
 
 The hosted operator and infrastructure provider can technically inspect application memory or traffic where TLS terminates. Stateless passthrough reduces retained data; it does not eliminate the need to trust the hosted service. Use local mode or self-host if that trust boundary is unacceptable.
 

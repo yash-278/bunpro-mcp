@@ -7,12 +7,19 @@ import { createServer as createBunproMcpServer } from "./server.js";
 
 const MAX_MCP_BODY_BYTES = 1024 * 1024;
 const MAX_MCP_RESPONSE_BYTES = 2 * 1024 * 1024;
-const MAX_BEARER_TOKEN_BYTES = 2048;
+const MAX_TOKEN_BYTES = 2048;
 const HEADER_TIMEOUT_MS = 10_000;
 const REQUEST_TIMEOUT_MS = 30_000;
 const KEEP_ALIVE_TIMEOUT_MS = 5_000;
 const MAX_CONNECTIONS = 100;
 const MAX_REQUESTS_PER_SOCKET = 100;
+
+export const BUNPRO_TOKEN_HEADER = "X-Bunpro-Token";
+
+export interface BunproRequestCredential {
+  token: string;
+  tokenSource: "request_header" | "request_bearer";
+}
 
 export interface HttpService {
   port: number;
@@ -120,10 +127,10 @@ export function createHttpMcpHandler(fetchImplementation: FetchLike = fetch) {
   const requestGate = new BunproRequestGate({ maximumConcurrent: 4, maximumQueued: 16 });
   return createMcpHandler(
     context => {
-      const token = bearerTokenFromAuthorization(context.requestInfo?.headers.get("authorization"));
+      const credential = bunproCredentialFromHeaders(context.requestInfo?.headers ?? new Headers());
       return createBunproMcpServer(
-        () => new BunproClient(token, fetchImplementation, {
-          tokenSource: "request_bearer",
+        () => new BunproClient(credential.token, fetchImplementation, {
+          tokenSource: credential.tokenSource,
           requestGate
         })
       );
@@ -176,16 +183,15 @@ async function routeRequest(
     }
 
     try {
-      bearerTokenFromAuthorization(headerValue(request.headers.authorization));
+      bunproCredentialFromHeaders(nodeHeadersToWebHeaders(request));
     } catch {
       return sendJson(
         response,
         401,
         {
           error: "bunpro_token_required",
-          message: "Configure the Bunpro Account API Token as this MCP connection's Bearer token."
-        },
-        { "www-authenticate": 'Bearer realm="bunpro-mcp"' }
+          message: `Configure the Bunpro Account API Token in the ${BUNPRO_TOKEN_HEADER} request header.`
+        }
       );
     }
 
@@ -207,10 +213,37 @@ async function routeRequest(
 export function bearerTokenFromAuthorization(value: string | null | undefined): string {
   const match = value?.match(/^Bearer[\t ]+([^\s,]+)$/i);
   const token = match?.[1];
-  if (!token || Buffer.byteLength(token, "utf8") > MAX_BEARER_TOKEN_BYTES) {
+  if (!token || Buffer.byteLength(token, "utf8") > MAX_TOKEN_BYTES) {
     throw new Error("A Bunpro Account API Token Bearer header is required.");
   }
   return token;
+}
+
+export function bunproCredentialFromHeaders(
+  headers: Pick<Headers, "get">
+): BunproRequestCredential {
+  const rawToken = headers.get(BUNPRO_TOKEN_HEADER);
+  const authorization = headers.get("authorization");
+
+  if (rawToken !== null && authorization !== null) {
+    throw new Error(`Configure either ${BUNPRO_TOKEN_HEADER} or Authorization, not both.`);
+  }
+
+  if (rawToken !== null) {
+    if (
+      rawToken.length === 0
+      || Buffer.byteLength(rawToken, "utf8") > MAX_TOKEN_BYTES
+      || /[\s,]/.test(rawToken)
+    ) {
+      throw new Error(`A valid Bunpro Account API Token is required in ${BUNPRO_TOKEN_HEADER}.`);
+    }
+    return { token: rawToken, tokenSource: "request_header" };
+  }
+
+  return {
+    token: bearerTokenFromAuthorization(authorization),
+    tokenSource: "request_bearer"
+  };
 }
 
 async function readRequestBodyBytes(request: IncomingMessage, maximumBytes: number): Promise<Buffer> {
@@ -236,7 +269,8 @@ function nodeHeadersToWebHeaders(request: IncomingMessage): Headers {
     "authorization",
     "content-type",
     "mcp-protocol-version",
-    "mcp-session-id"
+    "mcp-session-id",
+    BUNPRO_TOKEN_HEADER.toLowerCase()
   ];
   for (const name of forwardedNames) {
     const value = request.headers[name];

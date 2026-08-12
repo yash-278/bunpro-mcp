@@ -2,7 +2,7 @@
 
 The remote deployment is a stateless Streamable HTTP server. It does not need Auth0, an OAuth authorization server, PostgreSQL, an encryption key, a setup page, or a deployment-wide Bunpro credential.
 
-Each MCP caller supplies their own Bunpro Account API Token in the HTTP Bearer header. The application uses the token for that request and does not persist it.
+Each MCP caller supplies their own Bunpro Account API Token in the `X-Bunpro-Token` request header. The application uses the token for that request and does not persist it.
 
 ## Requirements
 
@@ -37,16 +37,16 @@ Use:
 https://mcp.example.com/mcp
 ```
 
-Configure the caller's Bunpro Account API Token as the MCP connection's Bearer token. In ChatGPT/Codex, leave **Bearer token env var** blank and add the protected custom header `Authorization: Bearer <token>`. Clients with a dedicated protected bearer-secret field may use that instead.
+In ChatGPT/Codex, leave **Bearer token env var** blank and add a protected custom header named `X-Bunpro-Token`. Its value is the raw Bunpro Account API Token, with no prefix.
 
-Configure only one bearer mechanism, and never place the token in the URL or tool arguments.
+The backwards-compatible `Authorization: Bearer <token>` form is still accepted for existing connections. Configure exactly one credential header, and never place the token in the URL or tool arguments.
 
 ## Smoke checks
 
-Without a bearer token, `/mcp` should return HTTP 401 without echoing request data. With a valid token configured in an MCP client, `get_connection_status` should report:
+Without a token header, `/mcp` should return HTTP 401 without echoing request data. With a valid token configured in an MCP client, `get_connection_status` should report:
 
 - `authentication_method: account_api_token`
-- `token_source: request_bearer`
+- `token_source: request_header`
 - `token_persisted_by_server: false`
 - `api_authenticated: true`
 - `stateless: true`
