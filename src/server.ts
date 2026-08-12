@@ -3,9 +3,17 @@ import * as z from "zod/v4";
 import { BunproClient, apiTokenFromEnvironment } from "./bunpro/client.js";
 import { connectionErrorMessage } from "./bunpro/errors.js";
 import { ConnectionStatusOutputSchema, type ConnectionStatus } from "./bunpro/schemas.js";
+import {
+  StudyDayInputSchema,
+  StudyDaySummaryOutputSchema,
+  StudyRangeInputSchema,
+  StudyRangeSummaryOutputSchema
+} from "./bunpro/schemas.js";
+import { getStudyDaySummary, getStudyRangeSummary } from "./bunpro/study.js";
 
 export interface BunproAccountAccess {
-  checkConnection(): Promise<ConnectionStatus>;
+  checkConnection(operationSignal?: AbortSignal): Promise<ConnectionStatus>;
+  getFrontendJson(path: string, operationSignal?: AbortSignal): Promise<unknown>;
 }
 
 export type BunproClientFactory = () => BunproAccountAccess;
@@ -38,6 +46,68 @@ export function createServer(
     async (): Promise<CallToolResult> => {
       try {
         const structuredContent = await getClient().checkConnection();
+        return {
+          content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
+          structuredContent
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: connectionErrorMessage(error) }]
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    "get_study_day_summary",
+    {
+      title: "Get Bunpro Study Day summary",
+      description:
+        "Return source-backed Bunpro review, new-content, and accuracy evidence for one exact Bunpro calendar day. Missing sparse records remain unknown rather than zero.",
+      inputSchema: StudyDayInputSchema,
+      outputSchema: StudyDaySummaryOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true
+      }
+    },
+    async input => {
+      try {
+        const structuredContent = await getStudyDaySummary(getClient(), input);
+        return {
+          content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
+          structuredContent
+        };
+      } catch (error) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: connectionErrorMessage(error) }]
+        };
+      }
+    }
+  );
+
+  server.registerTool(
+    "get_study_range_summary",
+    {
+      title: "Get Bunpro Study range summary",
+      description:
+        "Return one source-backed entry for every inclusive Bunpro calendar day in a range of at most 93 days, using one bounded set of upstream requests.",
+      inputSchema: StudyRangeInputSchema,
+      outputSchema: StudyRangeSummaryOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true
+      }
+    },
+    async input => {
+      try {
+        const structuredContent = await getStudyRangeSummary(getClient(), input);
         return {
           content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
           structuredContent

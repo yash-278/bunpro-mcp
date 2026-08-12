@@ -95,8 +95,8 @@ export class BunproClient {
     this.#maximumResponseBytes = options.maximumResponseBytes ?? MAX_RESPONSE_BYTES;
   }
 
-  async checkConnection(): Promise<ConnectionStatus> {
-    const payload = await this.getFrontendJson("/api/frontend/user");
+  async checkConnection(operationSignal?: AbortSignal): Promise<ConnectionStatus> {
+    const payload = await this.getFrontendJson("/api/frontend/user", operationSignal);
     const userPayload = BunproUserResponseSchema.safeParse(payload);
     if (!userPayload.success) {
       throw new BunproError(
@@ -116,7 +116,7 @@ export class BunproClient {
     };
   }
 
-  async getFrontendJson(path: string): Promise<unknown> {
+  async getFrontendJson(path: string, operationSignal?: AbortSignal): Promise<unknown> {
     const url = new URL(path, API_ORIGIN);
     if (url.origin !== API_ORIGIN || !url.pathname.startsWith(FRONTEND_API_PREFIX)) {
       throw new BunproError(
@@ -128,6 +128,7 @@ export class BunproClient {
 
     const response = await this.#request(url, {
       method: "GET",
+      ...(operationSignal ? { signal: operationSignal } : {}),
       headers: {
         accept: "application/json",
         authorization: `Token token=${this.#apiToken}`,
@@ -172,10 +173,17 @@ export class BunproClient {
   }
 
   async #request(url: URL, init: RequestInit): Promise<Response> {
+    const timeoutController = new AbortController();
+    const timeout = setTimeout(
+      () => timeoutController.abort(new DOMException("The Bunpro request timed out.", "TimeoutError")),
+      this.#requestTimeoutMs
+    );
     try {
       const request = (): Promise<Response> => this.#fetch(url, {
         ...init,
-        signal: init.signal ?? AbortSignal.timeout(this.#requestTimeoutMs)
+        signal: init.signal
+          ? AbortSignal.any([init.signal, timeoutController.signal])
+          : timeoutController.signal
       });
       return await (this.#requestGate ? this.#requestGate.run(request) : request());
     } catch (error) {
@@ -186,6 +194,8 @@ export class BunproClient {
         "Bunpro could not be reached before the request timeout. Try again later.",
         { cause: error }
       );
+    } finally {
+      clearTimeout(timeout);
     }
   }
 

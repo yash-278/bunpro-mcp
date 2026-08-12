@@ -26,7 +26,7 @@ Answers: "Can this MCP access my Bunpro account?"
 - Output: authentication status, source timezone, token source, stateless/persistence guarantees
 - Request cost: 1 Bunpro request
 
-### `get_study_day_summary` — implement next
+### `get_study_day_summary` — implemented
 
 Answers: "What Bunpro study activity is supported for 2026-08-11?"
 
@@ -46,7 +46,7 @@ Answers: "What Bunpro study activity is supported for 2026-08-11?"
 
 The result must distinguish at least `complete`, `partial`, `no_source_record`, and `unavailable`. Study duration, exact correct/incorrect totals, and complete item history remain unavailable unless a future source proves them.
 
-### `get_study_range_summary` — implement with the day mapper
+### `get_study_range_summary` — implemented
 
 Answers: "Summarize every Bunpro study day from 2026-08-01 through 2026-08-11."
 
