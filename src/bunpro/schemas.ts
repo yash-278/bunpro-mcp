@@ -23,7 +23,14 @@ export const ConnectionStatusOutputSchema = z.object({
   stateless: z.literal(true)
 });
 
+export const DisconnectOutputSchema = z.object({
+  disconnected: z.literal(true),
+  account_was_linked: z.boolean(),
+  stored_authentication_present: z.literal(false)
+});
+
 export type ConnectionStatus = z.infer<typeof ConnectionStatusOutputSchema>;
+export type DisconnectStatus = z.infer<typeof DisconnectOutputSchema>;
 export type SessionResolution = ConnectionStatus["session_resolution"];
 export type AuthenticationCache = ConnectionStatus["authentication_cache"];
 export type CredentialsSource = ConnectionStatus["credentials_source"];

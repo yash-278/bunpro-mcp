@@ -1,30 +1,66 @@
 # Bunpro MCP
 
-MCP server for exposing trustworthy, date-bounded Bunpro study summaries to Atlas and other MCP hosts.
+An unofficial, read-only Model Context Protocol (MCP) server for connecting Bunpro to ChatGPT, Codex, and other MCP clients.
 
-The first tool is `get_connection_status`. In either transport, the server logs in lazily and reuses the Bunpro web session. If Bunpro rejects a cached token, it first refreshes through the stored web session and only performs a fresh credential login if that fails.
+> [!IMPORTANT]
+> This project uses Bunpro's private frontend interface because the legacy public API is no longer available. It is not affiliated with or endorsed by Bunpro, and Bunpro can change the interface without notice.
 
-Two deployment modes are supported:
+## Project status
 
-- Local stdio: one user, with credentials in the MCP host's secret environment configuration.
-- Remote Streamable HTTP: public, multi-user, OAuth-protected, with one independently encrypted Bunpro account per identity.
+This is an early preview. The authentication and account-isolation layer is working, but the date-bounded study-summary tool is still under development.
 
-## Local stdio configuration
+Available tools:
 
-Configure these secrets in the MCP host application:
+- `get_connection_status` verifies the linked Bunpro account and reports whether the MCP used a cached, refreshed, or new frontend session.
+- `disconnect_bunpro_account` removes the current user's encrypted Bunpro credentials and session from active hosted storage. This tool is not needed in local mode because local authentication is never persisted by the MCP.
+
+All Bunpro requests are read-only. The server does not submit reviews, start lessons, change progress, or modify account settings.
+
+## Use the hosted version
+
+The hosted preview is the easiest way to try the connection:
 
 ```text
-BUNPRO_USERNAME=your Bunpro login email
-BUNPRO_PASSWORD=your Bunpro password
+https://bunpro-mcp-production.up.railway.app/mcp
 ```
 
-Do not provide a browser cookie or frontend token. The MCP obtains and reuses them during the process lifetime and never returns them.
+In the ChatGPT/Codex desktop app:
 
-For an MCP host configuration page, use the equivalent of:
+1. Open **Settings → Plugins → MCPs → Add custom MCP**.
+2. Enter `Bunpro MCP`, select **Streamable HTTP**, and paste the URL above.
+3. Leave the bearer-token and custom-header fields empty, then save.
+4. Select **Authenticate**. This signs you into the MCP through Auth0; it is separate from your Bunpro login.
+5. Ask: `Check my Bunpro connection.`
+6. If no Bunpro account is linked, open the short-lived setup URL returned by the tool and enter your Bunpro login there.
+7. Run the connection check again.
+
+OpenAI's current MCP setup instructions are available in the [official ChatGPT and Codex documentation](https://learn.chatgpt.com/docs/extend/mcp).
+
+The hosted operator controls the encryption key and can technically decrypt stored authentication data. If that trust model is not acceptable, use the local version or self-host it. Read [PRIVACY.md](PRIVACY.md) before linking an account.
+
+To remove a hosted account link, ask the client to `Disconnect my Bunpro account` and explicitly approve the destructive tool call.
+
+## Run it locally
+
+Local mode runs over stdio for one Bunpro account. Bunpro credentials remain in the MCP host's secret configuration; derived cookies and the frontend token remain only in process memory.
+
+Requirements:
+
+- Node.js 20 or newer
+- Git
+
+```bash
+git clone https://github.com/yash-278/bunpro-mcp.git
+cd bunpro-mcp
+npm ci
+npm run build
+```
+
+Add an **STDIO** MCP server using the absolute paths on your machine:
 
 ```json
 {
-  "command": "node",
+  "command": "/absolute/path/to/node",
   "args": ["/absolute/path/to/bunpro-mcp/dist/index.js"],
   "env": {
     "BUNPRO_USERNAME": "your Bunpro login email",
@@ -33,44 +69,46 @@ For an MCP host configuration page, use the equivalent of:
 }
 ```
 
-The tool returns only safe booleans, Bunpro's configured source timezone, and whether authentication used a fresh login, cached session, refreshed session, or fallback re-login.
+Use the MCP client's secret environment fields when they are available. Never commit credentials to this repository or place them in tool arguments.
 
-## Public Railway deployment
+The MCP logs in lazily. It reuses the in-memory session, attempts a web-session refresh after an authentication rejection, and performs a fresh credential login only if refresh fails. Restarting the local process clears the derived session.
 
-The remote service exposes:
+## Self-host the remote version
 
-- `GET /healthz` for Railway health checks.
-- `POST /mcp` for stateless Streamable HTTP MCP traffic.
-- OAuth protected-resource metadata under `/.well-known/oauth-protected-resource/mcp`.
-- `/setup` for short-lived, identity-bound Bunpro account linking.
+The remote transport is stateless Streamable HTTP with OAuth, per-user account isolation, encrypted PostgreSQL storage, and short-lived setup links. See [docs/self-hosting.md](docs/self-hosting.md) for the Auth0 and Railway configuration.
 
-Every MCP request must carry an OAuth access token with `bunpro.read`. The OAuth issuer and audience are validated cryptographically on every request. Each user's Bunpro credentials, cookies, and frontend token are encrypted with AES-256-GCM before they reach Postgres. The Railway deployment must not define `BUNPRO_USERNAME` or `BUNPRO_PASSWORD`.
+Do not put a shared `BUNPRO_USERNAME` or `BUNPRO_PASSWORD` in a public deployment. Every OAuth identity must link its own Bunpro account.
 
-Required Railway variables are shown in [`.env.example`](.env.example). Generate the two 32-byte secrets independently and store them only as Railway secrets. The service can derive `PUBLIC_BASE_URL` from `RAILWAY_PUBLIC_DOMAIN`; `AUTH_AUDIENCE` should be the final public `/mcp` URL.
+## Security model and limitations
 
-Before deploying, configure an OAuth provider that supports authorization code with PKCE and dynamic client registration. For Auth0:
+- Bunpro credentials, web cookies, and the frontend token are never returned by an MCP tool.
+- Local mode keeps derived authentication in process memory only.
+- Hosted mode encrypts each user's authentication payload with AES-256-GCM before saving it to PostgreSQL.
+- OAuth issuer, audience, scope, and token signatures are validated for every hosted MCP request.
+- The current adapter may not handle MFA, CAPTCHA, bot challenges, or future Bunpro login changes.
+- Bunpro has not published stability, pagination, or rate-limit guarantees for these frontend endpoints. Keep usage low volume.
 
-1. Create an API whose identifier is the final `https://<railway-domain>/mcp` URL.
-2. Add the `bunpro.read` permission and enable it for requested access tokens.
-3. Enable OIDC Dynamic Application Registration and at least one user login connection.
-4. Set `AUTHORIZATION_SERVER_URL` to the Auth0 issuer and `AUTH_AUDIENCE` to the API identifier.
-
-The remote transport is deliberately not started unless its database, encryption, public URL, and OAuth settings are complete.
+See [SECURITY.md](SECURITY.md) for vulnerability reporting and [PRIVACY.md](PRIVACY.md) for the complete data-handling disclosure.
 
 ## Development
 
 ```bash
-npm install
-npm test
-npm run build
+npm ci
+npm run check
 ```
 
-Run the opt-in live MCP authentication smoke test only when the two Bunpro environment variables are configured:
+The opt-in live authentication test uses your own Bunpro account and performs read-only requests:
 
 ```bash
-npm run live:test:auth
+BUNPRO_USERNAME="your login" BUNPRO_PASSWORD="your password" npm run live:test:auth
 ```
 
-That smoke test launches the compiled server through a real MCP stdio client, lists its tools, calls `get_connection_status`, and fails unless the authenticated web session and frontend API both work.
+It prints only normalized authentication status. Do not attach raw Bunpro responses or secrets to issues.
 
-The current Wayfinder map lives at [`.scratch/bunpro-mcp/map.md`](.scratch/bunpro-mcp/map.md).
+## Contributing
+
+Bug reports, compatibility reports, and focused pull requests are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md) first.
+
+## License
+
+[MIT](LICENSE). Bunpro names and trademarks belong to their respective owner.

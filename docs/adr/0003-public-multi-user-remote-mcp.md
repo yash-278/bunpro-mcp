@@ -20,6 +20,7 @@ ChatGPT remote MCP connections support OAuth, while Bunpro does not currently ex
 - Encrypt Bunpro credentials, cookies, and the frontend API token with AES-256-GCM before storing them in Railway Postgres.
 - Cache hydrated clients per principal in a process only as an optimization. Postgres remains the restart-safe source for authentication material.
 - Reuse the cached Bunpro session, refresh it through the web session after an authentication rejection, and perform a new credential login only after both fail.
+- Let an authenticated user permanently delete their linked Bunpro credentials and session through an explicit destructive MCP tool.
 - Do not expose a shared `BUNPRO_USERNAME` or `BUNPRO_PASSWORD` in the Railway service.
 
 ## Consequences

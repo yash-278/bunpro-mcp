@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { AuthInfo } from "@modelcontextprotocol/server";
 import { BunproClient, type BunproCredentials, type FetchLike } from "./client.js";
 import { BunproAccountNotLinkedError } from "./errors.js";
-import type { ConnectionStatus } from "./schemas.js";
+import type { ConnectionStatus, DisconnectStatus } from "./schemas.js";
 import type { CredentialVault, StoredBunproAccount } from "../storage/credential-vault.js";
 import { SetupTokenService } from "../auth/setup-token.js";
 
@@ -17,6 +17,7 @@ export class BunproSessionManager {
   readonly #publicBaseUrl: URL;
   readonly #fetch: FetchLike;
   readonly #accounts = new Map<string, Promise<ManagedAccount | undefined>>();
+  readonly #operationTails = new Map<string, Promise<void>>();
 
   constructor(
     vault: CredentialVault,
@@ -30,19 +31,27 @@ export class BunproSessionManager {
     this.#fetch = fetchImplementation;
   }
 
-  checkerFor(authInfo: AuthInfo): { checkConnection(): Promise<ConnectionStatus> } {
+  accountFor(authInfo: AuthInfo): {
+    checkConnection(): Promise<ConnectionStatus>;
+    disconnect(): Promise<DisconnectStatus>;
+  } {
     const principalId = principalIdFromAuth(authInfo);
-    return { checkConnection: () => this.checkConnection(principalId) };
+    return {
+      checkConnection: () => this.checkConnection(principalId),
+      disconnect: () => this.disconnect(principalId)
+    };
   }
 
   async checkConnection(principalId: string): Promise<ConnectionStatus> {
-    const account = await this.#getAccount(principalId);
-    if (!account) throw new BunproAccountNotLinkedError(this.setupUrl(principalId));
+    return this.#withExclusivePrincipal(principalId, async () => {
+      const account = await this.#getAccount(principalId);
+      if (!account) throw new BunproAccountNotLinkedError(this.setupUrl(principalId));
 
-    const status = await account.client.checkConnection();
-    account.stored.session = account.client.sessionSnapshot();
-    await this.#vault.save(principalId, account.stored);
-    return status;
+      const status = await account.client.checkConnection();
+      account.stored.session = account.client.sessionSnapshot();
+      await this.#vault.save(principalId, account.stored);
+      return status;
+    });
   }
 
   setupUrl(principalId: string): string {
@@ -60,16 +69,30 @@ export class BunproSessionManager {
   }
 
   async link(principalId: string, credentials: BunproCredentials): Promise<ConnectionStatus> {
-    if (await this.#vault.exists(principalId)) {
-      throw new Error("A Bunpro account is already linked to this identity.");
-    }
+    return this.#withExclusivePrincipal(principalId, async () => {
+      if (await this.#vault.exists(principalId)) {
+        throw new Error("A Bunpro account is already linked to this identity.");
+      }
 
-    const client = this.#createClient({ credentials });
-    const status = await client.checkConnection();
-    const stored: StoredBunproAccount = { credentials, session: client.sessionSnapshot() };
-    await this.#vault.save(principalId, stored);
-    this.#accounts.set(principalId, Promise.resolve({ stored, client }));
-    return status;
+      const client = this.#createClient({ credentials });
+      const status = await client.checkConnection();
+      const stored: StoredBunproAccount = { credentials, session: client.sessionSnapshot() };
+      await this.#vault.save(principalId, stored);
+      this.#accounts.set(principalId, Promise.resolve({ stored, client }));
+      return status;
+    });
+  }
+
+  async disconnect(principalId: string): Promise<DisconnectStatus> {
+    return this.#withExclusivePrincipal(principalId, async () => {
+      this.#accounts.delete(principalId);
+      const accountWasLinked = await this.#vault.remove(principalId);
+      return {
+        disconnected: true,
+        account_was_linked: accountWasLinked,
+        stored_authentication_present: false
+      };
+    });
   }
 
   async #getAccount(principalId: string): Promise<ManagedAccount | undefined> {
@@ -89,6 +112,25 @@ export class BunproSessionManager {
       authenticationCache: "encrypted_store",
       credentialsSource: "encrypted_store"
     });
+  }
+
+  async #withExclusivePrincipal<T>(principalId: string, operation: () => Promise<T>): Promise<T> {
+    const previousOperation = this.#operationTails.get(principalId) ?? Promise.resolve();
+    let release: () => void = () => undefined;
+    const currentOperation = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    this.#operationTails.set(principalId, currentOperation);
+
+    await previousOperation;
+    try {
+      return await operation();
+    } finally {
+      release();
+      if (this.#operationTails.get(principalId) === currentOperation) {
+        this.#operationTails.delete(principalId);
+      }
+    }
   }
 }
 

@@ -1,9 +1,26 @@
 {
   "name": "bunpro-mcp-server",
   "version": "0.1.0",
-  "description": "Stateless, read-only MCP server for Bunpro study evidence",
+  "description": "Unofficial read-only Bunpro MCP with local and OAuth-protected hosted transports",
   "type": "module",
   "private": true,
+  "license": "MIT",
+  "author": "Yash Kadam",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yash-278/bunpro-mcp.git"
+  },
+  "homepage": "https://github.com/yash-278/bunpro-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/yash-278/bunpro-mcp/issues"
+  },
+  "keywords": [
+    "bunpro",
+    "mcp",
+    "model-context-protocol",
+    "japanese",
+    "language-learning"
+  ],
   "main": "dist/index.js",
   "bin": {
     "bunpro-mcp": "dist/index.js"
@@ -17,6 +34,7 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.test.json",
     "test": "node --import tsx --test tests/*.test.ts",
+    "check": "npm run typecheck && npm test && npm run build",
     "start": "node dist/index.js",
     "start:http": "TRANSPORT=http node dist/index.js",
     "live:test:auth": "npm run build && node --import tsx scripts/live-mcp-auth-smoke.ts"

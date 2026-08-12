@@ -2,12 +2,23 @@ import { McpServer, type CallToolResult } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
 import { BunproClient, credentialsFromEnvironment } from "./bunpro/client.js";
 import { BunproAccountNotLinkedError, connectionErrorMessage } from "./bunpro/errors.js";
-import { ConnectionStatusOutputSchema } from "./bunpro/schemas.js";
+import {
+  ConnectionStatusOutputSchema,
+  DisconnectOutputSchema,
+  type ConnectionStatus,
+  type DisconnectStatus
+} from "./bunpro/schemas.js";
 
-export type BunproClientFactory = () => Pick<BunproClient, "checkConnection">;
+export interface BunproAccountAccess {
+  checkConnection(): Promise<ConnectionStatus>;
+  disconnect?(): Promise<DisconnectStatus>;
+}
+
+export type BunproClientFactory = () => BunproAccountAccess;
 
 export interface ServerOptions {
   oauthScopes?: string[];
+  allowAccountDisconnect?: boolean;
 }
 
 export function createServer(
@@ -15,8 +26,8 @@ export function createServer(
   options: ServerOptions = {}
 ): McpServer {
   const server = new McpServer({ name: "bunpro-mcp-server", version: "0.1.0" });
-  let sharedClient: Pick<BunproClient, "checkConnection"> | undefined;
-  const getClient = (): Pick<BunproClient, "checkConnection"> => {
+  let sharedClient: BunproAccountAccess | undefined;
+  const getClient = (): BunproAccountAccess => {
     sharedClient ??= clientFactory();
     return sharedClient;
   };
@@ -65,6 +76,52 @@ export function createServer(
       }
     }
   );
+
+  if (options.allowAccountDisconnect) {
+    server.registerTool(
+      "disconnect_bunpro_account",
+      {
+        title: "Disconnect Bunpro account",
+        description:
+          "Remove the current user's encrypted Bunpro credentials, cookies, and frontend token from active hosted MCP storage. Reconnecting requires entering Bunpro credentials again.",
+        inputSchema: z.object({
+          confirm: z.literal(true).describe("Must be true to confirm permanent removal of the linked Bunpro authentication data.")
+        }).strict(),
+        outputSchema: DisconnectOutputSchema,
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: true,
+          idempotentHint: true,
+          openWorldHint: true
+        },
+        ...(options.oauthScopes
+          ? { _meta: { securitySchemes: [{ type: "oauth2", scopes: options.oauthScopes }] } }
+          : {})
+      },
+      async (): Promise<CallToolResult> => {
+        const account = getClient();
+        if (!account.disconnect) {
+          return {
+            isError: true,
+            content: [{ type: "text", text: "Account disconnection is unavailable in this transport." }]
+          };
+        }
+
+        try {
+          const structuredContent = await account.disconnect();
+          return {
+            content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
+            structuredContent
+          };
+        } catch (error) {
+          return {
+            isError: true,
+            content: [{ type: "text", text: connectionErrorMessage(error) }]
+          };
+        }
+      }
+    );
+  }
 
   return server;
 }

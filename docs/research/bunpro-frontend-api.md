@@ -69,7 +69,7 @@ A missing key in a sparse heatmap has not yet been proven equivalent to zero. Un
 - All Bunpro calls remain read-only and low volume.
 - The frontend token is an in-memory implementation detail and must never become an MCP input or output.
 - The login adapter does not yet handle multi-factor authentication, bot challenges, token expiry, or account lockout behavior.
-- Public release requires revisiting this authentication choice and removing any private verification evidence.
+- Public deployments must isolate OAuth identities and encrypt per-user authentication material as defined in [ADR 0003](../adr/0003-public-multi-user-remote-mcp.md).
 
 ## Answer
 
