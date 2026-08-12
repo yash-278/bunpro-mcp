@@ -1,0 +1,42 @@
+name: Feature request
+description: Propose a focused, read-only Bunpro MCP capability.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Bunpro MCP is intentionally read-only. Requests that submit reviews, change progress, or modify a Bunpro account are out of scope.
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: What should an MCP user be able to learn or verify?
+    validations:
+      required: true
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Example workflow
+      description: Give a realistic prompt and the result you would expect.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Read-only source evidence
+      description: If known, describe the Bunpro read surface without including raw personal responses.
+  - type: textarea
+    id: limitations
+    attributes:
+      label: Accuracy and compatibility concerns
+      description: What must remain unavailable instead of being guessed?
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Scope checks
+      options:
+        - label: This request is read-only and does not modify a Bunpro account.
+          required: true
+        - label: This issue contains no credentials, tokens, personal data, or raw Bunpro responses.
+          required: true

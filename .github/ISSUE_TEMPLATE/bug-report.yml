@@ -1,0 +1,67 @@
+name: Bug report
+description: Report a reproducible Bunpro MCP failure using sanitized information.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Never include Bunpro credentials, cookies, frontend tokens, OAuth tokens, setup links, encryption keys, database URLs, or raw Bunpro responses.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the expected and actual behavior.
+    validations:
+      required: true
+  - type: dropdown
+    id: transport
+    attributes:
+      label: Transport
+      options:
+        - Local stdio
+        - Hosted Streamable HTTP
+        - Self-hosted Streamable HTTP
+    validations:
+      required: true
+  - type: input
+    id: client
+    attributes:
+      label: MCP client
+      description: For example, ChatGPT desktop, Codex CLI, or Claude Desktop.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Bunpro MCP commit or version
+      placeholder: 0.1.0 or a commit SHA
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      description: Required for local or self-hosted reports.
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest sequence that reproduces the problem without real account data.
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: Sanitized error
+      description: Remove all credentials, tokens, setup URLs, personal data, and raw response bodies.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Safety checks
+      options:
+        - label: I removed all secrets, personal data, setup links, and raw Bunpro responses.
+          required: true
+        - label: I searched existing issues and read the troubleshooting and security guidance.
+          required: true
