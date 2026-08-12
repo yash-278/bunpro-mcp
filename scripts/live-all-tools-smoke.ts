@@ -5,10 +5,13 @@ import { createHttpMcpHandler } from "../src/http-server.js";
 const apiToken = process.env.BUNPRO_API_TOKEN;
 assert.ok(apiToken, "BUNPRO_API_TOKEN must be configured for the live tool smoke test.");
 
-const handler = createHttpMcpHandler();
-const transport = new StreamableHTTPClientTransport(new URL("https://local-smoke.invalid/mcp"), {
+const remoteUrl = process.env.BUNPRO_MCP_URL;
+const handler = remoteUrl === undefined ? createHttpMcpHandler() : undefined;
+const transport = new StreamableHTTPClientTransport(new URL(remoteUrl ?? "https://local-smoke.invalid/mcp"), {
   authProvider: { token: async () => apiToken },
-  fetch: (input, init) => handler.fetch(new Request(input, init))
+  fetch: handler === undefined
+    ? fetch
+    : (input, init) => handler.fetch(new Request(input, init))
 });
 const client = new Client({ name: "bunpro-mcp-all-tools-smoke", version: "0.1.0" });
 
@@ -44,7 +47,7 @@ try {
   });
 } finally {
   await client.close();
-  await handler.close();
+  await handler?.close();
 }
 
 async function call(name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
