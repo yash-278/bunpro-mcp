@@ -57,6 +57,36 @@ test("the public HTTP service enforces its canonical host and bounded MCP reques
   });
 
   try {
+    const homepage = await request(service.port, "/");
+    assert.equal(homepage.status, 200);
+    assert.match(String(homepage.headers["content-type"]), /^text\/html/);
+    assert.match(String(homepage.headers["content-security-policy"]), /frame-ancestors 'none'/);
+    assert.match(homepage.body, /Your Japanese study data/);
+    assert.match(homepage.body, /data-site="shibui"/);
+    assert.match(homepage.body, /Unofficial community tool/);
+    assert.match(homepage.body, /not available in ChatGPT's official directory/);
+    assert.match(homepage.body, /Streamable HTTP/);
+    assert.match(homepage.body, /https:\/\/bunpro\.yashkadam\.com\/mcp/);
+    assert.match(homepage.body, /X-Bunpro-Token/);
+    assert.match(homepage.body, /Leave blank/);
+    assert.match(homepage.body, /Check my Bunpro connection/);
+    assert.doesNotMatch(homepage.body, /Available in ChatGPT|Open in ChatGPT|data-concept=/);
+    assert.doesNotMatch(homepage.body, /dangerously_authenticate|\/api\/frontend|Token token=/);
+
+    const legacyConceptQuery = await request(service.port, "/?concept=orbit");
+    assert.equal(legacyConceptQuery.status, 200);
+    assert.match(legacyConceptQuery.body, /data-site="shibui"/);
+    assert.doesNotMatch(legacyConceptQuery.body, /data-concept=|BUNPRO \/ LIVE CONTEXT|STUDY RECEIPT/);
+
+    const homepageHead = await request(service.port, "/?concept=mochi", { method: "HEAD" });
+    assert.equal(homepageHead.status, 200);
+    assert.equal(homepageHead.body, "");
+    assert.ok(Number(homepageHead.headers["content-length"]) > 45_000);
+
+    const robots = await request(service.port, "/robots.txt");
+    assert.equal(robots.status, 200);
+    assert.match(robots.body, /Disallow: \/mcp/);
+
     const health = await request(service.port, "/healthz");
     assert.equal(health.status, 200);
     assert.equal(health.headers["cache-control"], "no-store");

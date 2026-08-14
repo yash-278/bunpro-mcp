@@ -3,6 +3,12 @@ import { randomUUID } from "node:crypto";
 import { createMcpHandler, validateHostHeader } from "@modelcontextprotocol/server";
 import { BunproClient, BunproRequestGate, type FetchLike } from "./bunpro/client.js";
 import { loadHttpConfig, type HttpConfig } from "./config.js";
+import {
+  HOMEPAGE_FAVICON,
+  HOMEPAGE_ROBOTS,
+  HOMEPAGE_SITEMAP,
+  renderHomepage
+} from "./homepage.js";
 import { createServer as createBunproMcpServer } from "./server.js";
 
 const MAX_MCP_BODY_BYTES = 1024 * 1024;
@@ -167,6 +173,22 @@ async function routeRequest(
       return sendJson(response, 200, { status: "ok" });
     }
 
+    if ((request.method === "GET" || request.method === "HEAD") && url.pathname === "/") {
+      return sendHtml(response, 200, renderHomepage(url), request.method === "HEAD");
+    }
+
+    if (request.method === "GET" && url.pathname === "/favicon.svg") {
+      return sendPublicText(response, 200, HOMEPAGE_FAVICON, "image/svg+xml; charset=utf-8");
+    }
+
+    if (request.method === "GET" && url.pathname === "/robots.txt") {
+      return sendPublicText(response, 200, HOMEPAGE_ROBOTS, "text/plain; charset=utf-8");
+    }
+
+    if (request.method === "GET" && url.pathname === "/sitemap.xml") {
+      return sendPublicText(response, 200, HOMEPAGE_SITEMAP, "application/xml; charset=utf-8");
+    }
+
     if (url.pathname !== "/mcp") return sendJson(response, 404, { error: "not_found" });
 
     if (request.method !== "POST") {
@@ -292,6 +314,35 @@ function sendJson(
     ...headers
   });
   response.end(JSON.stringify(body));
+}
+
+function sendHtml(response: ServerResponse, status: number, body: string, headOnly = false): void {
+  response.writeHead(status, {
+    "content-type": "text/html; charset=utf-8",
+    "content-length": String(Buffer.byteLength(body, "utf8")),
+    "cache-control": "public, max-age=300, stale-while-revalidate=86400",
+    "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY"
+  });
+  response.end(headOnly ? undefined : body);
+}
+
+function sendPublicText(
+  response: ServerResponse,
+  status: number,
+  body: string,
+  contentType: string
+): void {
+  response.writeHead(status, {
+    "content-type": contentType,
+    "content-length": String(Buffer.byteLength(body, "utf8")),
+    "cache-control": "public, max-age=86400",
+    "x-content-type-options": "nosniff"
+  });
+  response.end(body);
 }
 
 async function sendWebResponse(response: ServerResponse, webResponse: Response): Promise<void> {
