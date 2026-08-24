@@ -9,7 +9,7 @@ Before reporting a problem:
 3. Confirm the protected header name is exactly `X-Bunpro-Token` and its value contains only the current Bunpro Account API Token.
 4. Start a new chat with Bunpro MCP enabled and ask: `Check my Bunpro connection.`
 
-For a normal bug, use the repository's bug-report form. Include the client, transport, Node.js version when self-hosting, approximate time, affected tool, and sanitized error message.
+If you have access to the private repository, use its bug-report form and include the client, transport, Node.js version when self-hosting, approximate time, affected tool, and sanitized error message. Public hosted-service users should start with the troubleshooting section on the website; there is currently no public issue tracker.
 
 Never include an Account API Token, token-bearing header, credential screenshot, raw Bunpro response, or personal study data. If a token was exposed, rotate it in Bunpro Settings → API before doing anything else.
 
