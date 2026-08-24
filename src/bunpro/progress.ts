@@ -124,9 +124,10 @@ export async function getLearningProgress(
 
 export async function getActivityTrend(
   source: StudySource,
-  input: StudyRangeInput
+  input: StudyRangeInput,
+  now: Date = new Date()
 ): Promise<ActivityTrend> {
-  const range = await getStudyRangeSummary(source, input);
+  const range = await getStudyRangeSummary(source, input, now);
   const reviewCount = range.aggregates.reviews.source_record_days;
   const newContentCount = range.aggregates.new_content.source_record_days;
   return {

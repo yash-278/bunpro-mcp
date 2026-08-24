@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Bunpro MCP is intentionally read-only. Requests that submit reviews, change progress, or modify a Bunpro account are out of scope.
+        Bunpro MCP is intentionally read only. Requests that submit reviews, change progress, or modify a Bunpro account are out of scope. Do not include private API details, tokens, raw responses, or personal study data.
   - type: textarea
     id: problem
     attributes:
@@ -25,7 +25,9 @@ body:
     id: evidence
     attributes:
       label: Read-only source evidence
-      description: If known, describe the Bunpro read surface without including raw personal responses.
+      description: Which user-visible Bunpro information would support the answer? Do not describe private routes, schemas, or raw responses.
+    validations:
+      required: true
   - type: textarea
     id: limitations
     attributes:
@@ -36,7 +38,7 @@ body:
     attributes:
       label: Scope checks
       options:
-        - label: This request is read-only and does not modify a Bunpro account.
+        - label: This request is read only and does not modify a Bunpro account.
           required: true
-        - label: This issue contains no credentials, tokens, personal data, or raw Bunpro responses.
+        - label: This issue contains no private API details, credentials, personal data, or raw Bunpro responses.
           required: true

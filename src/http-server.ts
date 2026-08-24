@@ -9,7 +9,7 @@ import {
   HOMEPAGE_SITEMAP,
   renderHomepage
 } from "./homepage.js";
-import { createServer as createBunproMcpServer } from "./server.js";
+import { createServer as createBunproMcpServer, type Clock } from "./server.js";
 
 const MAX_MCP_BODY_BYTES = 1024 * 1024;
 const MAX_MCP_RESPONSE_BYTES = 2 * 1024 * 1024;
@@ -129,7 +129,10 @@ export async function startHttpServer(options: StartHttpServerOptions): Promise<
   };
 }
 
-export function createHttpMcpHandler(fetchImplementation: FetchLike = fetch) {
+export function createHttpMcpHandler(
+  fetchImplementation: FetchLike = fetch,
+  clock: Clock = () => new Date()
+) {
   const requestGate = new BunproRequestGate({ maximumConcurrent: 4, maximumQueued: 16 });
   return createMcpHandler(
     context => {
@@ -138,7 +141,8 @@ export function createHttpMcpHandler(fetchImplementation: FetchLike = fetch) {
         () => new BunproClient(credential.token, fetchImplementation, {
           tokenSource: credential.tokenSource,
           requestGate
-        })
+        }),
+        clock
       );
     },
     {

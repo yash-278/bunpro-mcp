@@ -70,6 +70,8 @@ test("the public HTTP service enforces its canonical host and bounded MCP reques
     assert.match(homepage.body, /X-Bunpro-Token/);
     assert.match(homepage.body, /Leave blank/);
     assert.match(homepage.body, /Check my Bunpro connection/);
+    assert.match(homepage.body, /source code public/);
+    assert.match(homepage.body, /repository remains private unless Bunpro gives written permission/);
     assert.doesNotMatch(homepage.body, /Available in ChatGPT|Open in ChatGPT|data-concept=/);
     assert.doesNotMatch(homepage.body, /dangerously_authenticate|\/api\/frontend|Token token=/);
 

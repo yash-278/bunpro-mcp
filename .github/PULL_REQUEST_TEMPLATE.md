@@ -8,13 +8,19 @@ Explain the user problem or compatibility issue.
 
 ## Safety and privacy
 
-- [ ] Bunpro interaction remains read-only.
-- [ ] No credentials, cookies, tokens, setup links, personal data, or raw Bunpro responses are included.
+- [ ] Bunpro interaction remains read only.
+- [ ] No credentials, cookies, tokens, headers, setup links, personal data, confidential correspondence, or raw Bunpro responses are included.
 - [ ] Tool schemas, annotations, and errors match the implemented behavior.
-- [ ] Privacy, security, or setup documentation was updated when behavior changed.
+- [ ] Privacy, security, support, or setup documentation was updated when behavior changed.
+- [ ] The repository remains private and this change publishes no source artifact or private implementation detail.
 
 ## Verification
 
 - [ ] `npm run check` passes.
 - [ ] New or changed behavior has automated tests.
+- [ ] Tests use synthetic fixtures only.
 - [ ] Any live test used only an authorized account and emitted sanitized output.
+
+## Deployment impact
+
+State whether Railway configuration, caller configuration, or public documentation changes are required.

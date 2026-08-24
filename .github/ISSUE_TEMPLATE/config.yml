@@ -2,4 +2,10 @@ blank_issues_enabled: false
 contact_links:
   - name: Report a security vulnerability privately
     url: https://github.com/yash-278/bunpro-mcp/security/advisories/new
-    about: Never disclose credentials, tokens, setup links, or vulnerability details in a public issue.
+    about: Never disclose credentials, tokens, headers, setup links, or vulnerability details in a public issue.
+  - name: Setup and troubleshooting
+    url: https://bunpro.yashkadam.com/#help
+    about: Check the hosted setup guide and common fixes before opening an issue.
+  - name: Hosted service health
+    url: https://bunpro.yashkadam.com/healthz
+    about: Confirm whether the public service process is reachable.

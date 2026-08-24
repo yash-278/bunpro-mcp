@@ -448,6 +448,7 @@ function faq(): string {
     ["Can it change anything in Bunpro?", "No. All eight published tools are read only. The server does not start or submit reviews, change SRS state, add lessons, run crams, edit decks, or modify account settings."],
     ["Does the website receive my token?", "No. This page is static and contains no token field. You paste the token only into your MCP client's protected credential configuration—not into this website or a chat message."],
     ["Does the server store my data?", "No. This service has no account or saved study-history database. It uses your token and Bunpro data only while answering the current request."],
+    ["Is the source code public?", "Not yet. Bunpro's temporary integration details were shared under a restricted disclosure boundary, so the repository remains private unless Bunpro gives written permission for a public source release."],
     ["Will it work in every ChatGPT account?", "Not necessarily. Developer mode and custom MCP creation availability can depend on your plan, app version, workspace policy, and administrator. Other Streamable HTTP MCP clients may also connect."],
     ["Why are some dates marked as missing?", "Bunpro does not provide the same amount of history for every feature. The answer marks missing information clearly instead of pretending it means zero activity."],
     ["What should I do if I exposed my token?", "Rotate or replace the Account API Token in Bunpro, then update or recreate the protected credential in every MCP client where you configured it."]

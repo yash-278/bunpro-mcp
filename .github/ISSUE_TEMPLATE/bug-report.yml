@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Never include Bunpro credentials, cookies, frontend tokens, OAuth tokens, setup links, encryption keys, database URLs, or raw Bunpro responses.
+        Never include a Bunpro token, token-bearing header, credential screenshot, raw Bunpro response, personal study data, setup link, encryption key, or database URL. Rotate an exposed token before continuing.
   - type: textarea
     id: summary
     attributes:
@@ -28,14 +28,14 @@ body:
     id: client
     attributes:
       label: MCP client
-      description: For example, ChatGPT desktop, Codex CLI, or Claude Desktop.
+      description: For example, ChatGPT desktop, Codex, or Claude Desktop.
     validations:
       required: true
   - type: input
     id: version
     attributes:
       label: Bunpro MCP commit or version
-      placeholder: 0.1.0 or a commit SHA
+      placeholder: 0.3.1 or a commit SHA
     validations:
       required: true
   - type: input
@@ -43,25 +43,32 @@ body:
     attributes:
       label: Node.js version
       description: Required for local or self-hosted reports.
+  - type: input
+    id: tool
+    attributes:
+      label: Affected tool
+      placeholder: get_connection_status
+    validations:
+      required: true
   - type: textarea
     id: reproduction
     attributes:
       label: Reproduction steps
-      description: Provide the smallest sequence that reproduces the problem without real account data.
+      description: Provide the smallest sequence that reproduces the problem using synthetic examples only.
     validations:
       required: true
   - type: textarea
     id: error
     attributes:
-      label: Sanitized error
-      description: Remove all credentials, tokens, setup URLs, personal data, and raw response bodies.
+      label: Sanitized error and approximate time
+      description: Include the time and timezone. Remove every credential, token, header, personal value, and raw response body.
       render: text
   - type: checkboxes
     id: checks
     attributes:
       label: Safety checks
       options:
-        - label: I removed all secrets, personal data, setup links, and raw Bunpro responses.
+        - label: I removed all secrets, headers, personal data, setup links, screenshots, and raw Bunpro responses.
           required: true
-        - label: I searched existing issues and read the troubleshooting and security guidance.
+        - label: I searched existing issues and read the troubleshooting, support, and security guidance.
           required: true
