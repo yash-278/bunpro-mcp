@@ -2,6 +2,12 @@
 
 Notable changes to Bunpro MCP are recorded here. The project follows semantic versioning while it remains in private preview.
 
+## 0.3.2 — 2026-08-24
+
+- Reworked the README around the public hosted service and removed an unusable public clone path.
+- Clarified on the website and in privacy guidance that the repository remains private and public self-hosting is not currently available.
+- Pointed package metadata at the public product and help pages rather than private GitHub pages.
+
 ## 0.3.1 — 2026-08-24
 
 - Added a public, responsive setup and product homepage at `https://bunpro.yashkadam.com/`.

@@ -1,6 +1,8 @@
 # Bunpro MCP
 
-An unofficial, stateless, read-only Model Context Protocol (MCP) server for connecting Bunpro to ChatGPT, Codex, and other MCP clients.
+An unofficial, stateless, read-only Model Context Protocol (MCP) service for asking ChatGPT, Codex, and other MCP clients about your Bunpro studies.
+
+The hosted community service is available at [bunpro.yashkadam.com](https://bunpro.yashkadam.com/). Each person connects with their own Bunpro Account API Token; the service does not use a shared Bunpro account or retain credentials between requests.
 
 > [!IMPORTANT]
 > This private project uses Bunpro's experimental Account API Token support for its undocumented Frontend API. It is not affiliated with or endorsed by Bunpro. Routes, schemas, throttling, and whitelist access may change without notice.
@@ -10,7 +12,7 @@ An unofficial, stateless, read-only Model Context Protocol (MCP) server for conn
 
 ## Project status
 
-The direct Account API Token connection and the complete read-only tool catalog are implemented.
+The hosted MCP is live, and the complete read-only tool catalog is implemented.
 
 Available tools:
 
@@ -31,7 +33,7 @@ All Bunpro requests are read-only. The server does not submit reviews, start les
 
 Open **Bunpro → Settings → API** and copy your Account API Token. Treat it like a password. Do not paste it into chat, tool arguments, repository files, screenshots, logs, or support posts.
 
-## Use the hosted version
+## Connect the hosted version
 
 The hosted Streamable HTTP endpoint is:
 
@@ -51,65 +53,30 @@ There is no Auth0 login, Bunpro password form, account-link page, database, or s
 
 Existing clients configured with `Authorization: Bearer <token>` remain compatible, but new connections should use `X-Bunpro-Token`. Do not configure both headers. Never put the token in the URL or a tool argument.
 
-## Run it locally
+## Source and self-hosting status
 
-Local mode runs over stdio and reads the same Account API Token from the MCP host's secret environment configuration.
+The hosted service is available to Bunpro users, but this source repository is currently private. Bunpro shared the temporary integration details under a restricted disclosure boundary, so the project cannot offer public clone, local-install, package, container, or self-hosting instructions yet.
 
-Requirements:
+A public source release requires new written permission from Bunpro that specifically allows disclosure of the integration mechanism. Until that happens, use the hosted endpoint above. If you have been explicitly invited to this private repository, contributor-only local and deployment instructions remain in [docs/self-hosting.md](docs/self-hosting.md).
 
-- Node.js 20 or newer
-- Git
+## Authentication boundary
 
-```bash
-git clone https://github.com/yash-278/bunpro-mcp.git
-cd bunpro-mcp
-npm ci
-npm run build
-```
-
-Add an **STDIO** MCP server using absolute paths on your machine:
-
-```json
-{
-  "command": "/absolute/path/to/node",
-  "args": ["/absolute/path/to/bunpro-mcp/dist/index.js"],
-  "env": {
-    "BUNPRO_API_TOKEN": "your Bunpro Account API Token"
-  }
-}
-```
-
-Use the MCP client's secret environment fields when available. The MCP does not create cookies, perform a browser login, refresh a session, or write the token to disk.
-
-## Self-host the remote version
-
-The remote transport is stateless Streamable HTTP. It requires no Auth0 tenant, OAuth setup, PostgreSQL service, encryption key, or Bunpro credential configured on the deployment. See [docs/self-hosting.md](docs/self-hosting.md).
-
-Each caller must configure their own Bunpro Account API Token in the connection's `X-Bunpro-Token` protected header. Never set a deployment-wide `BUNPRO_API_TOKEN` for HTTP mode.
-
-## Request contract
-
-For each allowed read-only Frontend API route, the adapter transforms the incoming protected token into Bunpro's temporary request contract:
-
-```http
-GET /api/frontend/<route>?dangerously_authenticate_using_api_token=true
-Authorization: Token token=<account-api-token>
-```
-
-The token remains in request memory only. Missing, malformed, or ambiguous credentials fail with HTTP 401. Bunpro authentication failures, throttling, unavailable routes, and schema drift fail closed without login fallback or automatic retry.
+Each caller supplies their own token through the MCP client's protected credential configuration. The hosted deployment has no shared Bunpro credential. Tokens remain in request memory only; missing, malformed, or ambiguous credentials fail closed.
 
 ## Security and limitations
 
 - The model never receives the Account API Token; the MCP host attaches it at the transport layer.
 - The application does not persist tokens, sessions, cookies, study history, or raw Bunpro responses.
-- A hosted operator and infrastructure provider can technically inspect request memory or traffic termination. Use local mode if that trust boundary is unacceptable.
+- A hosted operator and infrastructure provider can technically inspect request memory or traffic termination. If that trust boundary is unacceptable, do not use the hosted service; public self-hosting is not available while the source remains private.
 - Use HTTPS for every non-local HTTP deployment.
 - Bunpro has announced stricter throttling and a future route whitelist. Keep calls low-volume and do not retry aggressively.
 - Absence of study data is not automatically evidence of zero activity.
 
 See [SECURITY.md](SECURITY.md) and [PRIVACY.md](PRIVACY.md) for the full disclosures.
 
-## Development
+## Private-repository development
+
+The commands below are for invited repository contributors. They are not a public installation path.
 
 ```bash
 npm ci
@@ -127,9 +94,11 @@ BUNPRO_API_TOKEN="your token" BUNPRO_MCP_URL="https://your-host.example/mcp" npm
 
 The first command tests stdio. The second tests the HTTP `X-Bunpro-Token` passthrough. The third makes one deliberately paced pass through every published tool in process; adding `BUNPRO_MCP_URL` runs the same sweep against a deployed Streamable HTTP endpoint. All use the real Bunpro API, and the tool sweep prints only tool names and success states. Do not attach raw Bunpro responses or secrets to issues.
 
-## Contributing
+## Contributing and support
 
-Bug reports, compatibility reports, and focused pull requests are welcome within the private project. Read [CONTRIBUTING.md](CONTRIBUTING.md), [SUPPORT.md](SUPPORT.md), and the [Code of Conduct](CODE_OF_CONDUCT.md) first.
+Bug reports, compatibility reports, and focused pull requests are welcome from people who already have access to the private project. Read [CONTRIBUTING.md](CONTRIBUTING.md), [SUPPORT.md](SUPPORT.md), and the [Code of Conduct](CODE_OF_CONDUCT.md) first.
+
+If you use only the hosted service, do not include your Bunpro token or raw study data in a support message. The public website includes setup help and a token-safe health check.
 
 Release history is recorded in [CHANGELOG.md](CHANGELOG.md). The repository's future public-source release remains gated by the Bunpro permission requirements in [docs/public-source-release.md](docs/public-source-release.md).
 

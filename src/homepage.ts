@@ -398,7 +398,7 @@ function privacy(): string {
       <div class="privacy-grid">
         <article class="reveal"><span>${icon("check")}</span><h3>What it does</h3><ul><li>Uses an encrypted connection</li><li>Uses your token only for your request</li><li>Returns only the study data needed</li><li>Stops safely if Bunpro cannot be reached</li></ul></article>
         <article class="reveal"><span>${icon("x")}</span><h3>What it does not do</h3><ul><li>Store tokens, sessions, or study history</li><li>Send your token to the language model</li><li>Retry aggressively after Bunpro rate limiting</li><li>Modify reviews, lessons, progress, decks, or settings</li></ul></article>
-        <article class="reveal trust-boundary"><span>${icon("shield")}</span><h3>Who you are trusting</h3><p>As with any hosted service, the service owner and hosting provider could technically see data while a request is being handled. If you are not comfortable with that, run Bunpro MCP on your own computer instead.</p></article>
+        <article class="reveal trust-boundary"><span>${icon("shield")}</span><h3>Who you are trusting</h3><p>As with any hosted service, the service owner and hosting provider could technically see data while a request is being handled. If that trust boundary is not acceptable to you, do not connect the hosted service. Public self-hosting is not available while the source repository remains private.</p></article>
       </div>
     </div>
   </section>`;
@@ -448,7 +448,8 @@ function faq(): string {
     ["Can it change anything in Bunpro?", "No. All eight published tools are read only. The server does not start or submit reviews, change SRS state, add lessons, run crams, edit decks, or modify account settings."],
     ["Does the website receive my token?", "No. This page is static and contains no token field. You paste the token only into your MCP client's protected credential configuration—not into this website or a chat message."],
     ["Does the server store my data?", "No. This service has no account or saved study-history database. It uses your token and Bunpro data only while answering the current request."],
-    ["Is the source code public?", "Not yet. Bunpro's temporary integration details were shared under a restricted disclosure boundary, so the repository remains private unless Bunpro gives written permission for a public source release."],
+    ["Is the source code public?", "No. The hosted MCP is available for Bunpro users, but its source repository remains private because Bunpro shared the temporary integration details under a restricted disclosure boundary. A public source release requires new written permission from Bunpro."],
+    ["Can I clone or self-host it?", "Not as a public user right now. There is no public repository, package, container, or supported local-install path while the source remains private. Use the hosted MCP only if you accept the trust boundary described above."],
     ["Will it work in every ChatGPT account?", "Not necessarily. Developer mode and custom MCP creation availability can depend on your plan, app version, workspace policy, and administrator. Other Streamable HTTP MCP clients may also connect."],
     ["Why are some dates marked as missing?", "Bunpro does not provide the same amount of history for every feature. The answer marks missing information clearly instead of pretending it means zero activity."],
     ["What should I do if I exposed my token?", "Rotate or replace the Account API Token in Bunpro, then update or recreate the protected credential in every MCP client where you configured it."]

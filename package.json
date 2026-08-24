@@ -1,6 +1,6 @@
 {
   "name": "bunpro-mcp-server",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Unofficial stateless, read-only Bunpro MCP with direct Account API Token passthrough",
   "type": "module",
   "private": true,
@@ -10,9 +10,9 @@
     "type": "git",
     "url": "git+https://github.com/yash-278/bunpro-mcp.git"
   },
-  "homepage": "https://github.com/yash-278/bunpro-mcp#readme",
+  "homepage": "https://bunpro.yashkadam.com/",
   "bugs": {
-    "url": "https://github.com/yash-278/bunpro-mcp/issues"
+    "url": "https://bunpro.yashkadam.com/#help"
   },
   "keywords": [
     "bunpro",
