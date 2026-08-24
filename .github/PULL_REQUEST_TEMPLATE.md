@@ -12,7 +12,7 @@ Explain the user problem or compatibility issue.
 - [ ] No credentials, cookies, tokens, headers, setup links, personal data, confidential correspondence, or raw Bunpro responses are included.
 - [ ] Tool schemas, annotations, and errors match the implemented behavior.
 - [ ] Privacy, security, support, or setup documentation was updated when behavior changed.
-- [ ] The repository remains private and this change publishes no source artifact or private implementation detail.
+- [ ] This change contains no real credentials, raw account responses, personal study data, or private correspondence.
 
 ## Verification
 

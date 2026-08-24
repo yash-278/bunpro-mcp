@@ -1,6 +1,6 @@
 # Bunpro MCP tool roadmap
 
-Status: implemented catalog for the private, read-only MCP
+Status: implemented catalog for the open-source, read-only MCP
 
 This roadmap translates the confirmed Bunpro Frontend API surfaces into agent-facing workflows. It is intentionally not a one-tool-per-endpoint wrapper. Each tool should answer a recognizable user question, return structured content, disclose source coverage, and stay within a conservative Bunpro request budget.
 

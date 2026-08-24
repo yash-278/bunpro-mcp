@@ -46,6 +46,12 @@ Other MCP-compatible apps can use the same URL and protected header, although th
 
 Please put the token only in the protected connection field. Never paste it into a chat message, screenshot, URL, support post, or tool argument.
 
+## Open source and self-hosting
+
+The project is open source under the MIT license: [github.com/yash-278/bunpro-mcp](https://github.com/yash-278/bunpro-mcp).
+
+You can use the hosted endpoint above, run the MCP locally over stdio, or deploy your own stateless HTTP instance with Docker. The repository includes instructions for local setup, Railway, and other HTTPS hosts. A self-hosted HTTP service still requires each caller to provide their own Bunpro Account API Token; it should never use one shared Bunpro credential.
+
 ## What it can show you
 
 The current version can read:
@@ -70,6 +76,8 @@ It relies on experimental Bunpro functionality, so Bunpro changes, rate limits, 
 Your MCP app sends your Bunpro token to the server over HTTPS when it requests data. The connector does not have a token database, create user accounts, or save your study history. Its application logs are designed not to include tokens, protected token headers, or returned study data.
 
 The server is hosted on Railway. As with any hosted service, I and the hosting provider could technically inspect data while a request is being handled. Please connect only if you are comfortable trusting both of us. If you are not, do not use the hosted version.
+
+Because the source is public, you can also inspect the implementation and run it locally to reduce that trust boundary.
 
 “Read-only” describes what this connector can do, not how sensitive the token is. The token can reveal private Bunpro account and study information, so continue to treat it like a password.
 

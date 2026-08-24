@@ -2,6 +2,8 @@ const MCP_ENDPOINT = "https://bunpro.yashkadam.com/mcp";
 const CHATGPT_PLUGINS_URL = "https://chatgpt.com/plugins";
 const OPENAI_MCP_GUIDE_URL = "https://developers.openai.com/plugins/deploy/connect-chatgpt";
 const BUNPRO_TOKEN_HEADER = "X-Bunpro-Token";
+const SOURCE_REPOSITORY_URL = "https://github.com/yash-278/bunpro-mcp";
+const SELF_HOSTING_GUIDE_URL = `${SOURCE_REPOSITORY_URL}/blob/main/docs/self-hosting.md`;
 
 export const HOMEPAGE_ROBOTS = `User-agent: *
 Allow: /
@@ -155,6 +157,7 @@ export function renderHomepage(_url: URL): string {
     ${useCases()}
     ${explanation()}
     ${setupGuide()}
+    ${openSource()}
     ${toolCatalog()}
     ${promptGallery()}
     ${privacy()}
@@ -180,6 +183,7 @@ function header(): string {
       <nav class="desktop-nav" aria-label="Primary navigation">
         <a href="#possibilities">What it does</a>
         <a href="#setup">Set up</a>
+        <a href="#self-host">Self-host</a>
         <a href="#tools">Tools</a>
         <a href="#privacy">Privacy</a>
         <a href="#help">Help</a>
@@ -190,7 +194,7 @@ function header(): string {
       </button>
     </div>
     <nav class="mobile-nav" id="mobile-menu" aria-label="Mobile navigation" hidden>
-      <a href="#possibilities">What it does</a><a href="#setup">Set up</a><a href="#tools">Tools</a><a href="#privacy">Privacy</a><a href="#help">Help</a>
+      <a href="#possibilities">What it does</a><a href="#setup">Set up</a><a href="#self-host">Self-host</a><a href="#tools">Tools</a><a href="#privacy">Privacy</a><a href="#help">Help</a>
       <a class="button button-primary" href="#setup">Connect to ChatGPT ${icon("arrow")}</a>
     </nav>
   </header>`;
@@ -347,6 +351,22 @@ function copyField(label: string, value: string, nested = false): string {
   return `<div class="form-row${nested ? " nested" : ""}"><label>${label}</label><div class="copy-field"><code>${value}</code><button type="button" data-copy="${value}" aria-label="Copy ${label}">${icon("copy")}</button></div></div>`;
 }
 
+function openSource(): string {
+  return `<section class="section open-source" id="self-host">
+    <div class="shell">
+      <div class="section-heading reveal">
+        <div><span class="kicker">Open source</span><h2>Use the hosted service—<br><em>or run your own.</em></h2></div>
+        <p>Bunpro MCP is available under the MIT license. You can inspect the implementation, run it locally over stdio, or deploy your own stateless Streamable HTTP server.</p>
+      </div>
+      <div class="source-grid">
+        <article class="source-card reveal"><span>${icon("terminal")}</span><small>LOCAL</small><h3>Run with stdio</h3><p>Clone the repository, build it with Node.js 20 or newer, and keep the Account API Token in your MCP client's secret environment configuration.</p></article>
+        <article class="source-card reveal"><span>${icon("layers")}</span><small>REMOTE</small><h3>Deploy with Docker</h3><p>Use the included Dockerfile on Railway or another HTTPS host. Every caller supplies their own token; the deployment needs no database or shared Bunpro credential.</p></article>
+        <article class="source-card source-actions reveal"><span>${icon("shield")}</span><small>TRANSPARENT</small><h3>Review before you trust</h3><p>Read the source, privacy boundary, and operational limits before connecting an account or operating a public instance.</p><div><a class="button button-primary" href="${SOURCE_REPOSITORY_URL}" target="_blank" rel="noreferrer">View source ${icon("external")}</a><a class="inline-link" href="${SELF_HOSTING_GUIDE_URL}" target="_blank" rel="noreferrer">Self-hosting guide ${icon("external")}</a></div></article>
+      </div>
+    </div>
+  </section>`;
+}
+
 function toolCatalog(): string {
   return `<section class="section tools" id="tools">
     <div class="shell">
@@ -398,7 +418,7 @@ function privacy(): string {
       <div class="privacy-grid">
         <article class="reveal"><span>${icon("check")}</span><h3>What it does</h3><ul><li>Uses an encrypted connection</li><li>Uses your token only for your request</li><li>Returns only the study data needed</li><li>Stops safely if Bunpro cannot be reached</li></ul></article>
         <article class="reveal"><span>${icon("x")}</span><h3>What it does not do</h3><ul><li>Store tokens, sessions, or study history</li><li>Send your token to the language model</li><li>Retry aggressively after Bunpro rate limiting</li><li>Modify reviews, lessons, progress, decks, or settings</li></ul></article>
-        <article class="reveal trust-boundary"><span>${icon("shield")}</span><h3>Who you are trusting</h3><p>As with any hosted service, the service owner and hosting provider could technically see data while a request is being handled. If that trust boundary is not acceptable to you, do not connect the hosted service. Public self-hosting is not available while the source repository remains private.</p></article>
+        <article class="reveal trust-boundary"><span>${icon("shield")}</span><h3>Who you are trusting</h3><p>As with any hosted service, the service owner and hosting provider could technically see data while a request is being handled. If that trust boundary is not acceptable to you, run Bunpro MCP locally or deploy your own instance from the open-source repository.</p></article>
       </div>
     </div>
   </section>`;
@@ -448,8 +468,8 @@ function faq(): string {
     ["Can it change anything in Bunpro?", "No. All eight published tools are read only. The server does not start or submit reviews, change SRS state, add lessons, run crams, edit decks, or modify account settings."],
     ["Does the website receive my token?", "No. This page is static and contains no token field. You paste the token only into your MCP client's protected credential configuration—not into this website or a chat message."],
     ["Does the server store my data?", "No. This service has no account or saved study-history database. It uses your token and Bunpro data only while answering the current request."],
-    ["Is the source code public?", "No. The hosted MCP is available for Bunpro users, but its source repository remains private because Bunpro shared the temporary integration details under a restricted disclosure boundary. A public source release requires new written permission from Bunpro."],
-    ["Can I clone or self-host it?", "Not as a public user right now. There is no public repository, package, container, or supported local-install path while the source remains private. Use the hosted MCP only if you accept the trust boundary described above."],
+    ["Is the source code public?", `Yes. Bunpro MCP is open source under the MIT license. You can inspect, fork, and contribute to it on <a class="inline-link" href="${SOURCE_REPOSITORY_URL}" target="_blank" rel="noreferrer">GitHub ${icon("external")}</a>.`],
+    ["Can I run it myself?", `Yes. Run it locally over stdio or deploy the included Docker image as a stateless Streamable HTTP service. The <a class="inline-link" href="${SELF_HOSTING_GUIDE_URL}" target="_blank" rel="noreferrer">self-hosting guide ${icon("external")}</a> covers local, Docker, Railway, and other HTTPS hosts.`],
     ["Will it work in every ChatGPT account?", "Not necessarily. Developer mode and custom MCP creation availability can depend on your plan, app version, workspace policy, and administrator. Other Streamable HTTP MCP clients may also connect."],
     ["Why are some dates marked as missing?", "Bunpro does not provide the same amount of history for every feature. The answer marks missing information clearly instead of pretending it means zero activity."],
     ["What should I do if I exposed my token?", "Rotate or replace the Account API Token in Bunpro, then update or recreate the protected credential in every MCP client where you configured it."]
@@ -478,8 +498,8 @@ function footer(): string {
   return `<footer class="site-footer">
     <div class="shell footer-grid">
       <div class="footer-brand"><a class="brand" href="#top"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span class="brand-copy"><strong>Bunpro MCP</strong><small>UNOFFICIAL COMMUNITY TOOL</small></span></a><p>Ask better questions about your Bunpro studies, with a connection that can read your data but never change it.</p></div>
-      <div><b>Explore</b><a href="#possibilities">What it does</a><a href="#tools">Tools</a><a href="#setup">Setup guide</a><a href="#help">Troubleshooting</a></div>
-      <div><b>Trust</b><a href="#privacy">Privacy</a><a href="#privacy">Security boundary</a><a href="#help">Health and help</a><a href="${OPENAI_MCP_GUIDE_URL}" target="_blank" rel="noreferrer">OpenAI MCP guide ${icon("external")}</a></div>
+      <div><b>Explore</b><a href="#possibilities">What it does</a><a href="#tools">Tools</a><a href="#setup">Setup guide</a><a href="#self-host">Self-host</a><a href="#help">Troubleshooting</a></div>
+      <div><b>Open source</b><a href="${SOURCE_REPOSITORY_URL}" target="_blank" rel="noreferrer">GitHub repository ${icon("external")}</a><a href="${SELF_HOSTING_GUIDE_URL}" target="_blank" rel="noreferrer">Self-hosting guide ${icon("external")}</a><a href="#privacy">Privacy and trust</a><a href="${OPENAI_MCP_GUIDE_URL}" target="_blank" rel="noreferrer">OpenAI MCP guide ${icon("external")}</a></div>
     </div>
     <div class="shell footer-bottom"><span>© ${new Date().getUTCFullYear()} Bunpro MCP community project</span><span>Not affiliated with Bunpro or OpenAI.</span><a href="#top">Back to top ↑</a></div>
   </footer>`;
@@ -738,6 +758,18 @@ function styles(): string {
     .auth-fallback p { margin: 7px 0 0; color: rgba(255,255,255,.62); font-size: 12px; line-height: 1.65; }
     .auth-fallback code { color: white; font-size: 11px; }
 
+    .open-source { background: var(--paper-light); border-bottom: 1px solid var(--line); }
+    .source-grid { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); }
+    .source-card { min-height: 350px; padding: 32px; display: flex; flex-direction: column; border-right: 1px solid var(--line); background: rgba(255,255,255,.18); }
+    .source-card:last-child { border-right: 0; }
+    .source-card > span { width: 46px; height: 46px; display: grid; place-items: center; color: var(--red); border: 1px solid var(--line); }
+    .source-card > small { margin-top: 28px; color: var(--red); font: 800 8px/1 var(--mono); letter-spacing: .12em; }
+    .source-card h3 { margin: 14px 0 12px; font: 400 29px/1.1 var(--serif); }
+    .source-card p { color: var(--muted); font-size: 13px; }
+    .source-actions { background: var(--paper-deep); }
+    .source-actions > div { margin-top: auto; display: flex; align-items: center; flex-wrap: wrap; gap: 14px; }
+    .source-actions .inline-link { color: var(--red); }
+
     .tools { background: var(--paper); }
     .tool-grid { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); }
     .tool-card { min-height: 360px; padding: 27px; display: flex; flex-direction: column; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: rgba(255,255,255,.17); }
@@ -815,6 +847,7 @@ function styles(): string {
     summary i::after { transform: rotate(90deg); transition: transform .2s; }
     details[open] summary i::after { transform: rotate(0); }
     details > p { padding: 0 44px 24px 2px; margin: 0; color: var(--muted); font-size: 14px; }
+    .faq .inline-link { color: var(--red); }
 
     .closing { padding-block: 96px; background: var(--red); color: white; overflow: hidden; }
     .closing-inner { min-height: 280px; display: grid; grid-template-columns: 1fr auto; gap: 80px; align-items: center; position: relative; }
@@ -884,6 +917,9 @@ function styles(): string {
       .use-case-grid { grid-template-columns: 1fr; }
       .use-case { min-height: 330px; border-right: 0; border-bottom: 1px solid var(--line); }
       .use-case:last-child { border-bottom: 0; }
+      .source-grid { grid-template-columns: 1fr; }
+      .source-card { min-height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+      .source-card:last-child { border-bottom: 0; }
       .explainer-copy { max-width: 630px; }
       .setup-heading { align-items: start; }
       .connection-panel { position: relative; top: auto; max-width: 620px; justify-self: center; width: 100%; }

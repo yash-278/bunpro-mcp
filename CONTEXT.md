@@ -6,7 +6,7 @@ A secret generated for a Bunpro user on the Settings > API page. It is the only 
 
 ## Frontend API
 
-Bunpro's private, undocumented `/api/frontend/*` interface. Its routes, response shapes, authentication behavior, whitelist, and throttling may change without notice.
+Bunpro's internal, undocumented `/api/frontend/*` interface. Its routes, response shapes, authentication behavior, whitelist, and throttling may change without notice.
 
 ## Direct Token Passthrough
 

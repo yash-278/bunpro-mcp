@@ -71,10 +71,12 @@ test("the public HTTP service enforces its canonical host and bounded MCP reques
     assert.match(homepage.body, /Leave blank/);
     assert.match(homepage.body, /Check my Bunpro connection/);
     assert.match(homepage.body, /source code public/);
-    assert.match(homepage.body, /source repository remains private/);
-    assert.match(homepage.body, /Can I clone or self-host it/);
-    assert.match(homepage.body, /Public self-hosting is not available/);
+    assert.match(homepage.body, /open source under the MIT license/);
+    assert.match(homepage.body, /Can I run it myself/);
+    assert.match(homepage.body, /Self-hosting guide/);
+    assert.match(homepage.body, /github\.com\/yash-278\/bunpro-mcp/);
     assert.doesNotMatch(homepage.body, /Available in ChatGPT|Open in ChatGPT|data-concept=/);
+    assert.doesNotMatch(homepage.body, /repository remains private|public self-hosting is not available/i);
     assert.doesNotMatch(homepage.body, /dangerously_authenticate|\/api\/frontend|Token token=/);
 
     const legacyConceptQuery = await request(service.port, "/?concept=orbit");

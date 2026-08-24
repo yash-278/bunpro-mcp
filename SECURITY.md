@@ -2,7 +2,7 @@
 
 ## Supported version
 
-Security fixes are applied to the latest commit on `main`. There is no stable release branch during the private preview.
+Security fixes are applied to the latest commit on `main`. There is no separate stable release branch yet.
 
 ## Report a vulnerability
 

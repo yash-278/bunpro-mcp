@@ -1,45 +1,36 @@
-# Hosted community release checklist
+# Open-source community release checklist
 
-The hosted MCP may be announced publicly. The repository and Bunpro-specific request mechanism must remain private.
+## Authorization and repository
 
-## Repository boundary
-
-- [x] Repository policy explicitly requires GitHub visibility to remain private.
-- [x] Public documentation excludes private routes, authentication translation, opt-in parameters, schemas, reverse-engineering notes, and source code.
-- [x] README documents the implemented read-only catalog and maintainer setup.
-- [x] Privacy, security, contribution, and conduct policies are present.
-- [x] Re-scan the current tree and Git history for credentials immediately before merge.
-- [x] Confirm `yash-278/bunpro-mcp` reports `PRIVATE` before and after the release merge.
+- [x] Bunpro open-source approval is recorded in [the release record](public-source-release.md).
+- [x] Private correspondence and screenshots are excluded from the repository.
+- [x] Current source and full Git history were scanned for credentials and personal data.
+- [x] README documents hosted use, local stdio, Docker, and remote HTTPS deployment.
+- [x] Security, privacy, support, contribution, conduct, and license files are present.
+- [ ] Release pull request passes all required checks.
+- [ ] Repository visibility reports `PUBLIC` after merge.
+- [ ] Branch protection, vulnerability reporting, secret scanning, and workflow permissions are verified.
 
 ## Hosted service
 
-- [x] Railway deploys automatically from the private repository's `main` branch.
-- [x] Set `PUBLIC_BASE_URL=https://bunpro.yashkadam.com`.
-- [x] Remove obsolete Auth0, database, encryption-key, setup-token, username, password, and deployment-wide Bunpro token variables. Verified on Railway by variable name on 2026-08-24; only platform metadata, `NODE_ENV`, `PUBLIC_BASE_URL`, and `TRANSPORT` remain.
-- [x] Confirm `GET /healthz` returns HTTP 200 on the canonical domain.
-- [x] Confirm the generated Railway domain is not an alternate public entry point after the canonical domain works.
-- [x] Confirm a missing, malformed, or ambiguous token header receives HTTP 401 without leaking request data.
-- [x] Run one low-volume live smoke pass across every published tool with a valid caller token.
-- [x] Confirm one invalid token produces a sanitized authentication error.
-- [x] Review edge rate limits and abuse controls without logging token-bearing headers or response bodies. The shared upstream gate permits four active calls and sixteen queued calls, request and response sizes are bounded, calls time out, and rate-limited requests are not retried automatically. No caller identity or token-derived rate-limit record is stored.
+- [x] Railway deploys automatically from `main` using the included Dockerfile.
+- [x] The production service has no Auth0, database, encryption-key, setup-token, username, password, or deployment-wide Bunpro token variables.
+- [x] Every caller provides their own token through a protected request header.
+- [x] Host validation, body limits, response limits, timeouts, and bounded upstream concurrency are enabled.
+- [x] Bunpro throttling is not retried automatically.
+- [ ] Railway deploys the v0.4.0 public-release commit successfully.
+- [ ] `GET /healthz` returns HTTP 200 on the canonical domain.
+- [ ] Missing and ambiguous token requests return HTTP 401 without leaking request data.
+- [ ] A low-volume tool smoke passes with a valid caller-owned token.
 
-## Product behavior
+## Product and documentation
 
-- [x] All published tools are read-only, stateless, bounded, and annotated as non-destructive.
-- [x] Authentication, throttling, route removal, and schema drift fail closed.
-- [x] Sparse historical absence is not silently represented as zero study.
-- [x] The server stores no caller credential, session, cookie, account profile, watermark, or study history.
-- [x] Complete the final automated verification suite and private pull-request review.
+- [x] All eight tools are read-only, stateless, bounded, and annotated as non-destructive.
+- [x] Authentication, throttling, unavailable routes, malformed responses, and schema drift fail closed.
+- [x] Sparse historical absence is not silently represented as zero.
+- [x] Public website links the GitHub repository and self-hosting guide.
+- [x] FAQ states that the project is open source and can run locally or remotely.
+- [x] Public copy explains unofficial status, experimental access, hosted-operator trust, and token rotation.
+- [ ] Production website shows the open-source release content.
 
-## Public announcement
-
-- [x] The draft explains setup using only the hosted URL and protected `X-Bunpro-Token` header.
-- [x] The draft explains all eight capabilities in user-facing language.
-- [x] The draft discloses the unofficial/experimental status, partial failures, throttling, hosted-operator trust boundary, best-effort availability, and token rotation.
-- [x] The draft does not link to or describe how to reproduce the private implementation.
-- [x] Reader-test [the public announcement draft](community-post.md) for clarity and accidental disclosure.
-- [ ] Publish only after every hosted-service gate above is complete.
-
-The hosted-service gates are complete as of 2026-08-24. Publishing this community announcement does not authorize changing the repository visibility or publishing the source. See [the separate public-source release gate](public-source-release.md).
-
-Atlas integration is intentionally out of scope for this release. Do not edit the Atlas vault or infer an Atlas watermark from MCP output during release work.
+Atlas integration remains out of scope for this release.
