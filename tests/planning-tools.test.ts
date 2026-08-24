@@ -7,9 +7,10 @@ import type { FetchLike } from "../src/bunpro/client.js";
 
 async function withMcpClient(
   fetchImplementation: FetchLike,
-  run: (client: Client) => Promise<void>
+  run: (client: Client) => Promise<void>,
+  clock: () => Date = () => new Date()
 ): Promise<void> {
-  const handler = createHttpMcpHandler(fetchImplementation);
+  const handler = createHttpMcpHandler(fetchImplementation, clock);
   const transport = new StreamableHTTPClientTransport(new URL("https://mcp.example/mcp"), {
     authProvider: { token: async () => "account-token" },
     fetch: (input, init) => handler.fetch(new Request(input, init))
@@ -67,7 +68,7 @@ test("get_review_schedule separates due-now work from the normalized 14-day fore
       "/api/frontend/user/due",
       "/api/frontend/user_stats/forecast_daily"
     ]);
-  });
+  }, () => new Date("2026-08-12T12:00:00.000Z"));
 });
 
 test("list_study_decks returns bounded active study configuration without unrelated deck metadata", async () => {

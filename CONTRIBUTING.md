@@ -10,6 +10,7 @@ Thanks for helping improve Bunpro MCP.
 - For a Bunpro compatibility problem, say when it occurred and which read-only workflow failed without pasting the response body.
 
 Security issues belong in the private process described in [SECURITY.md](SECURITY.md).
+General setup and usage questions belong in the process described in [SUPPORT.md](SUPPORT.md).
 
 ## Development setup
 
@@ -33,3 +34,7 @@ npm run check
 - Update the README, privacy disclosure, or self-hosting guide when behavior changes.
 
 Run `npm run check` before submitting a pull request.
+
+## Publication boundary
+
+The hosted MCP may be used publicly, but the repository must remain private until Bunpro gives written permission that specifically allows public disclosure of the temporary integration mechanism. Do not publish source excerpts, packages, containers, mirrors, or implementation documentation from this repository. See [AGENTS.md](AGENTS.md) and [the source-release gate](docs/public-source-release.md).

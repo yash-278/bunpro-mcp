@@ -15,13 +15,13 @@ The hosted MCP may be announced publicly. The repository and Bunpro-specific req
 
 - [x] Railway deploys automatically from the private repository's `main` branch.
 - [x] Set `PUBLIC_BASE_URL=https://bunpro.yashkadam.com`.
-- [ ] Remove obsolete Auth0, database, encryption-key, setup-token, username, password, and deployment-wide Bunpro token variables.
+- [x] Remove obsolete Auth0, database, encryption-key, setup-token, username, password, and deployment-wide Bunpro token variables. Verified on Railway by variable name on 2026-08-24; only platform metadata, `NODE_ENV`, `PUBLIC_BASE_URL`, and `TRANSPORT` remain.
 - [x] Confirm `GET /healthz` returns HTTP 200 on the canonical domain.
 - [x] Confirm the generated Railway domain is not an alternate public entry point after the canonical domain works.
 - [x] Confirm a missing, malformed, or ambiguous token header receives HTTP 401 without leaking request data.
 - [x] Run one low-volume live smoke pass across every published tool with a valid caller token.
 - [x] Confirm one invalid token produces a sanitized authentication error.
-- [ ] Review edge rate limits and abuse controls without logging token-bearing headers or response bodies.
+- [x] Review edge rate limits and abuse controls without logging token-bearing headers or response bodies. The shared upstream gate permits four active calls and sixteen queued calls, request and response sizes are bounded, calls time out, and rate-limited requests are not retried automatically. No caller identity or token-derived rate-limit record is stored.
 
 ## Product behavior
 
@@ -39,5 +39,7 @@ The hosted MCP may be announced publicly. The repository and Bunpro-specific req
 - [x] The draft does not link to or describe how to reproduce the private implementation.
 - [x] Reader-test [the public announcement draft](community-post.md) for clarity and accidental disclosure.
 - [ ] Publish only after every hosted-service gate above is complete.
+
+The hosted-service gates are complete as of 2026-08-24. Publishing this community announcement does not authorize changing the repository visibility or publishing the source. See [the separate public-source release gate](public-source-release.md).
 
 Atlas integration is intentionally out of scope for this release. Do not edit the Atlas vault or infer an Atlas watermark from MCP output during release work.

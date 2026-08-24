@@ -129,7 +129,9 @@ The first command tests stdio. The second tests the HTTP `X-Bunpro-Token` passth
 
 ## Contributing
 
-Bug reports, compatibility reports, and focused pull requests are welcome within the private project. Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md) first.
+Bug reports, compatibility reports, and focused pull requests are welcome within the private project. Read [CONTRIBUTING.md](CONTRIBUTING.md), [SUPPORT.md](SUPPORT.md), and the [Code of Conduct](CODE_OF_CONDUCT.md) first.
+
+Release history is recorded in [CHANGELOG.md](CHANGELOG.md). The repository's future public-source release remains gated by the Bunpro permission requirements in [docs/public-source-release.md](docs/public-source-release.md).
 
 ## License
 

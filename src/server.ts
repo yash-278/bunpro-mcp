@@ -26,11 +26,13 @@ export interface BunproAccountAccess {
 }
 
 export type BunproClientFactory = () => BunproAccountAccess;
+export type Clock = () => Date;
 
 export function createServer(
-  clientFactory: BunproClientFactory = () => new BunproClient(apiTokenFromEnvironment())
+  clientFactory: BunproClientFactory = () => new BunproClient(apiTokenFromEnvironment()),
+  clock: Clock = () => new Date()
 ): McpServer {
-  const server = new McpServer({ name: "bunpro-mcp-server", version: "0.3.0" });
+  const server = new McpServer({ name: "bunpro-mcp-server", version: "0.3.1" });
   let sharedClient: BunproAccountAccess | undefined;
   const getClient = (): BunproAccountAccess => {
     sharedClient ??= clientFactory();
@@ -85,7 +87,7 @@ export function createServer(
     },
     async input => {
       try {
-        const structuredContent = await getStudyDaySummary(getClient(), input);
+        const structuredContent = await getStudyDaySummary(getClient(), input, clock());
         return {
           content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
           structuredContent
@@ -116,7 +118,7 @@ export function createServer(
     },
     async input => {
       try {
-        const structuredContent = await getStudyRangeSummary(getClient(), input);
+        const structuredContent = await getStudyRangeSummary(getClient(), input, clock());
         return {
           content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
           structuredContent
@@ -147,7 +149,7 @@ export function createServer(
     },
     async () => {
       try {
-        const structuredContent = await getReviewSchedule(getClient());
+        const structuredContent = await getReviewSchedule(getClient(), clock());
         return {
           content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
           structuredContent
@@ -240,7 +242,7 @@ export function createServer(
     },
     async () => {
       try {
-        const structuredContent = await getLearningProgress(getClient());
+        const structuredContent = await getLearningProgress(getClient(), clock());
         return {
           content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
           structuredContent
@@ -271,7 +273,7 @@ export function createServer(
     },
     async input => {
       try {
-        const structuredContent = await getActivityTrend(getClient(), input);
+        const structuredContent = await getActivityTrend(getClient(), input, clock());
         return {
           content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
           structuredContent

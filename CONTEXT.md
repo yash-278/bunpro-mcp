@@ -10,7 +10,7 @@ Bunpro's private, undocumented `/api/frontend/*` interface. Its routes, response
 
 ## Direct Token Passthrough
 
-The remote MCP host sends the caller's Account API Token in the HTTP Bearer header. The MCP reads that value for one request, translates it into Bunpro's expected Account API Token header, and does not persist it. Local stdio obtains the same token from `BUNPRO_API_TOKEN`.
+The remote MCP host sends the caller's Account API Token in the protected `X-Bunpro-Token` header. `Authorization: Bearer ...` remains a compatibility path for existing connections. The MCP reads exactly one of those values for one request, translates it into Bunpro's expected Account API Token header, and does not persist it. Local stdio obtains the same token from `BUNPRO_API_TOKEN`.
 
 ## Token-Authenticated Frontend Request
 
