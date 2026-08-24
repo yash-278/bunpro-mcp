@@ -1,60 +1,138 @@
-# Self-hosting the Streamable HTTP server
+# Self-hosting Bunpro MCP
 
-The remote deployment is a stateless Streamable HTTP server. It does not need Auth0, an OAuth authorization server, PostgreSQL, an encryption key, a setup page, or a deployment-wide Bunpro credential.
+Bunpro MCP supports two stateless transports:
 
-Each MCP caller supplies their own Bunpro Account API Token in the `X-Bunpro-Token` request header. The application uses the token for that request and does not persist it.
+- **stdio** for a single local MCP client;
+- **Streamable HTTP** for a remote HTTPS service used by one or more clients.
 
-## Requirements
+The server needs no Auth0 tenant, OAuth provider, PostgreSQL database, encryption key, setup page, Bunpro username, or Bunpro password.
 
-- Node.js 20 or newer, or the included Dockerfile
-- An HTTPS deployment target such as Railway
-- A public hostname
+## Choose a deployment
 
-## Environment
+| Option | Best for | Token location |
+| --- | --- | --- |
+| Local stdio | One desktop client and the smallest trust boundary | `BUNPRO_API_TOKEN` in the MCP client's secret environment configuration |
+| Local Docker HTTP | Testing the remote transport locally | Each caller sends `X-Bunpro-Token` |
+| Railway or another HTTPS host | Multiple users or devices | Each caller sends `X-Bunpro-Token` |
 
-```dotenv
-TRANSPORT=http
-PUBLIC_BASE_URL=https://mcp.example.com
+Never configure a shared `BUNPRO_API_TOKEN` on an HTTP deployment. Every HTTP caller must supply their own credential.
+
+## Local stdio
+
+Requirements:
+
+- Node.js 20 or newer
+- Git
+
+```bash
+git clone https://github.com/yash-278/bunpro-mcp.git
+cd bunpro-mcp
+npm ci
+npm run build
 ```
 
-Railway sets `PORT` and `RAILWAY_PUBLIC_DOMAIN`; when the latter is present, `PUBLIC_BASE_URL` may be omitted. Do not configure `BUNPRO_API_TOKEN` on the HTTP service. That variable is only for local stdio mode.
+Configure the MCP client with absolute paths:
 
-No database service is required.
+```json
+{
+  "command": "/absolute/path/to/node",
+  "args": ["/absolute/path/to/bunpro-mcp/dist/index.js"],
+  "env": {
+    "BUNPRO_API_TOKEN": "your Bunpro Account API Token"
+  }
+}
+```
 
-## Railway deployment
+The token remains in the local process memory while the server runs. Bunpro MCP does not write it to disk, although the MCP client may persist its own secret configuration.
 
-1. Deploy this private repository using the included Dockerfile.
-2. Set `TRANSPORT=http`.
-3. Set `PUBLIC_BASE_URL` to the canonical HTTPS domain users will configure.
-4. Remove obsolete Auth0, database, setup-token, encryption-key, Bunpro username, and Bunpro password variables from the service.
-5. Confirm `GET /healthz` returns HTTP 200.
+## Local Docker HTTP
 
-## Configure a caller
+Build and start the included image:
 
-Use:
+```bash
+docker build -t bunpro-mcp .
+docker run --rm -p 8080:8080 \
+  -e TRANSPORT=http \
+  -e PORT=8080 \
+  -e PUBLIC_BASE_URL=http://localhost:8080 \
+  bunpro-mcp
+```
+
+The local endpoint is:
 
 ```text
-https://mcp.example.com/mcp
+http://localhost:8080/mcp
 ```
 
-In ChatGPT/Codex, leave **Bearer token env var** blank and add a protected custom header named `X-Bunpro-Token`. Its value is the raw Bunpro Account API Token, with no prefix.
+Configure the MCP client with a protected `X-Bunpro-Token` header containing the raw Account API Token. Leave Bearer authentication blank.
 
-The backwards-compatible `Authorization: Bearer <token>` form is still accepted for existing connections. Configure exactly one credential header, and never place the token in the URL or tool arguments.
+## Railway
 
-## Smoke checks
+1. Fork or clone `https://github.com/yash-278/bunpro-mcp`.
+2. Create a Railway service from the repository.
+3. Railway will build the included `Dockerfile` and use `railway.json` for the health check.
+4. Set these variables:
 
-Without a token header, `/mcp` should return HTTP 401 without echoing request data. With a valid token configured in an MCP client, `get_connection_status` should report:
+   ```dotenv
+   TRANSPORT=http
+   PUBLIC_BASE_URL=https://your-domain.example
+   ```
 
-- `authentication_method: account_api_token`
-- `token_source: request_header`
-- `token_persisted_by_server: false`
-- `api_authenticated: true`
-- `stateless: true`
+   Railway supplies `PORT`. If you use Railway's generated domain, `RAILWAY_PUBLIC_DOMAIN` can supply the canonical hostname and `PUBLIC_BASE_URL` may be omitted.
 
-The health endpoint intentionally requires no token and reveals no account data.
+5. Do **not** add `BUNPRO_API_TOKEN`, Bunpro username/password values, Auth0 variables, database variables, or encryption keys.
+6. Add an HTTPS public domain and confirm `GET /healthz` returns `{"status":"ok"}`.
+7. Configure each MCP client with `https://your-domain.example/mcp` and its own protected `X-Bunpro-Token` value.
 
-## Trust boundary
+## Another HTTPS host
 
-The application does not persist tokens, but the hosting operator and platform can technically inspect request memory or traffic termination. Users who do not accept that boundary should run the stdio transport locally.
+The same container works on platforms that can:
 
-Keep use low-volume. Bunpro's temporary mechanism has stricter throttling, an evolving route whitelist, and no compatibility guarantee.
+- build the included Dockerfile;
+- expose the configured `PORT`;
+- provide HTTPS termination; and
+- set `TRANSPORT=http` plus a canonical `PUBLIC_BASE_URL`.
+
+Non-local `PUBLIC_BASE_URL` values must use HTTPS. Host-header validation rejects alternate hostnames.
+
+## Credential contract
+
+Preferred HTTP configuration:
+
+```text
+X-Bunpro-Token: <raw Bunpro Account API Token>
+```
+
+`Authorization: Bearer <token>` remains available for clients that cannot set a custom protected header. Configure exactly one method. Requests with missing, malformed, oversized, or ambiguous credentials receive HTTP 401.
+
+Never place a token in:
+
+- a URL or query string;
+- an MCP tool argument;
+- a repository or `.env` file committed to Git;
+- a log, screenshot, issue, or support message; or
+- a shared deployment variable for HTTP mode.
+
+## Verification
+
+Without a token, `/mcp` should return HTTP 401 without echoing request data. `/healthz` intentionally requires no credential and exposes no account data.
+
+With a valid token configured in an MCP client, call `get_connection_status`. A successful response reports that authentication passed, the transport is stateless, and the server did not persist the token.
+
+For maintainers, the repository includes deliberately paced live smoke scripts:
+
+```bash
+BUNPRO_API_TOKEN="your token" npm run live:test:auth
+BUNPRO_API_TOKEN="your token" npm run live:test:http
+BUNPRO_API_TOKEN="your token" BUNPRO_MCP_URL="https://your-domain.example/mcp" npm run live:test:tools
+```
+
+## Operational limits
+
+- Keep traffic low-volume and do not retry aggressively.
+- Bunpro may throttle requests or change its route whitelist without notice.
+- The server bounds request sizes, response sizes, concurrent upstream work, and timeouts.
+- Authentication rejection, throttling, unavailable routes, malformed responses, and schema drift fail closed.
+- The service stores no token, account profile, study history, cookie, session, or watermark.
+
+Anyone operating a hosted instance can technically inspect process memory or traffic where TLS terminates. Users who do not accept that trust boundary should run the stdio transport locally.

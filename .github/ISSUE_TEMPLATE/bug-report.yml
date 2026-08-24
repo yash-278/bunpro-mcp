@@ -35,7 +35,7 @@ body:
     id: version
     attributes:
       label: Bunpro MCP commit or version
-      placeholder: 0.3.1 or a commit SHA
+      placeholder: 0.4.0 or a commit SHA
     validations:
       required: true
   - type: input

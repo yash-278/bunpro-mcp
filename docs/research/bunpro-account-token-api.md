@@ -3,7 +3,7 @@
 Research date: 2026-08-12
 
 > [!CAUTION]
-> This note records a temporary Bunpro authentication workaround shared in a private Bunpro community group. Keep this repository private and do not reproduce the mechanism in public forums. Bunpro describes the mechanism as experimental, undocumented, subject to stricter throttling and a future route whitelist, and changeable without notice. Any invited-user documentation must disclose those risks.
+> This note records experimental, undocumented Bunpro behavior that is subject to stricter throttling, a future route whitelist, and change without notice. Implementations must remain read-only, low-volume, and careful with user API keys.
 
 ## Question
 
@@ -57,7 +57,7 @@ Only the literal `true` parameter value was tested. Other values must not be tre
 
 No `Retry-After`, standard `RateLimit-*`, or `X-RateLimit-*` headers appeared on the eight naturally observed responses. No route-whitelist metadata was exposed in response headers.
 
-This is absence of an observed signal, not evidence that throttling is absent. The private Bunpro update says stricter throttling was added on 2026-08-12 and that a whitelisted-route system is planned. The research deliberately did not induce HTTP 429, discover unrelated routes, parallelize calls, or approach any limit. Exact quotas, reset behavior, 429 response semantics, and future whitelist membership remain unknown.
+This is absence of an observed signal, not evidence that throttling is absent. Bunpro guidance says stricter throttling was added on 2026-08-12 and that a whitelisted-route system is planned. The research deliberately did not induce HTTP 429, discover unrelated routes, parallelize calls, or approach any limit. Exact quotas, reset behavior, 429 response semantics, and future whitelist membership remain unknown.
 
 ## Implementation consequences
 
@@ -74,7 +74,7 @@ This is absence of an observed signal, not evidence that throttling is absent. T
 
 Primary sources:
 
-- Bunpro private community group update supplied by the project owner, last updated 2026-08-12. It defines the temporary opt-in parameter, identifies the Settings > API Account API Token, permits inclusion in public repositories while prohibiting public-forum disclosure, warns of endpoint instability, requests low-impact use and user risk disclosure, and announces stricter throttling plus a planned route whitelist.
+- Bunpro community guidance supplied to the project owner, last updated 2026-08-12. It defines the temporary opt-in parameter, identifies the Settings > API Account API Token, warns of endpoint instability, requests low-impact use and user risk disclosure, and announces stricter throttling plus a planned route whitelist.
 - The repository's current Frontend API request implementation in [`src/bunpro/client.ts`](../../src/bunpro/client.ts), which established the existing `Token token=...` header syntax to test with the Account API Token.
 - The previously verified route inventory and response semantics in [Bunpro frontend authentication and study API evidence](./bunpro-frontend-api.md).
 - Eight authorized live HTTP GET requests on 2026-08-12 using the user's `BUNPRO_API_TOKEN`: four required-route successes and four bounded authentication-contract checks. The temporary probe held the token and parsed payloads only in process memory and was deleted immediately afterward.

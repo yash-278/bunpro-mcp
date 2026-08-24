@@ -1,6 +1,6 @@
 # Privacy
 
-This document explains how Bunpro MCP handles the Bunpro Account API Token and study data. It applies to the private source project and to the hosted service at `https://bunpro.yashkadam.com/mcp`.
+This document explains how Bunpro MCP handles the Bunpro Account API Token and study data. It applies to the open-source server and the hosted service at `https://bunpro.yashkadam.com/mcp`.
 
 ## Local stdio mode
 
@@ -16,7 +16,7 @@ This document explains how Bunpro MCP handles the Bunpro Account API Token and s
 - The application does not create an identity profile, account link, setup session, or database record.
 - The application does not intentionally log or persist token-bearing request headers, the token, Bunpro response bodies, or study history.
 
-The hosted operator and infrastructure provider can technically inspect application memory or traffic where TLS terminates. Stateless passthrough reduces retained data; it does not eliminate the need to trust the hosted service. If that trust boundary is unacceptable, do not use the hosted service. Public local installation and self-hosting are not available while the source repository remains private.
+The hosted operator and infrastructure provider can technically inspect application memory or traffic where TLS terminates. Stateless passthrough reduces retained data; it does not eliminate the need to trust the hosted service. If that trust boundary is unacceptable, run the stdio server locally or self-host the HTTP service.
 
 ## Logs and telemetry
 

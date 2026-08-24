@@ -1,16 +1,19 @@
-# Repository Safety Policy
+# Repository Safety and Release Policy
 
-## Visibility is a protected constraint
+## Public-source authorization
 
-This repository must remain **PRIVATE**. Bunpro shared the temporary Account API Token workaround under a private-community disclosure boundary. Do not:
+Bunpro authorized this MCP to be released as open source on 2026-08-17. The approval was given by Sean in the private Bunpro community thread titled **API access request for a read-only Bunpro MCP integration**. The private correspondence itself must not be copied into the repository or public announcements.
 
-- change the GitHub repository visibility to public or internal;
-- create a public mirror, fork, package, container, release artifact, documentation site, gist, or code excerpt that exposes the temporary mechanism;
-- publish the private community post or authentication details in a public forum; or
-- add automation that publishes this repository or its artifacts publicly.
+The repository may publicly include the MCP source, Bunpro integration implementation, documented request mechanism, self-hosting instructions, and links to the hosted service.
 
-If the user asks to make the repository or mechanism public, stop and explicitly push back by citing this policy and Bunpro's restriction. Ask for new written permission from Bunpro that specifically authorizes public disclosure before proposing any visibility or publication change. A routine release request, a general statement that open source is desirable, or ownership of the GitHub repository is not sufficient evidence that Bunpro's restriction has changed.
+## Protected constraints
 
-Before and after any GitHub release or repository-settings operation, verify that `yash-278/bunpro-mcp` reports `PRIVATE`. Branches and pull requests for this project must target the same private repository.
+- Keep every Bunpro operation read-only and low-volume.
+- Never commit, log, print, echo, or publish a real Account API Token, credential-bearing header, cookie, password, raw account response, or personal study data.
+- Use only synthetic fixtures and sanitized examples.
+- Do not copy private community posts or private correspondence verbatim into public files.
+- Describe the project as unofficial and experimental; do not imply Bunpro or OpenAI endorsement, an official listing, or a stability guarantee.
+- Preserve the stateless per-caller credential design. A hosted deployment must never use a shared Bunpro token or credential database.
+- Keep `package.json` marked `private` unless package-registry publication receives separate approval.
 
-This constraint does not block private development or operating the hosted MCP as a public community product. Public product documentation may disclose the hosted MCP URL, the MCP client's protected `X-Bunpro-Token` configuration, tool behavior, and user-facing risks. It must not disclose Bunpro's private route names, upstream authorization translation, opt-in query parameter, response schemas, reverse-engineering notes, or repository code. The hosted service must preserve the documented risk disclosure and must never use a deployment-wide Bunpro credential.
+For the visibility cutover, verify that `yash-278/bunpro-mcp` is `PRIVATE` immediately before the change, switch it once, and then verify that it reports `PUBLIC`. After the cutover, verify `PUBLIC` before and after release operations. Pull requests and branches must target that repository.
