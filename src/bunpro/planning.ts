@@ -1,4 +1,3 @@
-import * as z from "zod/v4";
 import { BunproError } from "./errors.js";
 import type {
   ListStudyDecksInput,
@@ -8,39 +7,6 @@ import type {
   ReviewSchedule
 } from "./schemas.js";
 import type { FrontendSource } from "./frontend-source.js";
-import type { StudySource } from "./study.js";
-
-const LATEST_ATTEMPTS_ROUTE = "/api/frontend/user_stats/last_done_reviews";
-const LAST_24_HOURS_ROUTE = "/api/frontend/summary/last_24_hours";
-
-const AttemptSchema = z.object({
-  id: z.union([z.string(), z.number()]),
-  time: z.string().min(1),
-  status: z.boolean(),
-  reviewable: z.object({
-    data: z.object({
-      id: z.union([z.string(), z.number()]),
-      type: z.string().min(1),
-      attributes: z.object({
-        title: z.string().optional(),
-        slug: z.string().optional()
-      }).loose()
-    }).loose()
-  }).loose()
-}).loose();
-const ReviewSessionSchema = z.object({
-  attributes: z.object({
-    starting_xp: z.number().int(),
-    ending_xp: z.number().int(),
-    starting_buncoin: z.number().int(),
-    ending_buncoin: z.number().int()
-  }).loose()
-}).loose();
-const Last24HoursSchema = z.object({
-  history_objects: z.array(AttemptSchema),
-  review_sessions: z.object({ data: z.array(ReviewSessionSchema) }).loose()
-}).loose();
-const LatestAttemptsSchema = z.array(AttemptSchema);
 
 export async function getReviewSchedule(
   source: Pick<FrontendSource, "loadReviewPlanning">,
@@ -108,69 +74,42 @@ export async function listStudyDecks(
 }
 
 export async function getRecentActivity(
-  source: StudySource,
+  source: Pick<FrontendSource, "loadRecentActivity">,
   input: RecentActivityInput
 ): Promise<RecentActivityOutput> {
   const operationSignal = AbortSignal.timeout(30_000);
-  const connection = await source.checkConnection(operationSignal);
-  const isRollingWindow = input.view === "last_24_hours";
-  const payload = await source.getFrontendJson(
-    isRollingWindow ? LAST_24_HOURS_ROUTE : LATEST_ATTEMPTS_ROUTE,
-    operationSignal
-  );
-  let attempts: z.infer<typeof AttemptSchema>[];
-  let sessions: z.infer<typeof ReviewSessionSchema>[] | null;
-  if (isRollingWindow) {
-    const parsed = parse(Last24HoursSchema, payload, "last-24-hours activity");
-    attempts = parsed.history_objects;
-    sessions = parsed.review_sessions.data;
-  } else {
-    attempts = parse(LatestAttemptsSchema, payload, "latest review attempts");
-    sessions = null;
-  }
-  const normalizedAttempts = attempts.slice(0, input.limit).map(attempt => ({
-    attempt_id: String(attempt.id),
+  const activity = await source.loadRecentActivity(input.view, operationSignal);
+  const isRollingWindow = activity.view === "last_24_hours";
+  const normalizedAttempts = activity.attempts.slice(0, input.limit).map(attempt => ({
+    attempt_id: attempt.attemptId,
     time: attempt.time,
-    correct: attempt.status,
-    content_type: attempt.reviewable.data.type,
-    content_id: String(attempt.reviewable.data.id),
-    label: attempt.reviewable.data.attributes.title ??
-      attempt.reviewable.data.attributes.slug ??
-      null
+    correct: attempt.correct,
+    content_type: attempt.contentType,
+    content_id: attempt.contentId,
+    label: attempt.label
   }));
   return {
-    source_timezone: connection.source_timezone,
-    view: input.view,
+    source_timezone: activity.accountContext.sourceTimezone,
+    view: activity.view,
     count: normalizedAttempts.length,
-    total_available: attempts.length,
-    has_more: attempts.length > normalizedAttempts.length,
+    total_available: activity.attempts.length,
+    has_more: activity.attempts.length > normalizedAttempts.length,
     completeness: isRollingWindow
       ? "upstream_rolling_window_not_guaranteed_complete"
       : "latest_source_records_not_guaranteed_complete",
     attempts: normalizedAttempts,
-    sessions: sessions === null ? null : {
-      count: sessions.length,
-      xp_delta: sessions.reduce(
-        (total, session) => total + session.attributes.ending_xp - session.attributes.starting_xp,
+    sessions: activity.sessions === null ? null : {
+      count: activity.sessions.length,
+      xp_delta: activity.sessions.reduce(
+        (total, session) => total + session.endingXp - session.startingXp,
         0
       ),
-      buncoin_delta: sessions.reduce(
-        (total, session) => total + session.attributes.ending_buncoin - session.attributes.starting_buncoin,
+      buncoin_delta: activity.sessions.reduce(
+        (total, session) => total + session.endingBuncoin - session.startingBuncoin,
         0
       )
     }
   };
-}
-
-function parse<T>(schema: z.ZodType<T>, payload: unknown, name: string): T {
-  const parsed = schema.safeParse(payload);
-  if (!parsed.success) {
-    throw new BunproError(
-      "BUNPRO_CONTRACT_CHANGED",
-      `Bunpro accepted the Account API Token, but the ${name} response shape changed.`
-    );
-  }
-  return parsed.data;
 }
 
 function validForecastDate(value: string): string {

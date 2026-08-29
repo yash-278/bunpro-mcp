@@ -233,7 +233,7 @@ export function createServer(options: BunproServerOptions = {}): McpServer {
     },
     async input => {
       try {
-        const structuredContent = await getRecentActivity(getClient(), input);
+        const structuredContent = await getRecentActivity(sourceOperationFactory(), input);
         return {
           content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
           structuredContent
