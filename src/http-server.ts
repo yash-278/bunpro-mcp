@@ -2,6 +2,7 @@ import { createServer as createHttpServer, type IncomingMessage, type ServerResp
 import { randomUUID } from "node:crypto";
 import { createMcpHandler, validateHostHeader } from "@modelcontextprotocol/server";
 import { BunproClient, BunproRequestGate, type FetchLike } from "./bunpro/client.js";
+import { createFrontendSourceOperationFactory } from "./bunpro/frontend-source.js";
 import { loadHttpConfig, type HttpConfig } from "./config.js";
 import {
   HOMEPAGE_FAVICON,
@@ -137,13 +138,23 @@ export function createHttpMcpHandler(
   return createMcpHandler(
     context => {
       const credential = bunproCredentialFromHeaders(context.requestInfo?.headers ?? new Headers());
-      return createBunproMcpServer(
-        () => new BunproClient(credential.token, fetchImplementation, {
-          tokenSource: credential.tokenSource,
-          requestGate
-        }),
+      const clientOptions = {
+        tokenSource: credential.tokenSource,
+        requestGate
+      } as const;
+      return createBunproMcpServer({
+        sourceOperationFactory: createFrontendSourceOperationFactory(
+          () => credential.token,
+          fetchImplementation,
+          clientOptions
+        ),
+        legacyClientFactory: () => new BunproClient(
+          credential.token,
+          fetchImplementation,
+          clientOptions
+        ),
         clock
-      );
+      });
     },
     {
       legacy: "stateless",

@@ -1,7 +1,11 @@
 import { McpServer, type CallToolResult } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
-import { BunproClient, apiTokenFromEnvironment } from "./bunpro/client.js";
+import { BunproClient, BunproRequestGate, apiTokenFromEnvironment } from "./bunpro/client.js";
 import { connectionErrorMessage } from "./bunpro/errors.js";
+import {
+  createFrontendSourceOperationFactory,
+  type FrontendSourceOperationFactory
+} from "./bunpro/frontend-source.js";
 import { ConnectionStatusOutputSchema, type ConnectionStatus } from "./bunpro/schemas.js";
 import {
   StudyDayInputSchema,
@@ -28,14 +32,23 @@ export interface BunproAccountAccess {
 export type BunproClientFactory = () => BunproAccountAccess;
 export type Clock = () => Date;
 
-export function createServer(
-  clientFactory: BunproClientFactory = () => new BunproClient(apiTokenFromEnvironment()),
-  clock: Clock = () => new Date()
-): McpServer {
+export interface BunproServerOptions {
+  sourceOperationFactory?: FrontendSourceOperationFactory;
+  legacyClientFactory?: BunproClientFactory;
+  clock?: Clock;
+}
+
+export function createServer(options: BunproServerOptions = {}): McpServer {
   const server = new McpServer({ name: "bunpro-mcp-server", version: "0.4.0" });
+  const requestGate = new BunproRequestGate({ maximumConcurrent: 4, maximumQueued: 16 });
+  const legacyClientFactory = options.legacyClientFactory
+    ?? (() => new BunproClient(apiTokenFromEnvironment(), fetch, { requestGate }));
+  const sourceOperationFactory = options.sourceOperationFactory
+    ?? createFrontendSourceOperationFactory(apiTokenFromEnvironment, fetch, { requestGate });
+  const clock = options.clock ?? (() => new Date());
   let sharedClient: BunproAccountAccess | undefined;
   const getClient = (): BunproAccountAccess => {
-    sharedClient ??= clientFactory();
+    sharedClient ??= legacyClientFactory();
     return sharedClient;
   };
 
@@ -56,7 +69,16 @@ export function createServer(
     },
     async (): Promise<CallToolResult> => {
       try {
-        const structuredContent = await getClient().checkConnection();
+        const accountContext = await sourceOperationFactory().getAccountContext();
+        const structuredContent: ConnectionStatus = {
+          connected: true,
+          authentication_method: "account_api_token",
+          token_source: accountContext.tokenSource,
+          token_persisted_by_server: false,
+          api_authenticated: true,
+          source_timezone: accountContext.sourceTimezone,
+          stateless: true
+        };
         return {
           content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
           structuredContent

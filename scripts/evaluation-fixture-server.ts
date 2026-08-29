@@ -1,5 +1,6 @@
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import { createServer, type BunproAccountAccess } from "../src/server.js";
+import { InMemoryFrontendSource } from "../src/bunpro/in-memory-frontend-source.js";
 
 const levels = Object.fromEntries(
   [1, 2, 3, 4, 5].map(level => [String(level), {
@@ -217,7 +218,7 @@ const fixtures: Record<string, unknown> = {
   }
 };
 
-const source: BunproAccountAccess = {
+const legacyAccountAccessFixture: BunproAccountAccess = {
   async checkConnection() {
     return {
       connected: true,
@@ -237,7 +238,15 @@ const source: BunproAccountAccess = {
   }
 };
 
-void serveStdio(() => createServer(() => source));
+void serveStdio(() => createServer({
+  sourceOperationFactory: () => new InMemoryFrontendSource({
+    accountContext: {
+      sourceTimezone: "Asia/Kolkata",
+      tokenSource: "environment"
+    }
+  }),
+  legacyClientFactory: () => legacyAccountAccessFixture
+}));
 
 function attempt(id: number, status: boolean, title: string) {
   return {
