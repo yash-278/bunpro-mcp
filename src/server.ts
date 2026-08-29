@@ -171,7 +171,7 @@ export function createServer(options: BunproServerOptions = {}): McpServer {
     },
     async () => {
       try {
-        const structuredContent = await getReviewSchedule(getClient(), clock());
+        const structuredContent = await getReviewSchedule(sourceOperationFactory(), clock());
         return {
           content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
           structuredContent

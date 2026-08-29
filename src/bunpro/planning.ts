@@ -7,23 +7,13 @@ import type {
   RecentActivityOutput,
   ReviewSchedule
 } from "./schemas.js";
+import type { FrontendSource } from "./frontend-source.js";
 import type { StudySource } from "./study.js";
 
-const DUE_ROUTE = "/api/frontend/user/due";
-const FORECAST_ROUTE = "/api/frontend/user_stats/forecast_daily";
 const STUDY_DECKS_ROUTE = "/api/frontend/user/queue";
 const LATEST_ATTEMPTS_ROUTE = "/api/frontend/user_stats/last_done_reviews";
 const LAST_24_HOURS_ROUTE = "/api/frontend/summary/last_24_hours";
 
-const DueSchema = z.object({
-  total_due_grammar: z.number().int().nonnegative(),
-  total_due_vocab: z.number().int().nonnegative()
-}).loose();
-const ForecastMapSchema = z.record(z.string(), z.number().int().nonnegative());
-const ForecastSchema = z.object({
-  grammar: ForecastMapSchema,
-  vocab: ForecastMapSchema
-});
 const UserDeckSchema = z.object({
   id: z.string(),
   attributes: z.object({
@@ -81,51 +71,38 @@ const Last24HoursSchema = z.object({
 const LatestAttemptsSchema = z.array(AttemptSchema);
 
 export async function getReviewSchedule(
-  source: StudySource,
+  source: Pick<FrontendSource, "loadReviewPlanning">,
   now: Date = new Date()
 ): Promise<ReviewSchedule> {
   const operationSignal = AbortSignal.timeout(30_000);
-  const connection = await source.checkConnection(operationSignal);
-  const due = parse(DueSchema, await source.getFrontendJson(DUE_ROUTE, operationSignal), "due counts");
-  const forecast = parse(
-    ForecastSchema,
-    await source.getFrontendJson(FORECAST_ROUTE, operationSignal),
-    "daily forecast"
-  );
-  const grammarKeys = Object.keys(forecast.grammar).sort();
-  const vocabularyKeys = Object.keys(forecast.vocab).sort();
-  if (grammarKeys.join("\0") !== vocabularyKeys.join("\0")) {
-    throw new BunproError(
-      "BUNPRO_CONTRACT_CHANGED",
-      "Bunpro returned inconsistent grammar and vocabulary forecast buckets."
-    );
-  }
-  const today = dateInTimeZone(now, connection.source_timezone);
+  const planning = await source.loadReviewPlanning(operationSignal);
+  const today = dateInTimeZone(now, planning.accountContext.sourceTimezone);
   const tomorrow = addDays(today, 1);
-  const keys = ["later", "tomorrow", ...grammarKeys.filter(key => key !== "later" && key !== "tomorrow").sort()];
-  if (keys.length > 14 || !Object.hasOwn(forecast.grammar, "later") || !Object.hasOwn(forecast.grammar, "tomorrow")) {
+  const forecast = [
+    { bucket: "later_today" as const, date: today, ...planning.forecast.laterToday },
+    { bucket: "tomorrow" as const, date: tomorrow, ...planning.forecast.tomorrow },
+    ...[...planning.forecast.dated]
+      .sort((left, right) => left.date.localeCompare(right.date))
+      .map(item => ({ bucket: "date" as const, ...item, date: validForecastDate(item.date) }))
+  ];
+  if (forecast.length > 14) {
     throw new BunproError("BUNPRO_CONTRACT_CHANGED", "Bunpro returned an unexpected daily forecast horizon.");
   }
 
   return {
-    source_timezone: connection.source_timezone,
+    source_timezone: planning.accountContext.sourceTimezone,
     retrieved_at: now.toISOString(),
     due_now: {
-      grammar: due.total_due_grammar,
-      vocabulary: due.total_due_vocab,
-      total: due.total_due_grammar + due.total_due_vocab
+      ...planning.dueNow,
+      total: planning.dueNow.grammar + planning.dueNow.vocabulary
     },
-    forecast: keys.map(key => {
-      const grammar = forecast.grammar[key] ?? 0;
-      const vocabulary = forecast.vocab[key] ?? 0;
-      return {
-        bucket: key === "later" ? "later_today" : key === "tomorrow" ? "tomorrow" : "date",
-        date: key === "later" ? today : key === "tomorrow" ? tomorrow : validForecastDate(key),
-        grammar,
-        vocabulary,
-        total: grammar + vocabulary
-      };
-    }),
+    forecast: forecast.map(item => ({
+      bucket: item.bucket,
+      date: item.date,
+      grammar: item.grammar,
+      vocabulary: item.vocabulary,
+      total: item.grammar + item.vocabulary
+    })),
     forecast_is_projection: true
   };
 }

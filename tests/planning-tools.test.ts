@@ -4,6 +4,8 @@ import { Client } from "@modelcontextprotocol/client";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { createHttpMcpHandler } from "../src/http-server.js";
 import type { FetchLike } from "../src/bunpro/client.js";
+import { InMemoryFrontendSource } from "../src/bunpro/in-memory-frontend-source.js";
+import { getReviewSchedule } from "../src/bunpro/planning.js";
 
 async function withMcpClient(
   fetchImplementation: FetchLike,
@@ -41,34 +43,27 @@ const userFixture = {
 };
 
 test("get_review_schedule separates due-now work from the normalized 14-day forecast", async () => {
-  const paths: string[] = [];
-  const fetch = fixtureFetch({
-    "/api/frontend/user": userFixture,
-    "/api/frontend/user/due": { total_due_grammar: 5, total_due_vocab: 7 },
-    "/api/frontend/user_stats/forecast_daily": {
-      grammar: { later: 2, tomorrow: 3, "2026-08-14": 4 },
-      vocab: { later: 1, tomorrow: 5, "2026-08-14": 6 }
+  const source = new InMemoryFrontendSource({
+    accountContext: { sourceTimezone: "Asia/Kolkata", tokenSource: "environment" },
+    reviewPlanning: {
+      dueNow: { grammar: 5, vocabulary: 7 },
+      forecast: {
+        laterToday: { grammar: 2, vocabulary: 1 },
+        tomorrow: { grammar: 3, vocabulary: 5 },
+        dated: [{ date: "2026-08-14", grammar: 4, vocabulary: 6 }]
+      }
     }
-  }, paths);
+  });
 
-  await withMcpClient(fetch, async client => {
-    const result = await client.callTool({ name: "get_review_schedule", arguments: {} });
-    assert.equal(result.isError, undefined);
-    const output = result.structuredContent as Record<string, any>;
-    assert.equal(output.source_timezone, "Asia/Kolkata");
-    assert.match(output.retrieved_at, /^\d{4}-\d{2}-\d{2}T/);
-    assert.deepEqual(output.due_now, { grammar: 5, vocabulary: 7, total: 12 });
-    assert.deepEqual(output.forecast, [
-      { bucket: "later_today", date: "2026-08-12", grammar: 2, vocabulary: 1, total: 3 },
-      { bucket: "tomorrow", date: "2026-08-13", grammar: 3, vocabulary: 5, total: 8 },
-      { bucket: "date", date: "2026-08-14", grammar: 4, vocabulary: 6, total: 10 }
-    ]);
-    assert.deepEqual(paths, [
-      "/api/frontend/user",
-      "/api/frontend/user/due",
-      "/api/frontend/user_stats/forecast_daily"
-    ]);
-  }, () => new Date("2026-08-12T12:00:00.000Z"));
+  const output = await getReviewSchedule(source, new Date("2026-08-12T12:00:00.000Z"));
+  assert.equal(output.source_timezone, "Asia/Kolkata");
+  assert.equal(output.retrieved_at, "2026-08-12T12:00:00.000Z");
+  assert.deepEqual(output.due_now, { grammar: 5, vocabulary: 7, total: 12 });
+  assert.deepEqual(output.forecast, [
+    { bucket: "later_today", date: "2026-08-12", grammar: 2, vocabulary: 1, total: 3 },
+    { bucket: "tomorrow", date: "2026-08-13", grammar: 3, vocabulary: 5, total: 8 },
+    { bucket: "date", date: "2026-08-14", grammar: 4, vocabulary: 6, total: 10 }
+  ]);
 });
 
 test("list_study_decks returns bounded active study configuration without unrelated deck metadata", async () => {
