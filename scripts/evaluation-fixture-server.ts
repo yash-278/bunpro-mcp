@@ -109,7 +109,7 @@ const sourceData = {
     }
   },
   deckConfiguration: {
-    decks: [
+    entries: [
       deck("101", "Starter Grammar", "starter-grammar", "grammar", true, 5, 10, 4, 1, 60, 20, 100, 50),
       deck("202", "Tobira Intermediate", "tobira-intermediate", "mixed", true, 10, 25, 9, 6, 180, 75, 300, 200),
       deck("303", "Archived Advanced", "archived-advanced", "mixed", false, 20, 40, 0, 0, 500, 500, 600, 400)
@@ -206,14 +206,16 @@ function deck(
 ) {
   return {
     deckId,
-    title,
-    slug,
-    deckType,
     activelyStudying,
     batchSize,
     dailyGoal,
     dailyGoalProgress: { grammar: goalGrammar, vocabulary: goalVocabulary },
     completed: { grammar: completedGrammar, vocabulary: completedVocabulary },
-    content: { grammar: contentGrammar, vocabulary: contentVocabulary }
+    metadata: {
+      title,
+      slug,
+      deckType,
+      content: { grammar: contentGrammar, vocabulary: contentVocabulary }
+    }
   };
 }

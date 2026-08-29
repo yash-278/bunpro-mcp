@@ -158,6 +158,39 @@ test("review planning returns semantic due and forecast facts", async () => {
   });
 });
 
+test("review planning preserves distinct forecast contract errors", async t => {
+  const baseFixtures: Record<string, unknown> = {
+    "/api/frontend/user": {
+      user: { data: { attributes: { time_zone_iana: "Asia/Tokyo" } } }
+    },
+    "/api/frontend/user/due": { total_due_grammar: 1, total_due_vocab: 1 }
+  };
+
+  await t.test("inconsistent grammar and vocabulary buckets", async () => {
+    const fixtures = {
+      ...baseFixtures,
+      "/api/frontend/user_stats/forecast_daily": {
+        grammar: { later: 1, tomorrow: 1, "2026-08-31": 1 },
+        vocab: { later: 1, tomorrow: 1 }
+      }
+    };
+    const source = sourceForFixtures(fixtures);
+    await assert.rejects(source.loadReviewPlanning(), /inconsistent grammar and vocabulary/i);
+  });
+
+  await t.test("missing required forecast buckets", async () => {
+    const fixtures = {
+      ...baseFixtures,
+      "/api/frontend/user_stats/forecast_daily": {
+        grammar: { later: 1 },
+        vocab: { later: 1 }
+      }
+    };
+    const source = sourceForFixtures(fixtures);
+    await assert.rejects(source.loadReviewPlanning(), /unexpected daily forecast horizon/i);
+  });
+});
+
 test("deck configuration joins user progress with normalized deck facts", async () => {
   const fixtures: Record<string, unknown> = {
     "/api/frontend/user": {
@@ -196,17 +229,19 @@ test("deck configuration joins user progress with normalized deck facts", async 
 
   const snapshot = await source.loadDeckConfiguration();
 
-  assert.deepEqual(snapshot.decks, [{
+  assert.deepEqual(snapshot.entries, [{
     deckId: "7",
-    title: "N5 Path",
-    slug: "n5-path",
-    deckType: "jlpt",
     activelyStudying: true,
     batchSize: 3,
     dailyGoal: 6,
     dailyGoalProgress: { grammar: 2, vocabulary: 1 },
     completed: { grammar: 40, vocabulary: 30 },
-    content: { grammar: 100, vocabulary: 80 }
+    metadata: {
+      title: "N5 Path",
+      slug: "n5-path",
+      deckType: "jlpt",
+      content: { grammar: 100, vocabulary: 80 }
+    }
   }]);
 });
 
@@ -358,6 +393,63 @@ test("learning progress returns validated normalized account and JLPT facts", as
   });
 });
 
+test("the source fails closed on invalid timezone, Study History, recent activity, and learning facts", async t => {
+  await t.test("invalid account timezone", async () => {
+    const source = sourceForFixtures({
+      "/api/frontend/user": {
+        user: { data: { attributes: { time_zone_iana: "not/a-timezone" } } }
+      }
+    });
+    await assert.rejects(source.getAccountContext(), contractChanged);
+  });
+
+  await t.test("invalid Study History date and accuracy", async () => {
+    const fixtures = studyHistoryContractFixtures();
+    fixtures["/api/frontend/user_stats/review_heatmap"] = {
+      grammar: { someday: 1 },
+      vocab: { someday: 1 },
+      mixed: { someday: 2 }
+    };
+    fixtures["/api/frontend/user_stats/accuracy_over_time"] = { "2026-08-12": 175 };
+    const snapshot = await sourceForFixtures(fixtures).loadStudyHistory();
+    assert.deepEqual(snapshot.reviews, { status: "contract_changed" });
+    assert.deepEqual(snapshot.accuracy, { status: "contract_changed" });
+  });
+
+  await t.test("malformed recent activity", async () => {
+    const source = sourceForFixtures({
+      "/api/frontend/user": validUserFixture(),
+      "/api/frontend/user_stats/last_done_reviews": [{
+        id: 1,
+        time: "2026-08-12T00:00:00Z",
+        status: "yes",
+        reviewable: { data: { id: 1, type: "grammar", attributes: {} } }
+      }]
+    });
+    await assert.rejects(source.loadRecentActivity("latest_attempts"), contractChanged);
+  });
+
+  for (const variant of ["jlpt groups", "accuracy", "weekly streak"] as const) {
+    await t.test(`invalid learning ${variant}`, async () => {
+      const fixtures = learningContractFixtures();
+      if (variant === "jlpt groups") {
+        const jlpt = fixtures["/api/frontend/user_stats/jlpt_progress_mixed"] as any;
+        delete jlpt.grammar[1];
+      } else if (variant === "accuracy") {
+        const reviews = fixtures["/api/frontend/user_stats/total_review_stats"] as any;
+        reviews.grammar[5].accuracy = 175;
+      } else {
+        const base = fixtures["/api/frontend/user_stats/base_stats"] as any;
+        base.facts.weekly_streak = Array.from({ length: 8 }, (_, index) => ({
+          day: `day-${index}`,
+          val: true
+        }));
+      }
+      await assert.rejects(sourceForFixtures(fixtures).loadLearningProgress(), contractChanged);
+    });
+  }
+});
+
 test("the in-memory source serves normalized facts and typed capability failures", async () => {
   const accountContext = {
     sourceTimezone: "Asia/Kolkata",
@@ -383,3 +475,74 @@ test("the in-memory source serves normalized facts and typed capability failures
   });
   await assert.rejects(source.loadLearningProgress(), error => error === expectedFailure);
 });
+
+function sourceForFixtures(fixtures: Record<string, unknown>): BunproFrontendSource {
+  return new BunproFrontendSource(apiToken, async input => {
+    const path = new URL(input instanceof Request ? input.url : input).pathname;
+    const fixture = fixtures[path];
+    return fixture === undefined
+      ? new Response("not found", { status: 404 })
+      : Response.json(fixture);
+  });
+}
+
+function validUserFixture() {
+  return { user: { data: { attributes: { time_zone_iana: "Asia/Tokyo" } } } };
+}
+
+function studyHistoryContractFixtures(): Record<string, unknown> {
+  return {
+    "/api/frontend/user": validUserFixture(),
+    "/api/frontend/user_stats/review_heatmap": { grammar: {}, vocab: {}, mixed: {} },
+    "/api/frontend/user_stats/new_content_heatmap": { grammar: {}, vocab: {}, mixed: {} },
+    "/api/frontend/user_stats/accuracy_over_time": {}
+  };
+}
+
+function learningContractFixtures(): Record<string, unknown> {
+  const stages = {
+    beginner: 1,
+    seasoned: 2,
+    adept: 3,
+    expert: 4,
+    master: 5,
+    total_count: 15
+  };
+  const totals = { accuracy: 80, correct: 8, incorrect: 2, total: 10 };
+  const levels = Object.fromEntries(["1", "2", "3", "4", "5"].map(level => [level, { ...stages }]));
+  const reviews = Object.fromEntries(["1", "2", "3", "4", "5"].map(level => [level, { ...totals }]));
+  return {
+    "/api/frontend/user": validUserFixture(),
+    "/api/frontend/user_stats/base_stats": {
+      facts: {
+        days_studied: 1,
+        grammar_studied: 1,
+        vocab_studied: 1,
+        streak: 1,
+        weekly_streak: [{ day: "Mon", val: true }]
+      }
+    },
+    "/api/frontend/user_stats/jlpt_progress_mixed": {
+      grammar: structuredClone(levels),
+      vocab: structuredClone(levels)
+    },
+    "/api/frontend/user_stats/total_review_stats": {
+      grammar: structuredClone(reviews),
+      vocab: structuredClone(reviews),
+      mixed: structuredClone(reviews)
+    },
+    "/api/frontend/user_stats/total_cram_stats": {
+      items: totals,
+      sessions: {
+        average_time: "00:00:00",
+        reviews_per_session: 0,
+        session_count: 0,
+        total_time: "00:00:00"
+      }
+    }
+  };
+}
+
+function contractChanged(error: unknown): boolean {
+  return error instanceof BunproError && error.code === "BUNPRO_CONTRACT_CHANGED";
+}

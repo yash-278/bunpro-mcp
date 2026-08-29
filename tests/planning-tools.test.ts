@@ -31,30 +31,29 @@ test("list_study_decks returns bounded active study configuration without unrela
   const source = new InMemoryFrontendSource({
     accountContext: { sourceTimezone: "Asia/Kolkata", tokenSource: "environment" },
     deckConfiguration: {
-      decks: [
+      entries: [
         {
           deckId: "101",
-          title: "N3 Grammar",
-          slug: "n3-grammar",
-          deckType: "grammar",
           activelyStudying: true,
           batchSize: 3,
           dailyGoal: 5,
           dailyGoalProgress: { grammar: 2, vocabulary: 1 },
           completed: { grammar: 20, vocabulary: 10 },
-          content: { grammar: 200, vocabulary: 0 }
+          metadata: {
+            title: "N3 Grammar",
+            slug: "n3-grammar",
+            deckType: "grammar",
+            content: { grammar: 200, vocabulary: 0 }
+          }
         },
         {
           deckId: "102",
-          title: "Inactive",
-          slug: "inactive",
-          deckType: "mixed",
           activelyStudying: false,
           batchSize: 1,
           dailyGoal: 2,
           dailyGoalProgress: { grammar: 0, vocabulary: 0 },
           completed: { grammar: 1, vocabulary: 1 },
-          content: { grammar: 1, vocabulary: 1 }
+          metadata: null
         }
       ]
     }
@@ -79,6 +78,28 @@ test("list_study_decks returns bounded active study configuration without unrela
       content: { grammar: 200, vocabulary: 0 }
     }]
   });
+});
+
+test("list_study_decks fails closed when a selected deck has no metadata", async () => {
+  const source = new InMemoryFrontendSource({
+    accountContext: { sourceTimezone: "Asia/Kolkata", tokenSource: "environment" },
+    deckConfiguration: {
+      entries: [{
+        deckId: "missing",
+        activelyStudying: true,
+        batchSize: 1,
+        dailyGoal: 1,
+        dailyGoalProgress: { grammar: 0, vocabulary: 0 },
+        completed: { grammar: 0, vocabulary: 0 },
+        metadata: null
+      }]
+    }
+  });
+
+  await assert.rejects(
+    listStudyDecks(source, { active_only: true, limit: 20 }),
+    /without matching deck metadata/i
+  );
 });
 
 test("get_recent_activity returns a bounded last-24-hours view without embedded lesson content", async () => {

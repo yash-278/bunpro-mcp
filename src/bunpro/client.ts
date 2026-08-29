@@ -3,13 +3,18 @@ import { BunproError } from "./errors.js";
 export interface BunproRequestGateOptions {
   maximumConcurrent: number;
   maximumQueued: number;
+  minimumStartIntervalMs?: number;
 }
+
+export const BUNPRO_MINIMUM_REQUEST_INTERVAL_MS = 2_000;
 
 export class BunproRequestGate {
   readonly #maximumConcurrent: number;
   readonly #maximumQueued: number;
+  readonly #minimumStartIntervalMs: number;
   readonly #queue: Array<() => void> = [];
   #active = 0;
+  #nextStartAt = 0;
 
   constructor(options: BunproRequestGateOptions) {
     if (!Number.isInteger(options.maximumConcurrent) || options.maximumConcurrent < 1) {
@@ -18,8 +23,13 @@ export class BunproRequestGate {
     if (!Number.isInteger(options.maximumQueued) || options.maximumQueued < 0) {
       throw new TypeError("maximumQueued must be a non-negative integer.");
     }
+    const minimumStartIntervalMs = options.minimumStartIntervalMs ?? 0;
+    if (!Number.isFinite(minimumStartIntervalMs) || minimumStartIntervalMs < 0) {
+      throw new TypeError("minimumStartIntervalMs must be a non-negative finite number.");
+    }
     this.#maximumConcurrent = options.maximumConcurrent;
     this.#maximumQueued = options.maximumQueued;
+    this.#minimumStartIntervalMs = minimumStartIntervalMs;
   }
 
   async run<T>(operation: () => Promise<T>): Promise<T> {
@@ -35,6 +45,13 @@ export class BunproRequestGate {
 
     this.#active += 1;
     try {
+      const now = performance.now();
+      const startAt = Math.max(now, this.#nextStartAt);
+      this.#nextStartAt = startAt + this.#minimumStartIntervalMs;
+      const waitMs = startAt - now;
+      if (waitMs > 0) {
+        await new Promise<void>(resolve => setTimeout(resolve, waitMs));
+      }
       return await operation();
     } finally {
       this.#active -= 1;

@@ -1,7 +1,11 @@
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
 import { createMcpHandler, validateHostHeader } from "@modelcontextprotocol/server";
-import { BunproRequestGate, type FetchLike } from "./bunpro/client.js";
+import {
+  BUNPRO_MINIMUM_REQUEST_INTERVAL_MS,
+  BunproRequestGate,
+  type FetchLike
+} from "./bunpro/client.js";
 import { createFrontendSourceOperationFactory } from "./bunpro/frontend-source.js";
 import { loadHttpConfig, type HttpConfig } from "./config.js";
 import {
@@ -134,7 +138,11 @@ export function createHttpMcpHandler(
   fetchImplementation: FetchLike = fetch,
   clock: Clock = () => new Date()
 ) {
-  const requestGate = new BunproRequestGate({ maximumConcurrent: 4, maximumQueued: 16 });
+  const requestGate = new BunproRequestGate({
+    maximumConcurrent: 4,
+    maximumQueued: 16,
+    minimumStartIntervalMs: BUNPRO_MINIMUM_REQUEST_INTERVAL_MS
+  });
   return createMcpHandler(
     context => {
       const credential = bunproCredentialFromHeaders(context.requestInfo?.headers ?? new Headers());

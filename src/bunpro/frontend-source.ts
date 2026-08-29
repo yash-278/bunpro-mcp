@@ -39,19 +39,23 @@ const AccountContextResponseSchema = z.object({
   user: z.object({
     data: z.object({
       attributes: z.object({
-        time_zone_iana: z.string().min(1)
+        time_zone_iana: z.string().min(1).refine(isIanaTimeZone)
       }).loose()
     }).loose()
   }).loose()
 }).loose();
 
-const DailyCountMapSchema = z.record(z.string(), z.number().int().nonnegative());
+const DailyCountMapSchema = z.record(z.string(), z.number().int().nonnegative())
+  .refine(hasOnlyIsoCalendarKeys);
 const DailyCountSeriesResponseSchema = z.object({
   grammar: DailyCountMapSchema,
   vocab: DailyCountMapSchema,
   mixed: DailyCountMapSchema
 });
-const AccuracySeriesResponseSchema = z.record(z.string(), z.number().nullable());
+const AccuracySeriesResponseSchema = z.record(
+  z.string(),
+  z.number().min(0).max(100).nullable()
+).refine(hasOnlyIsoCalendarKeys);
 const DueResponseSchema = z.object({
   total_due_grammar: z.number().int().nonnegative(),
   total_due_vocab: z.number().int().nonnegative()
@@ -198,22 +202,24 @@ export interface ReviewPlanningSnapshot {
   };
 }
 
-export interface DeckConfigurationFact {
+export interface DeckConfigurationEntry {
   deckId: string;
-  title: string;
-  slug: string;
-  deckType: string;
   activelyStudying: boolean;
   batchSize: number;
   dailyGoal: number;
   dailyGoalProgress: ReviewCounts;
   completed: ReviewCounts;
-  content: ReviewCounts;
+  metadata: {
+    title: string;
+    slug: string;
+    deckType: string;
+    content: ReviewCounts;
+  } | null;
 }
 
 export interface DeckConfigurationSnapshot {
   accountContext: AccountContext;
-  decks: DeckConfigurationFact[];
+  entries: DeckConfigurationEntry[];
 }
 
 export type RecentActivityView = "last_24_hours" | "latest_attempts";
@@ -379,14 +385,16 @@ export class BunproFrontendSource implements FrontendSource {
     );
     const grammarKeys = Object.keys(forecast.grammar).sort();
     const vocabularyKeys = Object.keys(forecast.vocab).sort();
-    if (
-      grammarKeys.join("\0") !== vocabularyKeys.join("\0")
-      || !Object.hasOwn(forecast.grammar, "later")
-      || !Object.hasOwn(forecast.grammar, "tomorrow")
-    ) {
+    if (grammarKeys.join("\0") !== vocabularyKeys.join("\0")) {
       throw new BunproError(
         "BUNPRO_CONTRACT_CHANGED",
         "Bunpro returned inconsistent grammar and vocabulary forecast buckets."
+      );
+    }
+    if (!Object.hasOwn(forecast.grammar, "later") || !Object.hasOwn(forecast.grammar, "tomorrow")) {
+      throw new BunproError(
+        "BUNPRO_CONTRACT_CHANGED",
+        "Bunpro returned an unexpected daily forecast horizon."
       );
     }
     const countsFor = (key: string): ReviewCounts => ({
@@ -418,20 +426,11 @@ export class BunproFrontendSource implements FrontendSource {
       operationSignal
     );
     const metadataById = new Map(response.included.map(deck => [deck.id, deck.attributes]));
-    const decks = response.data.map(userDeck => {
+    const entries = response.data.map(userDeck => {
       const deckId = String(userDeck.attributes.deck_id);
       const metadata = metadataById.get(deckId);
-      if (!metadata) {
-        throw new BunproError(
-          "BUNPRO_CONTRACT_CHANGED",
-          "Bunpro returned study-deck configuration without matching deck metadata."
-        );
-      }
       return {
         deckId,
-        title: metadata.title,
-        slug: metadata.slug,
-        deckType: metadata.deck_type,
         activelyStudying: userDeck.attributes.actively_studying,
         batchSize: userDeck.attributes.batch_size,
         dailyGoal: userDeck.attributes.daily_goal,
@@ -443,13 +442,18 @@ export class BunproFrontendSource implements FrontendSource {
           grammar: userDeck.attributes.complete_grammar_count,
           vocabulary: userDeck.attributes.complete_vocab_count
         },
-        content: {
-          grammar: metadata.grammar_count,
-          vocabulary: metadata.vocab_count
+        metadata: metadata === undefined ? null : {
+          title: metadata.title,
+          slug: metadata.slug,
+          deckType: metadata.deck_type,
+          content: {
+            grammar: metadata.grammar_count,
+            vocabulary: metadata.vocab_count
+          }
         }
       };
     });
-    return { accountContext, decks };
+    return { accountContext, entries };
   }
 
   async loadRecentActivity(
@@ -694,18 +698,24 @@ class FrontendHttpTransport {
   }
 
   async #request(url: URL, init: RequestInit): Promise<Response> {
-    const timeoutController = new AbortController();
-    const timeout = setTimeout(
-      () => timeoutController.abort(new DOMException("The Bunpro request timed out.", "TimeoutError")),
-      this.#requestTimeoutMs
-    );
+    const request = async (): Promise<Response> => {
+      const timeoutController = new AbortController();
+      const timeout = setTimeout(
+        () => timeoutController.abort(new DOMException("The Bunpro request timed out.", "TimeoutError")),
+        this.#requestTimeoutMs
+      );
+      try {
+        return await this.#fetch(url, {
+          ...init,
+          signal: init.signal
+            ? AbortSignal.any([init.signal, timeoutController.signal])
+            : timeoutController.signal
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
+    };
     try {
-      const request = (): Promise<Response> => this.#fetch(url, {
-        ...init,
-        signal: init.signal
-          ? AbortSignal.any([init.signal, timeoutController.signal])
-          : timeoutController.signal
-      });
       return await (this.#requestGate ? this.#requestGate.run(request) : request());
     } catch (error) {
       if (error instanceof BunproError) throw error;
@@ -714,8 +724,6 @@ class FrontendHttpTransport {
         "Bunpro could not be reached before the request timeout. Try again later.",
         { cause: error }
       );
-    } finally {
-      clearTimeout(timeout);
     }
   }
 
@@ -784,6 +792,25 @@ function normalizeDailyCountSeries(
     vocabulary: value.vocab,
     mixed: value.mixed
   };
+}
+
+function hasOnlyIsoCalendarKeys(value: Record<string, unknown>): boolean {
+  return Object.keys(value).every(isIsoCalendarDate);
+}
+
+function isIsoCalendarDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+function isIanaTimeZone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: value }).format();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function normalizeReviewAggregate(

@@ -17,6 +17,20 @@ import type {
 type SourceStatus = StudyDaySummary["source_coverage"]["reviews"]["status"];
 export type Clock = () => Date;
 
+interface StudyPeriodEvidence {
+  readonly requestedStartDate: string;
+  readonly requestedEndDate: string;
+  readonly sourceTimezone: string;
+  readonly expectedTimezone: string | null;
+  readonly timezoneMatches: boolean | null;
+  readonly overallQueryStatus: StudyRangeSummary["overall_query_status"];
+  readonly days: readonly StudyDayEvidence[];
+  readonly aggregates: StudyRangeSummary["aggregates"];
+  readonly contiguousCheckedThrough: StudyRangeSummary["contiguous_checked_through"];
+  readonly sourceCoverage: StudyRangeSummary["source_coverage"];
+  readonly unavailableMeasures: readonly string[];
+}
+
 const UNAVAILABLE_MEASURES = [
   "study duration for the requested day",
   "exact correct and incorrect counts for the requested day",
@@ -36,7 +50,7 @@ export class StudyEvidenceService {
   }
 
   async getDay(input: StudyDayInput): Promise<StudyDaySummary> {
-    const range = await this.#analyzePeriod(
+    const period = await this.#analyzePeriod(
       {
         start_date: input.date,
         end_date: input.date,
@@ -46,66 +60,67 @@ export class StudyEvidenceService {
       },
       "Study Day cannot be in the future."
     );
-    const day = range.days[0];
+    const day = period.days[0];
     if (!day) {
       throw new BunproError("BUNPRO_CONTRACT_CHANGED", "Study Day analysis returned no calendar day.");
     }
     return {
       ...day,
-      source_timezone: range.source_timezone,
-      expected_timezone: range.expected_timezone,
-      timezone_matches: range.timezone_matches,
-      overall_query_status: range.overall_query_status,
-      source_coverage: range.source_coverage,
-      unavailable_measures: range.unavailable_measures
+      source_timezone: period.sourceTimezone,
+      expected_timezone: period.expectedTimezone,
+      timezone_matches: period.timezoneMatches,
+      overall_query_status: period.overallQueryStatus,
+      source_coverage: period.sourceCoverage,
+      unavailable_measures: [...period.unavailableMeasures]
     };
   }
 
-  getRange(input: StudyRangeInput): Promise<StudyRangeSummary> {
-    return this.#analyzePeriod(input, "Study range cannot end in the future.");
+  async getRange(input: StudyRangeInput): Promise<StudyRangeSummary> {
+    const period = await this.#analyzePeriod(input, "Study range cannot end in the future.");
+    return projectRange(period);
   }
 
   async getTrend(input: StudyRangeInput): Promise<ActivityTrend> {
-    const range = await this.#analyzePeriod(input, "Study range cannot end in the future.");
-    const reviewCount = range.aggregates.reviews.source_record_days;
-    const newContentCount = range.aggregates.new_content.source_record_days;
+    const period = await this.#analyzePeriod(input, "Study range cannot end in the future.");
+    const reviewCount = period.aggregates.reviews.source_record_days;
+    const newContentCount = period.aggregates.new_content.source_record_days;
     return {
-      requested_start_date: range.requested_start_date,
-      requested_end_date: range.requested_end_date,
-      source_timezone: range.source_timezone,
-      expected_timezone: range.expected_timezone,
-      timezone_matches: range.timezone_matches,
-      overall_query_status: range.overall_query_status,
-      days: range.days,
+      requested_start_date: period.requestedStartDate,
+      requested_end_date: period.requestedEndDate,
+      source_timezone: period.sourceTimezone,
+      expected_timezone: period.expectedTimezone,
+      timezone_matches: period.timezoneMatches,
+      overall_query_status: period.overallQueryStatus,
+      days: [...period.days],
       metrics: {
         reviews: {
           source_record_days: reviewCount,
-          total: range.aggregates.reviews.source_total,
+          total: period.aggregates.reviews.source_total,
           average_per_source_record_day: reviewCount === 0
             ? null
-            : range.aggregates.reviews.source_total / reviewCount
+            : period.aggregates.reviews.source_total / reviewCount
         },
         new_content: {
           source_record_days: newContentCount,
-          total: range.aggregates.new_content.source_total,
+          total: period.aggregates.new_content.source_total,
           average_per_source_record_day: newContentCount === 0
             ? null
-            : range.aggregates.new_content.source_total / newContentCount
+            : period.aggregates.new_content.source_total / newContentCount
         },
         accuracy: {
-          source_record_days: range.aggregates.accuracy.source_record_days,
-          average_percent: range.aggregates.accuracy.average_percent
+          source_record_days: period.aggregates.accuracy.source_record_days,
+          average_percent: period.aggregates.accuracy.average_percent
         }
       },
       derived_measures_labeled: true,
-      source_coverage: range.source_coverage
+      source_coverage: period.sourceCoverage
     };
   }
 
   async #analyzePeriod(
     input: StudyRangeInput,
     futureErrorMessage: string
-  ): Promise<StudyRangeSummary> {
+  ): Promise<StudyPeriodEvidence> {
     const dates = inclusiveDates(input.start_date, input.end_date);
     if (dates.length > 93) {
       throw new BunproError(
@@ -137,14 +152,14 @@ export class StudyEvidenceService {
     const accuracyChecked = evidence.accuracy.status === "available";
 
     return {
-      requested_start_date: input.start_date,
-      requested_end_date: input.end_date,
-      source_timezone: evidence.accountContext.sourceTimezone,
-      expected_timezone: input.expected_timezone ?? null,
-      timezone_matches: input.expected_timezone === undefined
+      requestedStartDate: input.start_date,
+      requestedEndDate: input.end_date,
+      sourceTimezone: evidence.accountContext.sourceTimezone,
+      expectedTimezone: input.expected_timezone ?? null,
+      timezoneMatches: input.expected_timezone === undefined
         ? null
         : input.expected_timezone === evidence.accountContext.sourceTimezone,
-      overall_query_status: overallStatus(evidence),
+      overallQueryStatus: overallStatus(evidence),
       days,
       aggregates: {
         reviews: {
@@ -163,15 +178,31 @@ export class StudyEvidenceService {
           average_percent: accuracyDays.length === 0 ? null : accuracyTotal / accuracyDays.length
         }
       },
-      contiguous_checked_through: {
+      contiguousCheckedThrough: {
         activity: activityChecked ? input.end_date : null,
         accuracy: accuracyChecked ? input.end_date : null,
         all_sources: activityChecked && accuracyChecked ? input.end_date : null
       },
-      source_coverage: sourceCoverage(evidence),
-      unavailable_measures: UNAVAILABLE_MEASURES
+      sourceCoverage: sourceCoverage(evidence),
+      unavailableMeasures: UNAVAILABLE_MEASURES
     };
   }
+}
+
+function projectRange(period: StudyPeriodEvidence): StudyRangeSummary {
+  return {
+    requested_start_date: period.requestedStartDate,
+    requested_end_date: period.requestedEndDate,
+    source_timezone: period.sourceTimezone,
+    expected_timezone: period.expectedTimezone,
+    timezone_matches: period.timezoneMatches,
+    overall_query_status: period.overallQueryStatus,
+    days: [...period.days],
+    aggregates: period.aggregates,
+    contiguous_checked_through: period.contiguousCheckedThrough,
+    source_coverage: period.sourceCoverage,
+    unavailable_measures: [...period.unavailableMeasures]
+  };
 }
 
 async function loadEvidence(

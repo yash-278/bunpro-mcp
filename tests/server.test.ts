@@ -1,7 +1,22 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
+import * as z from "zod/v4";
 import { InMemoryFrontendSource } from "../src/bunpro/in-memory-frontend-source.js";
+import {
+  ActivityTrendOutputSchema,
+  ConnectionStatusOutputSchema,
+  LearningProgressOutputSchema,
+  ListStudyDecksInputSchema,
+  ListStudyDecksOutputSchema,
+  RecentActivityInputSchema,
+  RecentActivityOutputSchema,
+  ReviewScheduleOutputSchema,
+  StudyDayInputSchema,
+  StudyDaySummaryOutputSchema,
+  StudyRangeInputSchema,
+  StudyRangeSummaryOutputSchema
+} from "../src/bunpro/schemas.js";
 import { createServer } from "../src/server.js";
 
 test("get_connection_status creates a fresh Frontend source operation for every call", async () => {
@@ -77,17 +92,18 @@ test("the MCP adapter exposes exactly eight read-only tools and preserves struct
     await server.connect(serverTransport);
     await client.connect(clientTransport);
     const listing = await client.listTools();
-    const expectedRequired: Record<string, string[]> = {
-      get_connection_status: [],
-      get_study_day_summary: ["date"],
-      get_study_range_summary: ["start_date", "end_date"],
-      get_review_schedule: [],
-      list_study_decks: [],
-      get_recent_activity: [],
-      get_learning_progress: [],
-      get_activity_trend: ["start_date", "end_date"]
+    const emptyInput = z.object({}).strict();
+    const expectedSchemas: Record<string, { input: z.ZodType; output: z.ZodType }> = {
+      get_connection_status: { input: emptyInput, output: ConnectionStatusOutputSchema },
+      get_study_day_summary: { input: StudyDayInputSchema, output: StudyDaySummaryOutputSchema },
+      get_study_range_summary: { input: StudyRangeInputSchema, output: StudyRangeSummaryOutputSchema },
+      get_review_schedule: { input: emptyInput, output: ReviewScheduleOutputSchema },
+      list_study_decks: { input: ListStudyDecksInputSchema, output: ListStudyDecksOutputSchema },
+      get_recent_activity: { input: RecentActivityInputSchema, output: RecentActivityOutputSchema },
+      get_learning_progress: { input: emptyInput, output: LearningProgressOutputSchema },
+      get_activity_trend: { input: StudyRangeInputSchema, output: ActivityTrendOutputSchema }
     };
-    assert.deepEqual(listing.tools.map(tool => tool.name), Object.keys(expectedRequired));
+    assert.deepEqual(listing.tools.map(tool => tool.name), Object.keys(expectedSchemas));
     for (const tool of listing.tools) {
       assert.deepEqual(tool.annotations, {
         readOnlyHint: true,
@@ -95,11 +111,10 @@ test("the MCP adapter exposes exactly eight read-only tools and preserves struct
         idempotentHint: true,
         openWorldHint: true
       });
-      assert.equal(tool.inputSchema.type, "object");
-      assert.equal(tool.inputSchema.additionalProperties, false);
-      assert.deepEqual(tool.inputSchema.required ?? [], expectedRequired[tool.name]);
-      assert.equal(tool.outputSchema?.type, "object");
-      assert.equal(tool.outputSchema?.additionalProperties, false);
+      const schemas = expectedSchemas[tool.name];
+      assert.ok(schemas);
+      assert.deepEqual(tool.inputSchema, z.toJSONSchema(schemas.input, { io: "input" }));
+      assert.deepEqual(tool.outputSchema, z.toJSONSchema(schemas.output));
     }
 
     const success = await client.callTool({ name: "get_review_schedule", arguments: {} });

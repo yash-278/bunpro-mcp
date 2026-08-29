@@ -134,6 +134,26 @@ test("a shared request gate bounds outbound concurrency and rejects excess queue
   assert.equal(maximumActive, 2);
 });
 
+test("a shared request gate paces outbound request starts", async () => {
+  const minimumStartIntervalMs = 15;
+  const gate = new BunproRequestGate({
+    maximumConcurrent: 3,
+    maximumQueued: 0,
+    minimumStartIntervalMs
+  });
+  const starts: number[] = [];
+
+  await Promise.all(Array.from({ length: 3 }, () => gate.run(async () => {
+    starts.push(performance.now());
+  })));
+
+  assert.equal(starts.length, 3);
+  assert.ok(
+    starts[2]! - starts[0]! >= minimumStartIntervalMs,
+    "three requests should not start as an immediate burst"
+  );
+});
+
 test("the Account API Token is loaded only from BUNPRO_API_TOKEN", () => {
   assert.equal(apiTokenFromEnvironment({ BUNPRO_API_TOKEN: " account-token " }), "account-token");
   assert.throws(

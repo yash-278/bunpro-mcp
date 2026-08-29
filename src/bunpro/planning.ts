@@ -51,19 +51,29 @@ export async function listStudyDecks(
 ): Promise<ListStudyDecksOutput> {
   const operationSignal = AbortSignal.timeout(30_000);
   const configuration = await source.loadDeckConfiguration(operationSignal);
-  const matching = configuration.decks.filter(deck => !input.active_only || deck.activelyStudying);
-  const decks = matching.slice(0, input.limit).map(deck => ({
-    deck_id: deck.deckId,
-    title: deck.title,
-    slug: deck.slug,
-    deck_type: deck.deckType,
-    actively_studying: deck.activelyStudying,
-    batch_size: deck.batchSize,
-    daily_goal: deck.dailyGoal,
-    daily_goal_progress: deck.dailyGoalProgress,
-    completed: deck.completed,
-    content: deck.content
-  }));
+  const matching = configuration.entries.filter(
+    entry => !input.active_only || entry.activelyStudying
+  );
+  const decks = matching.slice(0, input.limit).map(entry => {
+    if (entry.metadata === null) {
+      throw new BunproError(
+        "BUNPRO_CONTRACT_CHANGED",
+        "Bunpro returned study-deck configuration without matching deck metadata."
+      );
+    }
+    return {
+      deck_id: entry.deckId,
+      title: entry.metadata.title,
+      slug: entry.metadata.slug,
+      deck_type: entry.metadata.deckType,
+      actively_studying: entry.activelyStudying,
+      batch_size: entry.batchSize,
+      daily_goal: entry.dailyGoal,
+      daily_goal_progress: entry.dailyGoalProgress,
+      completed: entry.completed,
+      content: entry.metadata.content
+    };
+  });
   return {
     active_only: input.active_only,
     count: decks.length,

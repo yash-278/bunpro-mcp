@@ -1,6 +1,10 @@
 import { McpServer, type CallToolResult } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
-import { BunproRequestGate, apiTokenFromEnvironment } from "./bunpro/client.js";
+import {
+  BUNPRO_MINIMUM_REQUEST_INTERVAL_MS,
+  BunproRequestGate,
+  apiTokenFromEnvironment
+} from "./bunpro/client.js";
 import { connectionErrorMessage } from "./bunpro/errors.js";
 import {
   createFrontendSourceOperationFactory,
@@ -33,7 +37,11 @@ export interface BunproServerOptions {
 
 export function createServer(options: BunproServerOptions = {}): McpServer {
   const server = new McpServer({ name: "bunpro-mcp-server", version: "0.4.0" });
-  const requestGate = new BunproRequestGate({ maximumConcurrent: 4, maximumQueued: 16 });
+  const requestGate = new BunproRequestGate({
+    maximumConcurrent: 4,
+    maximumQueued: 16,
+    minimumStartIntervalMs: BUNPRO_MINIMUM_REQUEST_INTERVAL_MS
+  });
   const sourceOperationFactory = options.sourceOperationFactory
     ?? createFrontendSourceOperationFactory(apiTokenFromEnvironment, fetch, { requestGate });
   const clock = options.clock ?? (() => new Date());
