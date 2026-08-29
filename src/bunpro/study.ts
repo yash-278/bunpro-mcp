@@ -1,11 +1,12 @@
 import { BunproError } from "./errors.js";
 import type {
   DailyCountSeries,
-  FrontendSource,
+  FrontendSourceOperationFactory,
   SourceOutcome,
   StudyHistorySnapshot
 } from "./frontend-source.js";
 import type {
+  ActivityTrend,
   StudyDayEvidence,
   StudyDayInput,
   StudyDaySummary,
@@ -14,6 +15,7 @@ import type {
 } from "./schemas.js";
 
 type SourceStatus = StudyDaySummary["source_coverage"]["reviews"]["status"];
+export type Clock = () => Date;
 
 const UNAVAILABLE_MEASURES = [
   "study duration for the requested day",
@@ -21,94 +23,159 @@ const UNAVAILABLE_MEASURES = [
   "complete item-level history for an arbitrary historical day"
 ];
 
-export async function getStudyDaySummary(
-  source: Pick<FrontendSource, "getAccountContext" | "loadStudyHistory">,
-  input: StudyDayInput,
-  now: Date = new Date()
-): Promise<StudyDaySummary> {
-  assertValidCalendarDate(input.date);
-  const operationSignal = AbortSignal.timeout(30_000);
-  const accountContext = await source.getAccountContext(operationSignal);
-  const currentDate = dateInTimeZone(now, accountContext.sourceTimezone);
-  if (input.date > currentDate) {
-    throw new BunproError("BUNPRO_CONTRACT_CHANGED", "Study Day cannot be in the future.");
-  }
-  const evidence = await loadEvidence(source, operationSignal);
-  const day = buildDayEvidence(evidence, input.date, currentDate);
+export class StudyEvidenceService {
+  readonly #sourceOperationFactory: FrontendSourceOperationFactory;
+  readonly #clock: Clock;
 
-  return {
-    ...day,
-    source_timezone: evidence.accountContext.sourceTimezone,
-    expected_timezone: input.expected_timezone ?? null,
-    timezone_matches: input.expected_timezone === undefined
-      ? null
-      : input.expected_timezone === evidence.accountContext.sourceTimezone,
-    overall_query_status: overallStatus(evidence),
-    source_coverage: sourceCoverage(evidence),
-    unavailable_measures: UNAVAILABLE_MEASURES
-  };
-}
-
-export async function getStudyRangeSummary(
-  source: Pick<FrontendSource, "getAccountContext" | "loadStudyHistory">,
-  input: StudyRangeInput,
-  now: Date = new Date()
-): Promise<StudyRangeSummary> {
-  const dates = inclusiveDates(input.start_date, input.end_date);
-  if (dates.length > 93) {
-    throw new BunproError("BUNPRO_CONTRACT_CHANGED", "Study ranges may include at most 93 calendar days.");
+  constructor(
+    sourceOperationFactory: FrontendSourceOperationFactory,
+    clock: Clock = () => new Date()
+  ) {
+    this.#sourceOperationFactory = sourceOperationFactory;
+    this.#clock = clock;
   }
-  const operationSignal = AbortSignal.timeout(30_000);
-  const accountContext = await source.getAccountContext(operationSignal);
-  const currentDate = dateInTimeZone(now, accountContext.sourceTimezone);
-  if (input.end_date > currentDate) {
-    throw new BunproError("BUNPRO_CONTRACT_CHANGED", "Study range cannot end in the future.");
-  }
-  const evidence = await loadEvidence(source, operationSignal);
-  const days = dates.map(date => buildDayEvidence(evidence, date, currentDate));
-  const reviewDays = days.filter(day => day.reviews.coverage === "available");
-  const newContentDays = days.filter(day => day.new_content.coverage === "available");
-  const accuracyDays = days.filter(day => day.accuracy.coverage === "available" && day.accuracy.percent !== null);
-  const accuracyTotal = accuracyDays.reduce((total, day) => total + (day.accuracy.percent ?? 0), 0);
-  const activityChecked = evidence.reviews.status === "available" && evidence.newContent.status === "available";
-  const accuracyChecked = evidence.accuracy.status === "available";
 
-  return {
-    requested_start_date: input.start_date,
-    requested_end_date: input.end_date,
-    source_timezone: evidence.accountContext.sourceTimezone,
-    expected_timezone: input.expected_timezone ?? null,
-    timezone_matches: input.expected_timezone === undefined
-      ? null
-      : input.expected_timezone === evidence.accountContext.sourceTimezone,
-    overall_query_status: overallStatus(evidence),
-    days,
-    aggregates: {
-      reviews: {
-        source_record_days: reviewDays.length,
-        source_total: reviewDays.reduce((total, day) => total + (day.reviews.source_total ?? 0), 0)
+  async getDay(input: StudyDayInput): Promise<StudyDaySummary> {
+    const range = await this.#analyzePeriod(
+      {
+        start_date: input.date,
+        end_date: input.date,
+        ...(input.expected_timezone === undefined
+          ? {}
+          : { expected_timezone: input.expected_timezone })
       },
-      new_content: {
-        source_record_days: newContentDays.length,
-        source_total: newContentDays.reduce((total, day) => total + (day.new_content.source_total ?? 0), 0)
+      "Study Day cannot be in the future."
+    );
+    const day = range.days[0];
+    if (!day) {
+      throw new BunproError("BUNPRO_CONTRACT_CHANGED", "Study Day analysis returned no calendar day.");
+    }
+    return {
+      ...day,
+      source_timezone: range.source_timezone,
+      expected_timezone: range.expected_timezone,
+      timezone_matches: range.timezone_matches,
+      overall_query_status: range.overall_query_status,
+      source_coverage: range.source_coverage,
+      unavailable_measures: range.unavailable_measures
+    };
+  }
+
+  getRange(input: StudyRangeInput): Promise<StudyRangeSummary> {
+    return this.#analyzePeriod(input, "Study range cannot end in the future.");
+  }
+
+  async getTrend(input: StudyRangeInput): Promise<ActivityTrend> {
+    const range = await this.#analyzePeriod(input, "Study range cannot end in the future.");
+    const reviewCount = range.aggregates.reviews.source_record_days;
+    const newContentCount = range.aggregates.new_content.source_record_days;
+    return {
+      requested_start_date: range.requested_start_date,
+      requested_end_date: range.requested_end_date,
+      source_timezone: range.source_timezone,
+      expected_timezone: range.expected_timezone,
+      timezone_matches: range.timezone_matches,
+      overall_query_status: range.overall_query_status,
+      days: range.days,
+      metrics: {
+        reviews: {
+          source_record_days: reviewCount,
+          total: range.aggregates.reviews.source_total,
+          average_per_source_record_day: reviewCount === 0
+            ? null
+            : range.aggregates.reviews.source_total / reviewCount
+        },
+        new_content: {
+          source_record_days: newContentCount,
+          total: range.aggregates.new_content.source_total,
+          average_per_source_record_day: newContentCount === 0
+            ? null
+            : range.aggregates.new_content.source_total / newContentCount
+        },
+        accuracy: {
+          source_record_days: range.aggregates.accuracy.source_record_days,
+          average_percent: range.aggregates.accuracy.average_percent
+        }
       },
-      accuracy: {
-        source_record_days: accuracyDays.length,
-        average_percent: accuracyDays.length === 0 ? null : accuracyTotal / accuracyDays.length
-      }
-    },
-    contiguous_checked_through: {
-      activity: activityChecked ? input.end_date : null,
-      accuracy: accuracyChecked ? input.end_date : null,
-      all_sources: activityChecked && accuracyChecked ? input.end_date : null
-    },
-    source_coverage: sourceCoverage(evidence),
-    unavailable_measures: UNAVAILABLE_MEASURES
-  };
+      derived_measures_labeled: true,
+      source_coverage: range.source_coverage
+    };
+  }
+
+  async #analyzePeriod(
+    input: StudyRangeInput,
+    futureErrorMessage: string
+  ): Promise<StudyRangeSummary> {
+    const dates = inclusiveDates(input.start_date, input.end_date);
+    if (dates.length > 93) {
+      throw new BunproError(
+        "BUNPRO_CONTRACT_CHANGED",
+        "Study ranges may include at most 93 calendar days."
+      );
+    }
+
+    const source = this.#sourceOperationFactory();
+    const operationSignal = AbortSignal.timeout(30_000);
+    const accountContext = await source.getAccountContext(operationSignal);
+    const currentDate = dateInTimeZone(this.#clock(), accountContext.sourceTimezone);
+    if (input.end_date > currentDate) {
+      throw new BunproError("BUNPRO_CONTRACT_CHANGED", futureErrorMessage);
+    }
+    const evidence = await loadEvidence(source, operationSignal);
+    const days = dates.map(date => buildDayEvidence(evidence, date, currentDate));
+    const reviewDays = days.filter(day => day.reviews.coverage === "available");
+    const newContentDays = days.filter(day => day.new_content.coverage === "available");
+    const accuracyDays = days.filter(
+      day => day.accuracy.coverage === "available" && day.accuracy.percent !== null
+    );
+    const accuracyTotal = accuracyDays.reduce(
+      (total, day) => total + (day.accuracy.percent ?? 0),
+      0
+    );
+    const activityChecked = evidence.reviews.status === "available"
+      && evidence.newContent.status === "available";
+    const accuracyChecked = evidence.accuracy.status === "available";
+
+    return {
+      requested_start_date: input.start_date,
+      requested_end_date: input.end_date,
+      source_timezone: evidence.accountContext.sourceTimezone,
+      expected_timezone: input.expected_timezone ?? null,
+      timezone_matches: input.expected_timezone === undefined
+        ? null
+        : input.expected_timezone === evidence.accountContext.sourceTimezone,
+      overall_query_status: overallStatus(evidence),
+      days,
+      aggregates: {
+        reviews: {
+          source_record_days: reviewDays.length,
+          source_total: reviewDays.reduce((total, day) => total + (day.reviews.source_total ?? 0), 0)
+        },
+        new_content: {
+          source_record_days: newContentDays.length,
+          source_total: newContentDays.reduce(
+            (total, day) => total + (day.new_content.source_total ?? 0),
+            0
+          )
+        },
+        accuracy: {
+          source_record_days: accuracyDays.length,
+          average_percent: accuracyDays.length === 0 ? null : accuracyTotal / accuracyDays.length
+        }
+      },
+      contiguous_checked_through: {
+        activity: activityChecked ? input.end_date : null,
+        accuracy: accuracyChecked ? input.end_date : null,
+        all_sources: activityChecked && accuracyChecked ? input.end_date : null
+      },
+      source_coverage: sourceCoverage(evidence),
+      unavailable_measures: UNAVAILABLE_MEASURES
+    };
+  }
 }
 
 async function loadEvidence(
-  source: Pick<FrontendSource, "loadStudyHistory">,
+  source: ReturnType<FrontendSourceOperationFactory>,
   operationSignal: AbortSignal
 ): Promise<StudyHistorySnapshot> {
   const evidence = await source.loadStudyHistory(operationSignal);

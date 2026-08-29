@@ -20,11 +20,11 @@ import {
   LearningProgressOutputSchema,
   ActivityTrendOutputSchema
 } from "./bunpro/schemas.js";
-import { getStudyDaySummary, getStudyRangeSummary } from "./bunpro/study.js";
+import { StudyEvidenceService, type Clock } from "./bunpro/study.js";
 import { getRecentActivity, getReviewSchedule, listStudyDecks } from "./bunpro/planning.js";
-import { getActivityTrend, getLearningProgress } from "./bunpro/progress.js";
+import { getLearningProgress } from "./bunpro/progress.js";
 
-export type Clock = () => Date;
+export type { Clock } from "./bunpro/study.js";
 
 export interface BunproServerOptions {
   sourceOperationFactory?: FrontendSourceOperationFactory;
@@ -37,6 +37,7 @@ export function createServer(options: BunproServerOptions = {}): McpServer {
   const sourceOperationFactory = options.sourceOperationFactory
     ?? createFrontendSourceOperationFactory(apiTokenFromEnvironment, fetch, { requestGate });
   const clock = options.clock ?? (() => new Date());
+  const studyEvidence = new StudyEvidenceService(sourceOperationFactory, clock);
 
   server.registerTool(
     "get_connection_status",
@@ -95,7 +96,7 @@ export function createServer(options: BunproServerOptions = {}): McpServer {
     },
     async input => {
       try {
-        const structuredContent = await getStudyDaySummary(sourceOperationFactory(), input, clock());
+        const structuredContent = await studyEvidence.getDay(input);
         return {
           content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
           structuredContent
@@ -126,7 +127,7 @@ export function createServer(options: BunproServerOptions = {}): McpServer {
     },
     async input => {
       try {
-        const structuredContent = await getStudyRangeSummary(sourceOperationFactory(), input, clock());
+        const structuredContent = await studyEvidence.getRange(input);
         return {
           content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
           structuredContent
@@ -281,7 +282,7 @@ export function createServer(options: BunproServerOptions = {}): McpServer {
     },
     async input => {
       try {
-        const structuredContent = await getActivityTrend(sourceOperationFactory(), input, clock());
+        const structuredContent = await studyEvidence.getTrend(input);
         return {
           content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
           structuredContent

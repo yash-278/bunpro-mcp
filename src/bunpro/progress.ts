@@ -1,5 +1,4 @@
-import type { ActivityTrend, LearningProgress, StudyRangeInput } from "./schemas.js";
-import { getStudyRangeSummary } from "./study.js";
+import type { LearningProgress } from "./schemas.js";
 import type {
   FrontendSource,
   JlptLevel,
@@ -56,47 +55,6 @@ export async function getLearningProgress(
         total_time: progress.cram.sessions.totalTime
       }
     }
-  };
-}
-
-export async function getActivityTrend(
-  source: Pick<FrontendSource, "getAccountContext" | "loadStudyHistory">,
-  input: StudyRangeInput,
-  now: Date = new Date()
-): Promise<ActivityTrend> {
-  const range = await getStudyRangeSummary(source, input, now);
-  const reviewCount = range.aggregates.reviews.source_record_days;
-  const newContentCount = range.aggregates.new_content.source_record_days;
-  return {
-    requested_start_date: range.requested_start_date,
-    requested_end_date: range.requested_end_date,
-    source_timezone: range.source_timezone,
-    expected_timezone: range.expected_timezone,
-    timezone_matches: range.timezone_matches,
-    overall_query_status: range.overall_query_status,
-    days: range.days,
-    metrics: {
-      reviews: {
-        source_record_days: reviewCount,
-        total: range.aggregates.reviews.source_total,
-        average_per_source_record_day: reviewCount === 0
-          ? null
-          : range.aggregates.reviews.source_total / reviewCount
-      },
-      new_content: {
-        source_record_days: newContentCount,
-        total: range.aggregates.new_content.source_total,
-        average_per_source_record_day: newContentCount === 0
-          ? null
-          : range.aggregates.new_content.source_total / newContentCount
-      },
-      accuracy: {
-        source_record_days: range.aggregates.accuracy.source_record_days,
-        average_percent: range.aggregates.accuracy.average_percent
-      }
-    },
-    derived_measures_labeled: true,
-    source_coverage: range.source_coverage
   };
 }
 

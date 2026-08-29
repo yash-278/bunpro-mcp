@@ -6,7 +6,7 @@ import type {
   FrontendSource,
   StudyHistorySnapshot
 } from "../src/bunpro/frontend-source.js";
-import { getStudyDaySummary, getStudyRangeSummary } from "../src/bunpro/study.js";
+import { StudyEvidenceService } from "../src/bunpro/study.js";
 
 const accountContext: AccountContext = {
   sourceTimezone: "Asia/Kolkata",
@@ -36,12 +36,12 @@ const clock = new Date("2026-08-12T12:00:00.000Z");
 
 test("get_study_day_summary authenticates before loading normalized Study History", async () => {
   const source = new RecordingStudySource(studyHistory);
+  const service = studyService(source);
 
-  const output = await getStudyDaySummary(
-    source,
-    { date: "2026-08-10", expected_timezone: "Asia/Kolkata" },
-    clock
-  );
+  const output = await service.getDay({
+    date: "2026-08-10",
+    expected_timezone: "Asia/Kolkata"
+  });
 
   assert.equal(output.study_day, "2026-08-10");
   assert.equal(output.source_timezone, "Asia/Kolkata");
@@ -74,8 +74,9 @@ test("get_study_day_summary preserves activity evidence when accuracy coverage i
     ...studyHistory,
     accuracy: { status: "contract_changed" }
   });
+  const service = studyService(source);
 
-  const output = await getStudyDaySummary(source, { date: "2026-08-10" }, clock);
+  const output = await service.getDay({ date: "2026-08-10" });
 
   assert.equal(output.overall_query_status, "partial");
   assert.equal(output.activity_evidence, "recorded");
@@ -89,12 +90,13 @@ test("get_study_day_summary preserves activity evidence when accuracy coverage i
 
 test("get_study_range_summary loads Study History once and returns every requested calendar day", async () => {
   const source = new RecordingStudySource(studyHistory);
+  const service = studyService(source);
 
-  const output = await getStudyRangeSummary(source, {
+  const output = await service.getRange({
     start_date: "2026-08-10",
     end_date: "2026-08-12",
     expected_timezone: "Asia/Kolkata"
-  }, clock);
+  });
 
   assert.equal(output.requested_start_date, "2026-08-10");
   assert.equal(output.requested_end_date, "2026-08-12");
@@ -119,17 +121,18 @@ test("get_study_range_summary loads Study History once and returns every request
 
 test("study services reject invalid and oversized ranges before reading the source", async () => {
   const source = new RecordingStudySource(studyHistory);
+  const service = studyService(source);
 
   await assert.rejects(
-    getStudyDaySummary(source, { date: "2026-02-30" }, clock),
+    service.getDay({ date: "2026-02-30" }),
     /valid calendar date/i
   );
   await assert.rejects(
-    getStudyRangeSummary(source, { start_date: "2026-08-10", end_date: "2026-08-09" }, clock),
+    service.getRange({ start_date: "2026-08-10", end_date: "2026-08-09" }),
     /must not follow/i
   );
   await assert.rejects(
-    getStudyRangeSummary(source, { start_date: "2026-01-01", end_date: "2026-04-04" }, clock),
+    service.getRange({ start_date: "2026-01-01", end_date: "2026-04-04" }),
     /at most 93/i
   );
   assert.deepEqual(source.events, []);
@@ -142,9 +145,10 @@ test("an all-source rate limit preserves Study Day failure precedence", async ()
     newContent: { status: "not_queried" },
     accuracy: { status: "not_queried" }
   });
+  const service = studyService(source);
 
   await assert.rejects(
-    getStudyDaySummary(source, { date: "2026-08-10" }, clock),
+    service.getDay({ date: "2026-08-10" }),
     (error: unknown) => error instanceof BunproError && error.code === "BUNPRO_RATE_LIMITED"
   );
   assert.deepEqual(source.events, ["account", "history"]);
@@ -152,13 +156,20 @@ test("an all-source rate limit preserves Study Day failure precedence", async ()
 
 test("future Study Days stop after reading only Account Context", async () => {
   const source = new RecordingStudySource(studyHistory);
+  const service = studyService(source);
 
   await assert.rejects(
-    getStudyDaySummary(source, { date: "2999-01-01" }, clock),
+    service.getDay({ date: "2999-01-01" }),
     /cannot be in the future/i
   );
   assert.deepEqual(source.events, ["account"]);
 });
+
+function studyService(
+  source: Pick<FrontendSource, "getAccountContext" | "loadStudyHistory">
+): StudyEvidenceService {
+  return new StudyEvidenceService(() => source as FrontendSource, () => clock);
+}
 
 class RecordingStudySource implements Pick<FrontendSource, "getAccountContext" | "loadStudyHistory"> {
   readonly events: string[] = [];

@@ -28,6 +28,10 @@ An MCP whose requests do not depend on user identity, a Bunpro browser session, 
 
 One calendar day interpreted in an explicitly named source timezone.
 
+## Study Period
+
+An inclusive sequence of Study Days bounded by a start date and an end date, all interpreted in the same source timezone.
+
 ## Study Day Summary
 
 A read-only, source-backed account of Bunpro activity during one Study Day. A measure is reported only when the available Frontend API evidence supports it.
