@@ -110,7 +110,7 @@ const AttemptResponseSchema = z.object({
 const ReviewSessionResponseSchema = z.object({
   attributes: z.object({
     starting_xp: z.number().int(),
-    ending_xp: z.number().int(),
+    ending_xp: z.number().int().nullable(),
     starting_buncoin: z.number().int(),
     ending_buncoin: z.number().int()
   }).loose()
@@ -494,12 +494,14 @@ export class BunproFrontendSource implements FrontendSource {
           ?? attempt.reviewable.data.attributes.slug
           ?? null
       })),
-      sessions: sessions?.map(session => ({
-        startingXp: session.attributes.starting_xp,
-        endingXp: session.attributes.ending_xp,
-        startingBuncoin: session.attributes.starting_buncoin,
-        endingBuncoin: session.attributes.ending_buncoin
-      })) ?? null
+      sessions: sessions?.flatMap(session => session.attributes.ending_xp === null
+        ? []
+        : [{
+            startingXp: session.attributes.starting_xp,
+            endingXp: session.attributes.ending_xp,
+            startingBuncoin: session.attributes.starting_buncoin,
+            endingBuncoin: session.attributes.ending_buncoin
+          }]) ?? null
     };
   }
 

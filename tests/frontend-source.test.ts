@@ -310,6 +310,45 @@ test("recent activity normalizes both semantic source views", async () => {
   ]);
 });
 
+test("recent activity excludes in-progress sessions from completed aggregates", async () => {
+  const fixtures = {
+    "/api/frontend/user": validUserFixture(),
+    "/api/frontend/summary/last_24_hours": {
+      history_objects: [],
+      review_sessions: {
+        data: [
+          {
+            attributes: {
+              starting_xp: 100,
+              ending_xp: 110,
+              starting_buncoin: 5,
+              ending_buncoin: 7
+            }
+          },
+          {
+            attributes: {
+              starting_xp: 110,
+              ending_xp: null,
+              starting_buncoin: 7,
+              ending_buncoin: 8
+            }
+          }
+        ]
+      }
+    }
+  };
+  const source = sourceForFixtures(fixtures);
+
+  const activity = await source.loadRecentActivity("last_24_hours");
+
+  assert.deepEqual(activity.sessions, [{
+    startingXp: 100,
+    endingXp: 110,
+    startingBuncoin: 5,
+    endingBuncoin: 7
+  }]);
+});
+
 test("learning progress returns validated normalized account and JLPT facts", async () => {
   const stageCounts = {
     beginner: 1,
