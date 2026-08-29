@@ -10,37 +10,9 @@ import type {
 import type { FrontendSource } from "./frontend-source.js";
 import type { StudySource } from "./study.js";
 
-const STUDY_DECKS_ROUTE = "/api/frontend/user/queue";
 const LATEST_ATTEMPTS_ROUTE = "/api/frontend/user_stats/last_done_reviews";
 const LAST_24_HOURS_ROUTE = "/api/frontend/summary/last_24_hours";
 
-const UserDeckSchema = z.object({
-  id: z.string(),
-  attributes: z.object({
-    deck_id: z.number().int().nonnegative(),
-    actively_studying: z.boolean(),
-    batch_size: z.number().int().nonnegative(),
-    daily_goal: z.number().int().nonnegative(),
-    daily_goal_count_grammar: z.number().int().nonnegative(),
-    daily_goal_count_vocab: z.number().int().nonnegative(),
-    complete_grammar_count: z.number().int().nonnegative(),
-    complete_vocab_count: z.number().int().nonnegative()
-  }).loose()
-}).loose();
-const DeckMetadataSchema = z.object({
-  id: z.string(),
-  attributes: z.object({
-    title: z.string(),
-    slug: z.string(),
-    deck_type: z.string(),
-    grammar_count: z.number().int().nonnegative(),
-    vocab_count: z.number().int().nonnegative()
-  }).loose()
-}).loose();
-const StudyDeckQueueSchema = z.object({
-  data: z.array(UserDeckSchema),
-  included: z.array(DeckMetadataSchema)
-});
 const AttemptSchema = z.object({
   id: z.union([z.string(), z.number()]),
   time: z.string().min(1),
@@ -108,49 +80,24 @@ export async function getReviewSchedule(
 }
 
 export async function listStudyDecks(
-  source: StudySource,
+  source: Pick<FrontendSource, "loadDeckConfiguration">,
   input: ListStudyDecksInput
 ): Promise<ListStudyDecksOutput> {
   const operationSignal = AbortSignal.timeout(30_000);
-  await source.checkConnection(operationSignal);
-  const queue = parse(
-    StudyDeckQueueSchema,
-    await source.getFrontendJson(STUDY_DECKS_ROUTE, operationSignal),
-    "study-deck configuration"
-  );
-  const metadataById = new Map(queue.included.map(deck => [deck.id, deck.attributes]));
-  const matching = queue.data.filter(deck => !input.active_only || deck.attributes.actively_studying);
-  const decks = matching.slice(0, input.limit).map(userDeck => {
-    const deckId = String(userDeck.attributes.deck_id);
-    const metadata = metadataById.get(deckId);
-    if (!metadata) {
-      throw new BunproError(
-        "BUNPRO_CONTRACT_CHANGED",
-        "Bunpro returned study-deck configuration without matching deck metadata."
-      );
-    }
-    return {
-      deck_id: deckId,
-      title: metadata.title,
-      slug: metadata.slug,
-      deck_type: metadata.deck_type,
-      actively_studying: userDeck.attributes.actively_studying,
-      batch_size: userDeck.attributes.batch_size,
-      daily_goal: userDeck.attributes.daily_goal,
-      daily_goal_progress: {
-        grammar: userDeck.attributes.daily_goal_count_grammar,
-        vocabulary: userDeck.attributes.daily_goal_count_vocab
-      },
-      completed: {
-        grammar: userDeck.attributes.complete_grammar_count,
-        vocabulary: userDeck.attributes.complete_vocab_count
-      },
-      content: {
-        grammar: metadata.grammar_count,
-        vocabulary: metadata.vocab_count
-      }
-    };
-  });
+  const configuration = await source.loadDeckConfiguration(operationSignal);
+  const matching = configuration.decks.filter(deck => !input.active_only || deck.activelyStudying);
+  const decks = matching.slice(0, input.limit).map(deck => ({
+    deck_id: deck.deckId,
+    title: deck.title,
+    slug: deck.slug,
+    deck_type: deck.deckType,
+    actively_studying: deck.activelyStudying,
+    batch_size: deck.batchSize,
+    daily_goal: deck.dailyGoal,
+    daily_goal_progress: deck.dailyGoalProgress,
+    completed: deck.completed,
+    content: deck.content
+  }));
   return {
     active_only: input.active_only,
     count: decks.length,

@@ -202,7 +202,7 @@ export function createServer(options: BunproServerOptions = {}): McpServer {
     },
     async input => {
       try {
-        const structuredContent = await listStudyDecks(getClient(), input);
+        const structuredContent = await listStudyDecks(sourceOperationFactory(), input);
         return {
           content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
           structuredContent

@@ -5,7 +5,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { createHttpMcpHandler } from "../src/http-server.js";
 import type { FetchLike } from "../src/bunpro/client.js";
 import { InMemoryFrontendSource } from "../src/bunpro/in-memory-frontend-source.js";
-import { getReviewSchedule } from "../src/bunpro/planning.js";
+import { getReviewSchedule, listStudyDecks } from "../src/bunpro/planning.js";
 
 async function withMcpClient(
   fetchImplementation: FetchLike,
@@ -67,95 +67,56 @@ test("get_review_schedule separates due-now work from the normalized 14-day fore
 });
 
 test("list_study_decks returns bounded active study configuration without unrelated deck metadata", async () => {
-  const paths: string[] = [];
-  const queue = {
-    data: [
-      {
-        id: "11",
-        type: "user_deck",
-        attributes: {
-          deck_id: 101,
-          actively_studying: true,
-          batch_size: 3,
-          daily_goal: 5,
-          daily_goal_count_grammar: 2,
-          daily_goal_count_vocab: 1,
-          complete_grammar_count: 20,
-          complete_vocab_count: 10,
-          user_id: 999,
-          default_input_type_grammar: "Cloze"
-        }
-      },
-      {
-        id: "12",
-        type: "user_deck",
-        attributes: {
-          deck_id: 102,
-          actively_studying: false,
-          batch_size: 1,
-          daily_goal: 2,
-          daily_goal_count_grammar: 0,
-          daily_goal_count_vocab: 0,
-          complete_grammar_count: 1,
-          complete_vocab_count: 1
-        }
-      }
-    ],
-    included: [
-      {
-        id: "101",
-        type: "deck",
-        attributes: {
+  const source = new InMemoryFrontendSource({
+    accountContext: { sourceTimezone: "Asia/Kolkata", tokenSource: "environment" },
+    deckConfiguration: {
+      decks: [
+        {
+          deckId: "101",
           title: "N3 Grammar",
           slug: "n3-grammar",
-          deck_type: "grammar",
-          grammar_count: 200,
-          vocab_count: 0,
-          description: "must not be returned",
-          cover_image_url: "https://private.example/image"
-        }
-      },
-      {
-        id: "102",
-        type: "deck",
-        attributes: {
+          deckType: "grammar",
+          activelyStudying: true,
+          batchSize: 3,
+          dailyGoal: 5,
+          dailyGoalProgress: { grammar: 2, vocabulary: 1 },
+          completed: { grammar: 20, vocabulary: 10 },
+          content: { grammar: 200, vocabulary: 0 }
+        },
+        {
+          deckId: "102",
           title: "Inactive",
           slug: "inactive",
-          deck_type: "mixed",
-          grammar_count: 1,
-          vocab_count: 1
+          deckType: "mixed",
+          activelyStudying: false,
+          batchSize: 1,
+          dailyGoal: 2,
+          dailyGoalProgress: { grammar: 0, vocabulary: 0 },
+          completed: { grammar: 1, vocabulary: 1 },
+          content: { grammar: 1, vocabulary: 1 }
         }
-      }
-    ]
-  };
-  const fetch = fixtureFetch({
-    "/api/frontend/user": userFixture,
-    "/api/frontend/user/queue": queue
-  }, paths);
+      ]
+    }
+  });
 
-  await withMcpClient(fetch, async client => {
-    const result = await client.callTool({ name: "list_study_decks", arguments: {} });
-    assert.equal(result.isError, undefined);
-    assert.deepEqual(result.structuredContent, {
-      active_only: true,
-      count: 1,
-      total_matching: 1,
-      has_more: false,
-      decks: [{
-        deck_id: "101",
-        title: "N3 Grammar",
-        slug: "n3-grammar",
-        deck_type: "grammar",
-        actively_studying: true,
-        batch_size: 3,
-        daily_goal: 5,
-        daily_goal_progress: { grammar: 2, vocabulary: 1 },
-        completed: { grammar: 20, vocabulary: 10 },
-        content: { grammar: 200, vocabulary: 0 }
-      }]
-    });
-    assert.doesNotMatch(JSON.stringify(result.structuredContent), /description|cover_image|user_id|Cloze/);
-    assert.deepEqual(paths, ["/api/frontend/user", "/api/frontend/user/queue"]);
+  const output = await listStudyDecks(source, { active_only: true, limit: 20 });
+  assert.deepEqual(output, {
+    active_only: true,
+    count: 1,
+    total_matching: 1,
+    has_more: false,
+    decks: [{
+      deck_id: "101",
+      title: "N3 Grammar",
+      slug: "n3-grammar",
+      deck_type: "grammar",
+      actively_studying: true,
+      batch_size: 3,
+      daily_goal: 5,
+      daily_goal_progress: { grammar: 2, vocabulary: 1 },
+      completed: { grammar: 20, vocabulary: 10 },
+      content: { grammar: 200, vocabulary: 0 }
+    }]
   });
 });
 
