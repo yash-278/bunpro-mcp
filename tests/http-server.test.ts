@@ -77,9 +77,10 @@ test("Streamable HTTP passes the caller's X-Bunpro-Token value to Bunpro without
       stateless: true
     });
     assert.equal(upstreamCalls.length, 1);
+    assert.equal(upstreamCalls[0]?.url.origin, "https://api.bunpro.jp");
     assert.equal(
-      upstreamCalls[0]?.url.href,
-      "https://api.bunpro.jp/api/frontend/user?dangerously_authenticate_using_api_token=true"
+      upstreamCalls[0]?.url.searchParams.get("dangerously_authenticate_using_api_token"),
+      "true"
     );
     assert.equal(
       new Headers(upstreamCalls[0]?.init.headers).get("authorization"),

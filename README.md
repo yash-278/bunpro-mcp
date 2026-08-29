@@ -126,7 +126,6 @@ Optional live tests use your own Bunpro token and perform read-only, deliberatel
 
 ```bash
 BUNPRO_API_TOKEN="your token" npm run live:test:auth
-BUNPRO_API_TOKEN="your token" npm run live:test:http
 BUNPRO_API_TOKEN="your token" npm run live:test:tools
 BUNPRO_API_TOKEN="your token" BUNPRO_MCP_URL="https://your-host.example/mcp" npm run live:test:tools
 ```

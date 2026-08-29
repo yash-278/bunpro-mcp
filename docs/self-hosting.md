@@ -123,7 +123,6 @@ For maintainers, the repository includes deliberately paced live smoke scripts:
 
 ```bash
 BUNPRO_API_TOKEN="your token" npm run live:test:auth
-BUNPRO_API_TOKEN="your token" npm run live:test:http
 BUNPRO_API_TOKEN="your token" BUNPRO_MCP_URL="https://your-domain.example/mcp" npm run live:test:tools
 ```
 

@@ -1,8 +1,8 @@
 import * as z from "zod/v4";
 import {
-  BunproClient,
-  type BunproClientOptions,
-  type FetchLike
+  type BunproRequestGate,
+  type FetchLike,
+  validateApiToken
 } from "./client.js";
 import { BunproError } from "./errors.js";
 import type { TokenSource } from "./schemas.js";
@@ -22,6 +22,11 @@ const BASE_STATS_ROUTE = "/api/frontend/user_stats/base_stats";
 const JLPT_PROGRESS_ROUTE = "/api/frontend/user_stats/jlpt_progress_mixed";
 const TOTAL_REVIEW_STATS_ROUTE = "/api/frontend/user_stats/total_review_stats";
 const TOTAL_CRAM_STATS_ROUTE = "/api/frontend/user_stats/total_cram_stats";
+const API_ORIGIN = "https://api.bunpro.jp";
+const FRONTEND_API_PREFIX = "/api/frontend/";
+const ACCOUNT_TOKEN_OPT_IN = "dangerously_authenticate_using_api_token";
+const REQUEST_TIMEOUT_MS = 10_000;
+const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 const JLPT_LEVELS = [
   ["5", "N5"],
   ["4", "N4"],
@@ -297,25 +302,32 @@ export interface FrontendSource {
 
 export type FrontendSourceOperationFactory = () => FrontendSource;
 
+export interface FrontendSourceOptions {
+  tokenSource?: TokenSource;
+  requestGate?: BunproRequestGate;
+  requestTimeoutMs?: number;
+  maximumResponseBytes?: number;
+}
+
 export function createFrontendSourceOperationFactory(
   apiToken: () => string,
   fetchImplementation: FetchLike = fetch,
-  options: BunproClientOptions = {}
+  options: FrontendSourceOptions = {}
 ): FrontendSourceOperationFactory {
   return () => new BunproFrontendSource(apiToken(), fetchImplementation, options);
 }
 
 export class BunproFrontendSource implements FrontendSource {
-  readonly #client: BunproClient;
+  readonly #transport: FrontendHttpTransport;
   readonly #tokenSource: TokenSource;
   #accountContext: Promise<AccountContext> | undefined;
 
   constructor(
     apiToken: string,
     fetchImplementation: FetchLike = fetch,
-    options: BunproClientOptions = {}
+    options: FrontendSourceOptions = {}
   ) {
-    this.#client = new BunproClient(apiToken, fetchImplementation, options);
+    this.#transport = new FrontendHttpTransport(apiToken, fetchImplementation, options);
     this.#tokenSource = options.tokenSource ?? "environment";
   }
 
@@ -554,7 +566,7 @@ export class BunproFrontendSource implements FrontendSource {
   }
 
   async #loadAccountContext(operationSignal?: AbortSignal): Promise<AccountContext> {
-    const payload = await this.#client.getFrontendJson(ACCOUNT_CONTEXT_ROUTE, operationSignal);
+    const payload = await this.#transport.getJson(ACCOUNT_CONTEXT_ROUTE, operationSignal);
     const parsed = AccountContextResponseSchema.safeParse(payload);
     if (!parsed.success) {
       throw new BunproError(
@@ -575,7 +587,7 @@ export class BunproFrontendSource implements FrontendSource {
     operationSignal?: AbortSignal
   ): Promise<SourceOutcome<TFact>> {
     try {
-      const payload = await this.#client.getFrontendJson(route, operationSignal);
+      const payload = await this.#transport.getJson(route, operationSignal);
       const parsed = schema.safeParse(payload);
       if (!parsed.success) {
         throw new BunproError(
@@ -599,7 +611,7 @@ export class BunproFrontendSource implements FrontendSource {
     name: string,
     operationSignal?: AbortSignal
   ): Promise<T> {
-    const payload = await this.#client.getFrontendJson(route, operationSignal);
+    const payload = await this.#transport.getJson(route, operationSignal);
     const parsed = schema.safeParse(payload);
     if (!parsed.success) {
       throw new BunproError(
@@ -608,6 +620,123 @@ export class BunproFrontendSource implements FrontendSource {
       );
     }
     return parsed.data;
+  }
+}
+
+class FrontendHttpTransport {
+  readonly #apiToken: string;
+  readonly #fetch: FetchLike;
+  readonly #requestGate: BunproRequestGate | undefined;
+  readonly #requestTimeoutMs: number;
+  readonly #maximumResponseBytes: number;
+
+  constructor(
+    apiToken: string,
+    fetchImplementation: FetchLike,
+    options: FrontendSourceOptions
+  ) {
+    this.#apiToken = validateApiToken(apiToken);
+    this.#fetch = fetchImplementation;
+    this.#requestGate = options.requestGate;
+    this.#requestTimeoutMs = options.requestTimeoutMs ?? REQUEST_TIMEOUT_MS;
+    this.#maximumResponseBytes = options.maximumResponseBytes ?? MAX_RESPONSE_BYTES;
+  }
+
+  async getJson(path: string, operationSignal?: AbortSignal): Promise<unknown> {
+    const url = new URL(path, API_ORIGIN);
+    if (url.origin !== API_ORIGIN || !url.pathname.startsWith(FRONTEND_API_PREFIX)) {
+      throw new BunproError(
+        "BUNPRO_CONTRACT_CHANGED",
+        "The Bunpro source only permits its fixed read-only Frontend API routes."
+      );
+    }
+    url.searchParams.set(ACCOUNT_TOKEN_OPT_IN, "true");
+    const response = await this.#request(url, {
+      method: "GET",
+      ...(operationSignal ? { signal: operationSignal } : {}),
+      headers: {
+        accept: "application/json",
+        authorization: `Token token=${this.#apiToken}`,
+        origin: "https://bunpro.jp",
+        referer: "https://bunpro.jp/",
+        "user-agent": "bunpro-mcp-server/0.4"
+      }
+    });
+    this.#ensureApiSuccess(response);
+    return this.#readJson(response);
+  }
+
+  #ensureApiSuccess(response: Response): void {
+    if (response.status === 401 || response.status === 403) {
+      throw new BunproError(
+        "BUNPRO_AUTH_FAILED",
+        "Bunpro rejected the Account API Token. Configure a current token from Bunpro Settings > API."
+      );
+    }
+    if (response.status === 429) {
+      throw new BunproError(
+        "BUNPRO_RATE_LIMITED",
+        "Bunpro rate-limited the request. Wait before trying again; the MCP will not retry automatically."
+      );
+    }
+    if (response.status === 404) {
+      throw new BunproError(
+        "BUNPRO_CONTRACT_CHANGED",
+        "The Bunpro Frontend API route is unavailable. Bunpro may have changed or restricted its temporary route whitelist."
+      );
+    }
+    if (!response.ok) {
+      throw new BunproError(
+        "BUNPRO_UPSTREAM_UNAVAILABLE",
+        `Bunpro's frontend API returned HTTP ${response.status}. Try again later.`
+      );
+    }
+  }
+
+  async #request(url: URL, init: RequestInit): Promise<Response> {
+    const timeoutController = new AbortController();
+    const timeout = setTimeout(
+      () => timeoutController.abort(new DOMException("The Bunpro request timed out.", "TimeoutError")),
+      this.#requestTimeoutMs
+    );
+    try {
+      const request = (): Promise<Response> => this.#fetch(url, {
+        ...init,
+        signal: init.signal
+          ? AbortSignal.any([init.signal, timeoutController.signal])
+          : timeoutController.signal
+      });
+      return await (this.#requestGate ? this.#requestGate.run(request) : request());
+    } catch (error) {
+      if (error instanceof BunproError) throw error;
+      throw new BunproError(
+        "BUNPRO_UPSTREAM_UNAVAILABLE",
+        "Bunpro could not be reached before the request timeout. Try again later.",
+        { cause: error }
+      );
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async #readJson(response: Response): Promise<unknown> {
+    try {
+      const contentLength = Number(response.headers.get("content-length"));
+      if (Number.isFinite(contentLength) && contentLength > this.#maximumResponseBytes) {
+        throw new RangeError("Bunpro response exceeds the configured byte limit.");
+      }
+      const body = await response.arrayBuffer();
+      if (body.byteLength > this.#maximumResponseBytes) {
+        throw new RangeError("Bunpro response exceeds the configured byte limit.");
+      }
+      return JSON.parse(new TextDecoder().decode(body));
+    } catch (error) {
+      throw new BunproError(
+        "BUNPRO_CONTRACT_CHANGED",
+        "Bunpro accepted the Account API Token, but the API response was not valid JSON.",
+        { cause: error }
+      );
+    }
   }
 }
 

@@ -1,15 +1,5 @@
 import * as z from "zod/v4";
 
-export const BunproUserResponseSchema = z.object({
-  user: z.object({
-    data: z.object({
-      attributes: z.object({
-        time_zone_iana: z.string().min(1)
-      }).loose()
-    }).loose()
-  }).loose()
-}).loose();
-
 export const ConnectionStatusOutputSchema = z.object({
   connected: z.literal(true),
   authentication_method: z.literal("account_api_token"),

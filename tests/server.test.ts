@@ -50,3 +50,104 @@ test("get_connection_status creates a fresh Frontend source operation for every 
     await server.close();
   }
 });
+
+test("the MCP adapter exposes exactly eight read-only tools and preserves structured output", async () => {
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  const sourceData = {
+    accountContext: {
+      sourceTimezone: "Asia/Kolkata",
+      tokenSource: "request_header" as const
+    },
+    reviewPlanning: {
+      dueNow: { grammar: 2, vocabulary: 3 },
+      forecast: {
+        laterToday: { grammar: 1, vocabulary: 0 },
+        tomorrow: { grammar: 2, vocabulary: 1 },
+        dated: []
+      }
+    }
+  };
+  const server = createServer({
+    sourceOperationFactory: () => new InMemoryFrontendSource(sourceData),
+    clock: () => new Date("2026-08-12T12:00:00.000Z")
+  });
+  const client = new Client({ name: "server-adapter-test", version: "0.1.0" });
+
+  try {
+    await server.connect(serverTransport);
+    await client.connect(clientTransport);
+    const listing = await client.listTools();
+    const expectedRequired: Record<string, string[]> = {
+      get_connection_status: [],
+      get_study_day_summary: ["date"],
+      get_study_range_summary: ["start_date", "end_date"],
+      get_review_schedule: [],
+      list_study_decks: [],
+      get_recent_activity: [],
+      get_learning_progress: [],
+      get_activity_trend: ["start_date", "end_date"]
+    };
+    assert.deepEqual(listing.tools.map(tool => tool.name), Object.keys(expectedRequired));
+    for (const tool of listing.tools) {
+      assert.deepEqual(tool.annotations, {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true
+      });
+      assert.equal(tool.inputSchema.type, "object");
+      assert.equal(tool.inputSchema.additionalProperties, false);
+      assert.deepEqual(tool.inputSchema.required ?? [], expectedRequired[tool.name]);
+      assert.equal(tool.outputSchema?.type, "object");
+      assert.equal(tool.outputSchema?.additionalProperties, false);
+    }
+
+    const success = await client.callTool({ name: "get_review_schedule", arguments: {} });
+    assert.equal(success.isError, undefined);
+    const text = success.content.find(item => item.type === "text");
+    assert.equal(text?.type, "text");
+    if (text?.type === "text") {
+      assert.deepEqual(JSON.parse(text.text), success.structuredContent);
+    }
+
+    const invalid = await client.callTool({
+      name: "get_study_day_summary",
+      arguments: { date: "not-a-date" }
+    });
+    assert.equal(invalid.isError, true);
+  } finally {
+    await client.close();
+    await server.close();
+  }
+});
+
+test("the MCP adapter sanitizes unexpected source failures", async () => {
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  class UnexpectedReviewSource extends InMemoryFrontendSource {
+    override async loadReviewPlanning(): Promise<never> {
+      throw new Error("secret upstream response");
+    }
+  }
+  const server = createServer({
+    sourceOperationFactory: () => new UnexpectedReviewSource({
+      accountContext: { sourceTimezone: "Asia/Kolkata", tokenSource: "request_header" }
+    })
+  });
+  const client = new Client({ name: "server-error-test", version: "0.1.0" });
+
+  try {
+    await server.connect(serverTransport);
+    await client.connect(clientTransport);
+    const result = await client.callTool({ name: "get_review_schedule", arguments: {} });
+    assert.equal(result.isError, true);
+    const message = result.content
+      .filter(item => item.type === "text")
+      .map(item => item.text)
+      .join("\n");
+    assert.match(message, /^BUNPRO_UPSTREAM_UNAVAILABLE:/);
+    assert.doesNotMatch(message, /secret upstream response/);
+  } finally {
+    await client.close();
+    await server.close();
+  }
+});
