@@ -1,7 +1,7 @@
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
 import { createMcpHandler, validateHostHeader } from "@modelcontextprotocol/server";
-import { BunproClient, BunproRequestGate, type FetchLike } from "./bunpro/client.js";
+import { BunproRequestGate, type FetchLike } from "./bunpro/client.js";
 import { createFrontendSourceOperationFactory } from "./bunpro/frontend-source.js";
 import { loadHttpConfig, type HttpConfig } from "./config.js";
 import {
@@ -145,11 +145,6 @@ export function createHttpMcpHandler(
       return createBunproMcpServer({
         sourceOperationFactory: createFrontendSourceOperationFactory(
           () => credential.token,
-          fetchImplementation,
-          clientOptions
-        ),
-        legacyClientFactory: () => new BunproClient(
-          credential.token,
           fetchImplementation,
           clientOptions
         ),

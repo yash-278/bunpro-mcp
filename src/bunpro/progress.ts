@@ -1,5 +1,5 @@
 import type { ActivityTrend, LearningProgress, StudyRangeInput } from "./schemas.js";
-import { getStudyRangeSummary, type StudySource } from "./study.js";
+import { getStudyRangeSummary } from "./study.js";
 import type {
   FrontendSource,
   JlptLevel,
@@ -60,7 +60,7 @@ export async function getLearningProgress(
 }
 
 export async function getActivityTrend(
-  source: StudySource,
+  source: Pick<FrontendSource, "getAccountContext" | "loadStudyHistory">,
   input: StudyRangeInput,
   now: Date = new Date()
 ): Promise<ActivityTrend> {

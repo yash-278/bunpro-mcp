@@ -16,9 +16,6 @@ test("get_connection_status creates a fresh Frontend source operation for every 
           tokenSource: "request_header"
         }
       });
-    },
-    legacyClientFactory: () => {
-      throw new Error("The legacy client must not serve connection status.");
     }
   });
   const client = new Client({ name: "server-test", version: "0.1.0" });

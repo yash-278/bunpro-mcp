@@ -1,6 +1,6 @@
 import { McpServer, type CallToolResult } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
-import { BunproClient, BunproRequestGate, apiTokenFromEnvironment } from "./bunpro/client.js";
+import { BunproRequestGate, apiTokenFromEnvironment } from "./bunpro/client.js";
 import { connectionErrorMessage } from "./bunpro/errors.js";
 import {
   createFrontendSourceOperationFactory,
@@ -24,33 +24,19 @@ import { getStudyDaySummary, getStudyRangeSummary } from "./bunpro/study.js";
 import { getRecentActivity, getReviewSchedule, listStudyDecks } from "./bunpro/planning.js";
 import { getActivityTrend, getLearningProgress } from "./bunpro/progress.js";
 
-export interface BunproAccountAccess {
-  checkConnection(operationSignal?: AbortSignal): Promise<ConnectionStatus>;
-  getFrontendJson(path: string, operationSignal?: AbortSignal): Promise<unknown>;
-}
-
-export type BunproClientFactory = () => BunproAccountAccess;
 export type Clock = () => Date;
 
 export interface BunproServerOptions {
   sourceOperationFactory?: FrontendSourceOperationFactory;
-  legacyClientFactory?: BunproClientFactory;
   clock?: Clock;
 }
 
 export function createServer(options: BunproServerOptions = {}): McpServer {
   const server = new McpServer({ name: "bunpro-mcp-server", version: "0.4.0" });
   const requestGate = new BunproRequestGate({ maximumConcurrent: 4, maximumQueued: 16 });
-  const legacyClientFactory = options.legacyClientFactory
-    ?? (() => new BunproClient(apiTokenFromEnvironment(), fetch, { requestGate }));
   const sourceOperationFactory = options.sourceOperationFactory
     ?? createFrontendSourceOperationFactory(apiTokenFromEnvironment, fetch, { requestGate });
   const clock = options.clock ?? (() => new Date());
-  let sharedClient: BunproAccountAccess | undefined;
-  const getClient = (): BunproAccountAccess => {
-    sharedClient ??= legacyClientFactory();
-    return sharedClient;
-  };
 
   server.registerTool(
     "get_connection_status",
@@ -109,7 +95,7 @@ export function createServer(options: BunproServerOptions = {}): McpServer {
     },
     async input => {
       try {
-        const structuredContent = await getStudyDaySummary(getClient(), input, clock());
+        const structuredContent = await getStudyDaySummary(sourceOperationFactory(), input, clock());
         return {
           content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
           structuredContent
@@ -140,7 +126,7 @@ export function createServer(options: BunproServerOptions = {}): McpServer {
     },
     async input => {
       try {
-        const structuredContent = await getStudyRangeSummary(getClient(), input, clock());
+        const structuredContent = await getStudyRangeSummary(sourceOperationFactory(), input, clock());
         return {
           content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
           structuredContent
@@ -295,7 +281,7 @@ export function createServer(options: BunproServerOptions = {}): McpServer {
     },
     async input => {
       try {
-        const structuredContent = await getActivityTrend(getClient(), input, clock());
+        const structuredContent = await getActivityTrend(sourceOperationFactory(), input, clock());
         return {
           content: [{ type: "text", text: JSON.stringify(structuredContent, null, 2) }],
           structuredContent

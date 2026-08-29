@@ -1,6 +1,6 @@
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
-import { createServer, type BunproAccountAccess } from "../src/server.js";
-import { InMemoryFrontendSource } from "../src/bunpro/in-memory-frontend-source.js";
+import { createServer } from "../src/server.js";
+import { BunproFrontendSource } from "../src/bunpro/frontend-source.js";
 
 const levels = Object.fromEntries(
   [1, 2, 3, 4, 5].map(level => [String(level), {
@@ -32,6 +32,9 @@ const reviewLevels = Object.fromEntries(
   }])
 );
 const fixtures: Record<string, unknown> = {
+  "/api/frontend/user": {
+    user: { data: { attributes: { time_zone_iana: "Asia/Kolkata" } } }
+  },
   "/api/frontend/user_stats/review_heatmap": {
     grammar: {
       "2026-07-01": 7,
@@ -218,34 +221,14 @@ const fixtures: Record<string, unknown> = {
   }
 };
 
-const legacyAccountAccessFixture: BunproAccountAccess = {
-  async checkConnection() {
-    return {
-      connected: true,
-      authentication_method: "account_api_token",
-      token_source: "environment",
-      token_persisted_by_server: false,
-      api_authenticated: true,
-      source_timezone: "Asia/Kolkata",
-      stateless: true
-    };
-  },
-  async getFrontendJson(path) {
-    if (!Object.hasOwn(fixtures, path)) {
-      throw new Error(`Missing evaluation fixture for ${path}`);
-    }
-    return fixtures[path];
-  }
-};
-
 void serveStdio(() => createServer({
-  sourceOperationFactory: () => new InMemoryFrontendSource({
-    accountContext: {
-      sourceTimezone: "Asia/Kolkata",
-      tokenSource: "environment"
+  sourceOperationFactory: () => new BunproFrontendSource("evaluation-token", async input => {
+    const path = new URL(input instanceof Request ? input.url : input).pathname;
+    if (!Object.hasOwn(fixtures, path)) {
+      return new Response("missing evaluation fixture", { status: 404 });
     }
-  }),
-  legacyClientFactory: () => legacyAccountAccessFixture
+    return Response.json(fixtures[path]);
+  })
 }));
 
 function attempt(id: number, status: boolean, title: string) {
