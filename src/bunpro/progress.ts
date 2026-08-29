@@ -1,98 +1,35 @@
-import * as z from "zod/v4";
-import { BunproError } from "./errors.js";
 import type { ActivityTrend, LearningProgress, StudyRangeInput } from "./schemas.js";
 import { getStudyRangeSummary, type StudySource } from "./study.js";
+import type {
+  FrontendSource,
+  JlptLevel,
+  ReviewAggregateFact,
+  StageCountsFact
+} from "./frontend-source.js";
 
-const BASE_STATS_ROUTE = "/api/frontend/user_stats/base_stats";
-const JLPT_PROGRESS_ROUTE = "/api/frontend/user_stats/jlpt_progress_mixed";
-const TOTAL_REVIEW_STATS_ROUTE = "/api/frontend/user_stats/total_review_stats";
-const TOTAL_CRAM_STATS_ROUTE = "/api/frontend/user_stats/total_cram_stats";
-const JLPT_KEYS = ["5", "4", "3", "2", "1"] as const;
-
-const StageCountsSchema = z.object({
-  beginner: z.number().int().nonnegative(),
-  seasoned: z.number().int().nonnegative(),
-  adept: z.number().int().nonnegative(),
-  expert: z.number().int().nonnegative(),
-  master: z.number().int().nonnegative(),
-  total_count: z.number().int().nonnegative()
-}).loose();
-const ReviewAggregateSourceSchema = z.object({
-  accuracy: z.number().min(0).max(100),
-  correct: z.number().int().nonnegative(),
-  incorrect: z.number().int().nonnegative(),
-  total: z.number().int().nonnegative()
-}).loose();
-const BaseStatsSchema = z.object({
-  facts: z.object({
-    days_studied: z.number().int().nonnegative(),
-    grammar_studied: z.number().int().nonnegative(),
-    vocab_studied: z.number().int().nonnegative(),
-    streak: z.number().int().nonnegative(),
-    weekly_streak: z.array(z.object({ day: z.string(), val: z.boolean() }).loose()).max(7)
-  }).loose()
-}).loose();
-const JlptProgressSchema = z.object({
-  grammar: z.record(z.string(), StageCountsSchema),
-  vocab: z.record(z.string(), StageCountsSchema)
-});
-const TotalReviewStatsSchema = z.object({
-  grammar: z.record(z.string(), ReviewAggregateSourceSchema),
-  vocab: z.record(z.string(), ReviewAggregateSourceSchema),
-  mixed: z.record(z.string(), ReviewAggregateSourceSchema)
-});
-const TotalCramStatsSchema = z.object({
-  items: ReviewAggregateSourceSchema,
-  sessions: z.object({
-    average_time: z.string(),
-    reviews_per_session: z.number().int().nonnegative(),
-    session_count: z.number().int().nonnegative(),
-    total_time: z.string()
-  }).loose()
-});
+const JLPT_LEVELS: readonly JlptLevel[] = ["N5", "N4", "N3", "N2", "N1"];
 
 export async function getLearningProgress(
-  source: StudySource,
+  source: Pick<FrontendSource, "loadLearningProgress">,
   now: Date = new Date()
 ): Promise<LearningProgress> {
   const operationSignal = AbortSignal.timeout(30_000);
-  await source.checkConnection(operationSignal);
-  const base = parse(
-    BaseStatsSchema,
-    await source.getFrontendJson(BASE_STATS_ROUTE, operationSignal),
-    "base statistics"
-  );
-  const jlpt = parse(
-    JlptProgressSchema,
-    await source.getFrontendJson(JLPT_PROGRESS_ROUTE, operationSignal),
-    "JLPT progress"
-  );
-  const reviews = parse(
-    TotalReviewStatsSchema,
-    await source.getFrontendJson(TOTAL_REVIEW_STATS_ROUTE, operationSignal),
-    "total review statistics"
-  );
-  const cram = parse(
-    TotalCramStatsSchema,
-    await source.getFrontendJson(TOTAL_CRAM_STATS_ROUTE, operationSignal),
-    "total cram statistics"
-  );
-  assertJlptKeys(jlpt.grammar, jlpt.vocab, reviews.grammar, reviews.vocab, reviews.mixed);
+  const progress = await source.loadLearningProgress(operationSignal);
 
   return {
     retrieved_at: now.toISOString(),
     base: {
-      days_studied: base.facts.days_studied,
-      grammar_studied: base.facts.grammar_studied,
-      vocabulary_studied: base.facts.vocab_studied,
-      current_streak: base.facts.streak,
-      weekly_streak: base.facts.weekly_streak.map(day => ({ day: day.day, studied: day.val }))
+      days_studied: progress.base.daysStudied,
+      grammar_studied: progress.base.grammarStudied,
+      vocabulary_studied: progress.base.vocabularyStudied,
+      current_streak: progress.base.currentStreak,
+      weekly_streak: progress.base.weeklyStreak
     },
-    jlpt_progress: JLPT_KEYS.map(key => {
-      const grammar = requiredLevel(jlpt.grammar, key);
-      const vocabulary = requiredLevel(jlpt.vocab, key);
+    jlpt_progress: JLPT_LEVELS.map(jlptLevel => {
+      const grammar = progress.jlptProgress.grammar[jlptLevel];
+      const vocabulary = progress.jlptProgress.vocabulary[jlptLevel];
       return {
-        jlpt_level: `N${key}` as "N5" | "N4" | "N3" | "N2" | "N1",
+        jlpt_level: jlptLevel,
         grammar: stageCounts(grammar),
         vocabulary: stageCounts(vocabulary),
         combined: {
@@ -101,22 +38,22 @@ export async function getLearningProgress(
         }
       };
     }),
-    review_totals: JLPT_KEYS.map(key => ({
-      jlpt_level: `N${key}` as "N5" | "N4" | "N3" | "N2" | "N1",
-      grammar: reviewAggregate(requiredLevel(reviews.grammar, key)),
-      vocabulary: reviewAggregate(requiredLevel(reviews.vocab, key)),
+    review_totals: JLPT_LEVELS.map(jlptLevel => ({
+      jlpt_level: jlptLevel,
+      grammar: reviewAggregate(progress.reviewTotals.grammar[jlptLevel]),
+      vocabulary: reviewAggregate(progress.reviewTotals.vocabulary[jlptLevel]),
       mixed: {
-        ...reviewAggregate(requiredLevel(reviews.mixed, key)),
+        ...reviewAggregate(progress.reviewTotals.mixed[jlptLevel]),
         source_supplied: true as const
       }
     })),
     cram: {
-      items: reviewAggregate(cram.items),
+      items: reviewAggregate(progress.cram.items),
       sessions: {
-        average_time: cram.sessions.average_time,
-        reviews_per_session: cram.sessions.reviews_per_session,
-        session_count: cram.sessions.session_count,
-        total_time: cram.sessions.total_time
+        average_time: progress.cram.sessions.averageTime,
+        reviews_per_session: progress.cram.sessions.reviewsPerSession,
+        session_count: progress.cram.sessions.sessionCount,
+        total_time: progress.cram.sessions.totalTime
       }
     }
   };
@@ -163,45 +100,20 @@ export async function getActivityTrend(
   };
 }
 
-function parse<T>(schema: z.ZodType<T>, payload: unknown, name: string): T {
-  const parsed = schema.safeParse(payload);
-  if (!parsed.success) {
-    throw new BunproError(
-      "BUNPRO_CONTRACT_CHANGED",
-      `Bunpro accepted the Account API Token, but the ${name} response shape changed.`
-    );
-  }
-  return parsed.data;
-}
-
-function assertJlptKeys(...groups: Array<Record<string, unknown>>): void {
-  if (groups.some(group => Object.keys(group).sort().join(",") !== "1,2,3,4,5")) {
-    throw new BunproError("BUNPRO_CONTRACT_CHANGED", "Bunpro returned unexpected JLPT level groups.");
-  }
-}
-
-function requiredLevel<T>(group: Record<string, T>, key: string): T {
-  const value = group[key];
-  if (value === undefined) {
-    throw new BunproError("BUNPRO_CONTRACT_CHANGED", "Bunpro omitted a required JLPT level.");
-  }
-  return value;
-}
-
-function stageCounts(value: z.infer<typeof StageCountsSchema>) {
+function stageCounts(value: StageCountsFact) {
   return {
     beginner: value.beginner,
     seasoned: value.seasoned,
     adept: value.adept,
     expert: value.expert,
     master: value.master,
-    total_count: value.total_count
+    total_count: value.totalCount
   };
 }
 
 function addStageCounts(
-  left: z.infer<typeof StageCountsSchema>,
-  right: z.infer<typeof StageCountsSchema>
+  left: StageCountsFact,
+  right: StageCountsFact
 ) {
   return {
     beginner: left.beginner + right.beginner,
@@ -209,11 +121,11 @@ function addStageCounts(
     adept: left.adept + right.adept,
     expert: left.expert + right.expert,
     master: left.master + right.master,
-    total_count: left.total_count + right.total_count
+    total_count: left.totalCount + right.totalCount
   };
 }
 
-function reviewAggregate(value: z.infer<typeof ReviewAggregateSourceSchema>) {
+function reviewAggregate(value: ReviewAggregateFact) {
   return {
     accuracy: value.accuracy,
     correct: value.correct,

@@ -4,6 +4,8 @@ import { Client } from "@modelcontextprotocol/client";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { createHttpMcpHandler } from "../src/http-server.js";
 import type { FetchLike } from "../src/bunpro/client.js";
+import { InMemoryFrontendSource } from "../src/bunpro/in-memory-frontend-source.js";
+import { getLearningProgress } from "../src/bunpro/progress.js";
 
 async function withMcpClient(
   fetchImplementation: FetchLike,
@@ -34,83 +36,62 @@ function fixtureFetch(fixtures: Record<string, unknown>, paths: string[]): Fetch
 }
 
 const userFixture = { user: { data: { attributes: { time_zone_iana: "Asia/Kolkata" } } } };
-const stages = (offset: number) => ({
-  beginner: offset + 1,
-  adept: offset + 2,
-  seasoned: offset + 3,
-  expert: offset + 4,
-  master: offset + 5,
-  total_count: offset + 20
-});
-const reviewStats = (offset: number) => ({
-  accuracy: 80 + offset,
-  correct: 8 + offset,
-  incorrect: 2,
-  total: 10 + offset,
-  global: 999
-});
 
-test("get_learning_progress normalizes JLPT progress and omits unrelated or unexplained fields", async () => {
-  const paths: string[] = [];
-  const levels = Object.fromEntries([1, 2, 3, 4, 5].map(level => [String(level), stages(level)]));
-  const totals = Object.fromEntries([1, 2, 3, 4, 5].map(level => [String(level), reviewStats(level)]));
-  const fetch = fixtureFetch({
-    "/api/frontend/user": userFixture,
-    "/api/frontend/user_stats/base_stats": {
-      facts: {
-        days_studied: 30,
-        grammar_studied: 120,
-        vocab_studied: 50,
-        streak: 7,
-        total_badges: 9,
-        last_session: 123456,
-        weekly_streak: [{ day: "Mon", val: true }, { day: "Tue", val: false }]
+test("get_learning_progress derives the public JLPT view from normalized facts", async () => {
+  const jlptLevels = ["N5", "N4", "N3", "N2", "N1"] as const;
+  const levelFacts = Object.fromEntries(jlptLevels.map((level, index) => [level, {
+    beginner: index + 6,
+    adept: index + 7,
+    seasoned: index + 8,
+    expert: index + 9,
+    master: index + 10,
+    totalCount: index + 25
+  }])) as Record<(typeof jlptLevels)[number], StageCounts>;
+  const totals = Object.fromEntries(jlptLevels.map((level, index) => [level, {
+    accuracy: 81 + index,
+    correct: 9 + index,
+    incorrect: 2,
+    total: 11 + index
+  }])) as Record<(typeof jlptLevels)[number], ReviewStats>;
+  const source = new InMemoryFrontendSource({
+    accountContext: { sourceTimezone: "Asia/Kolkata", tokenSource: "environment" },
+    learningProgress: {
+      base: {
+        daysStudied: 30,
+        grammarStudied: 120,
+        vocabularyStudied: 50,
+        currentStreak: 7,
+        weeklyStreak: [{ day: "Mon", studied: true }, { day: "Tue", studied: false }]
       },
-      badges: { data: [{ id: "private-badge" }] }
-    },
-    "/api/frontend/user_stats/jlpt_progress_mixed": { grammar: levels, vocab: levels },
-    "/api/frontend/user_stats/total_review_stats": {
-      grammar: totals,
-      vocab: totals,
-      mixed: totals
-    },
-    "/api/frontend/user_stats/total_cram_stats": {
-      items: { accuracy: 75, correct: 30, incorrect: 10, total: 40 },
-      sessions: {
-        average_time: "00:10:00",
-        reviews_per_session: 20,
-        session_count: 2,
-        total_time: "00:20:00"
+      jlptProgress: { grammar: levelFacts, vocabulary: levelFacts },
+      reviewTotals: { grammar: totals, vocabulary: totals, mixed: totals },
+      cram: {
+        items: { accuracy: 75, correct: 30, incorrect: 10, total: 40 },
+        sessions: {
+          averageTime: "00:10:00",
+          reviewsPerSession: 20,
+          sessionCount: 2,
+          totalTime: "00:20:00"
+        }
       }
     }
-  }, paths);
-
-  await withMcpClient(fetch, async client => {
-    const result = await client.callTool({ name: "get_learning_progress", arguments: {} });
-    assert.equal(result.isError, undefined);
-    const output = result.structuredContent as Record<string, any>;
-    assert.deepEqual(output.base, {
-      days_studied: 30,
-      grammar_studied: 120,
-      vocabulary_studied: 50,
-      current_streak: 7,
-      weekly_streak: [{ day: "Mon", studied: true }, { day: "Tue", studied: false }]
-    });
-    assert.deepEqual(output.jlpt_progress.map((item: any) => item.jlpt_level), ["N5", "N4", "N3", "N2", "N1"]);
-    assert.equal(output.jlpt_progress[0].combined.derived, true);
-    assert.equal(output.jlpt_progress[0].combined.beginner, 12);
-    assert.equal(output.review_totals[0].jlpt_level, "N5");
-    assert.equal(output.review_totals[0].mixed.source_supplied, true);
-    assert.deepEqual(output.cram.items, { accuracy: 75, correct: 30, incorrect: 10, total: 40 });
-    assert.doesNotMatch(JSON.stringify(output), /private-badge|total_badges|last_session|global/);
-    assert.deepEqual(paths, [
-      "/api/frontend/user",
-      "/api/frontend/user_stats/base_stats",
-      "/api/frontend/user_stats/jlpt_progress_mixed",
-      "/api/frontend/user_stats/total_review_stats",
-      "/api/frontend/user_stats/total_cram_stats"
-    ]);
   });
+
+  const output = await getLearningProgress(source, new Date("2026-08-12T12:00:00.000Z"));
+
+  assert.deepEqual(output.base, {
+    days_studied: 30,
+    grammar_studied: 120,
+    vocabulary_studied: 50,
+    current_streak: 7,
+    weekly_streak: [{ day: "Mon", studied: true }, { day: "Tue", studied: false }]
+  });
+  assert.deepEqual(output.jlpt_progress.map(item => item.jlpt_level), jlptLevels);
+  assert.equal(output.jlpt_progress[0]?.combined.derived, true);
+  assert.equal(output.jlpt_progress[0]?.combined.beginner, 12);
+  assert.equal(output.review_totals[0]?.jlpt_level, "N5");
+  assert.equal(output.review_totals[0]?.mixed.source_supplied, true);
+  assert.deepEqual(output.cram.items, { accuracy: 75, correct: 30, incorrect: 10, total: 40 });
 });
 
 test("get_activity_trend preserves daily evidence and averages only source-present records", async () => {
@@ -132,6 +113,7 @@ test("get_activity_trend preserves daily evidence and averages only source-prese
       "2026-08-11": 100
     }
   }, paths);
+
   await withMcpClient(fetch, async client => {
     const result = await client.callTool({
       name: "get_activity_trend",
@@ -156,125 +138,18 @@ test("get_activity_trend preserves daily evidence and averages only source-prese
   });
 });
 
-test("get_learning_progress fails closed when Bunpro changes its JLPT groups", async () => {
-  const paths: string[] = [];
-  const incompleteLevels = Object.fromEntries([2, 3, 4, 5].map(level => [String(level), stages(level)]));
-  const completeLevels = Object.fromEntries([1, 2, 3, 4, 5].map(level => [String(level), reviewStats(level)]));
-  const fetch = fixtureFetch({
-    "/api/frontend/user": userFixture,
-    "/api/frontend/user_stats/base_stats": {
-      facts: {
-        days_studied: 1,
-        grammar_studied: 1,
-        vocab_studied: 1,
-        streak: 1,
-        total_badges: 0,
-        weekly_streak: []
-      }
-    },
-    "/api/frontend/user_stats/jlpt_progress_mixed": {
-      grammar: incompleteLevels,
-      vocab: incompleteLevels
-    },
-    "/api/frontend/user_stats/total_review_stats": {
-      grammar: completeLevels,
-      vocab: completeLevels,
-      mixed: completeLevels
-    },
-    "/api/frontend/user_stats/total_cram_stats": {
-      items: { accuracy: 0, correct: 0, incorrect: 0, total: 0 },
-      sessions: {
-        average_time: "00:00:00",
-        reviews_per_session: 0,
-        session_count: 0,
-        total_time: "00:00:00"
-      }
-    }
-  }, paths);
+interface StageCounts {
+  beginner: number;
+  seasoned: number;
+  adept: number;
+  expert: number;
+  master: number;
+  totalCount: number;
+}
 
-  await withMcpClient(fetch, async client => {
-    const result = await client.callTool({ name: "get_learning_progress", arguments: {} });
-    assert.equal(result.isError, true);
-    const message = result.content
-      .filter(item => item.type === "text")
-      .map(item => item.text)
-      .join("\n");
-    assert.match(message, /unexpected JLPT level groups/i);
-    assert.doesNotMatch(message, /account-token|beginner|global/i);
-  });
-});
-
-test("get_learning_progress rejects out-of-range accuracy", async () => {
-  const paths: string[] = [];
-  const fixtures = validProgressFixtures();
-  const reviewTotals = fixtures["/api/frontend/user_stats/total_review_stats"] as any;
-  reviewTotals.grammar[5].accuracy = 175;
-
-  await withMcpClient(fixtureFetch(fixtures, paths), async client => {
-    const result = await client.callTool({ name: "get_learning_progress", arguments: {} });
-    assert.equal(result.isError, true);
-    const message = result.content
-      .filter(item => item.type === "text")
-      .map(item => item.text)
-      .join("\n");
-    assert.match(message, /response shape changed/i);
-    assert.doesNotMatch(message, /175|account-token/i);
-  });
-});
-
-test("get_learning_progress rejects an oversized weekly streak", async () => {
-  const paths: string[] = [];
-  const fixtures = validProgressFixtures();
-  const base = fixtures["/api/frontend/user_stats/base_stats"] as any;
-  base.facts.weekly_streak = Array.from({ length: 8 }, (_, index) => ({
-    day: `day-${index}`,
-    val: index % 2 === 0
-  }));
-
-  await withMcpClient(fixtureFetch(fixtures, paths), async client => {
-    const result = await client.callTool({ name: "get_learning_progress", arguments: {} });
-    assert.equal(result.isError, true);
-    const message = result.content
-      .filter(item => item.type === "text")
-      .map(item => item.text)
-      .join("\n");
-    assert.match(message, /response shape changed/i);
-    assert.doesNotMatch(message, /day-7|account-token/i);
-  });
-});
-
-function validProgressFixtures(): Record<string, unknown> {
-  const levelStages = Object.fromEntries([1, 2, 3, 4, 5].map(level => [String(level), stages(level)]));
-  const totals = Object.fromEntries([1, 2, 3, 4, 5].map(level => [String(level), reviewStats(level)]));
-  return {
-    "/api/frontend/user": userFixture,
-    "/api/frontend/user_stats/base_stats": {
-      facts: {
-        days_studied: 10,
-        grammar_studied: 20,
-        vocab_studied: 30,
-        streak: 2,
-        total_badges: 1,
-        weekly_streak: [{ day: "Mon", val: true }]
-      }
-    },
-    "/api/frontend/user_stats/jlpt_progress_mixed": {
-      grammar: levelStages,
-      vocab: levelStages
-    },
-    "/api/frontend/user_stats/total_review_stats": {
-      grammar: totals,
-      vocab: totals,
-      mixed: totals
-    },
-    "/api/frontend/user_stats/total_cram_stats": {
-      items: { accuracy: 75, correct: 30, incorrect: 10, total: 40 },
-      sessions: {
-        average_time: "00:10:00",
-        reviews_per_session: 20,
-        session_count: 2,
-        total_time: "00:20:00"
-      }
-    }
-  };
+interface ReviewStats {
+  accuracy: number;
+  correct: number;
+  incorrect: number;
+  total: number;
 }
