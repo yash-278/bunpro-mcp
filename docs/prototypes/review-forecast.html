@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PROTOTYPE — Bunpro Review Forecast</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --canvas: #f7f7f5;
+      --surface: #ffffff;
+      --surface-soft: #f1f2ef;
+      --ink: #20211f;
+      --muted: #686b66;
+      --line: #dedfd9;
+      --grammar: #c4513d;
+      --grammar-soft: #f8e6e1;
+      --vocab: #397a67;
+      --vocab-soft: #e2f0eb;
+      --accent: #1f2923;
+      --warning: #9b611f;
+      --shadow: 0 18px 55px rgba(31, 41, 35, 0.12);
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(196, 81, 61, 0.09), transparent 34rem),
+        var(--canvas);
+      color: var(--ink);
+    }
+    button, select { font: inherit; }
+    button { color: inherit; }
+    .page {
+      width: min(100% - 24px, 760px);
+      margin: 0 auto;
+      padding: 28px 0 136px;
+    }
+    .prototype-note {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 14px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .prototype-note strong {
+      color: var(--grammar);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .state-picker {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 2px 2px 10px;
+      scrollbar-width: none;
+    }
+    .state-picker::-webkit-scrollbar { display: none; }
+    .state-picker button {
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface);
+      padding: 7px 11px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .state-picker button[aria-pressed="true"] {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: white;
+    }
+    .chat-shell {
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .tool-line {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .app-mark {
+      display: grid;
+      place-items: center;
+      width: 25px;
+      height: 25px;
+      border-radius: 8px;
+      background: var(--accent);
+      color: white;
+      font-weight: 800;
+      font-size: 11px;
+    }
+    .tool-line strong { color: var(--ink); }
+    .view { min-height: 420px; }
+    .eyebrow {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+    h1, h2, h3, p { margin-top: 0; }
+    .meta { color: var(--muted); font-size: 12px; }
+    .split { color: var(--muted); font-size: 13px; }
+    .split b { color: var(--ink); font-weight: 650; }
+    .projection-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .projection-label::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--warning);
+    }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .action {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: transparent;
+      padding: 9px 12px;
+      font-weight: 650;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .action.primary { background: var(--accent); color: white; border-color: var(--accent); }
+    .action:focus-visible, .switcher button:focus-visible, .state-picker button:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--grammar) 40%, transparent);
+      outline-offset: 2px;
+    }
+    .refresh-error {
+      display: none;
+      margin-top: 12px;
+      border-radius: 10px;
+      background: #fff4df;
+      color: #71470f;
+      padding: 10px 12px;
+      font-size: 12px;
+    }
+    [data-state="refresh-error"] .refresh-error { display: block; }
+
+    /* Variant A — decisive hierarchy: one strong now block, then a compact forecast. */
+    .variant-a { padding: 22px; }
+    .variant-a .now {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 18px;
+      align-items: end;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--line);
+    }
+    .variant-a h1 { margin: 7px 0 8px; font-size: clamp(27px, 7vw, 42px); line-height: 1; }
+    .variant-a .due-number { font-size: clamp(58px, 16vw, 88px); font-weight: 760; line-height: 0.78; letter-spacing: -0.07em; }
+    .variant-a .due-number small { font-size: 13px; letter-spacing: 0; color: var(--muted); font-weight: 600; }
+    .variant-a .forecast-head { display: flex; justify-content: space-between; align-items: center; margin: 20px 0 12px; gap: 12px; }
+    .forecast-bars { display: grid; gap: 9px; }
+    .forecast-row { display: grid; grid-template-columns: 78px 1fr 30px; align-items: center; gap: 10px; font-size: 12px; }
+    .bar-track { height: 18px; border-radius: 999px; overflow: hidden; background: var(--surface-soft); display: flex; }
+    .bar-grammar { background: var(--grammar); }
+    .bar-vocab { background: var(--vocab); }
+    .forecast-row strong { text-align: right; }
+    .variant-a .actions { margin-top: 20px; }
+
+    /* Variant B — the week is the interface; due now is the anchored first column. */
+    .variant-b { padding: 0; }
+    .variant-b header { padding: 21px 22px 14px; display: flex; justify-content: space-between; align-items: start; gap: 16px; }
+    .variant-b h1 { font-size: 23px; margin: 4px 0 6px; }
+    .week-ribbon {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(90px, 1fr));
+      overflow-x: auto;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+    .day-column { min-height: 265px; padding: 16px 12px; border-right: 1px solid var(--line); display: flex; flex-direction: column; }
+    .day-column:last-child { border-right: 0; }
+    .day-column.now-column { background: var(--accent); color: white; }
+    .day-column .day { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.7; }
+    .day-column .count { margin: 9px 0 5px; font-size: 36px; font-weight: 760; letter-spacing: -0.05em; }
+    .day-column .mini-split { font-size: 11px; line-height: 1.5; opacity: 0.75; }
+    .vertical-bar { display: flex; align-items: end; gap: 3px; height: 92px; margin-top: auto; }
+    .vertical-bar i { width: 50%; border-radius: 5px 5px 2px 2px; min-height: 3px; }
+    .vertical-bar .g { background: var(--grammar); }
+    .vertical-bar .v { background: var(--vocab); }
+    .now-column .vertical-bar .g { background: #ff917c; }
+    .now-column .vertical-bar .v { background: #7cd2b8; }
+    .variant-b footer { padding: 16px 22px 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+    /* Variant C — no chart: a calm decision ladder organized by urgency. */
+    .variant-c { padding: 22px; }
+    .variant-c h1 { font-size: 25px; margin: 5px 0 7px; }
+    .decision-list { display: grid; gap: 10px; margin: 21px 0; }
+    .decision-step {
+      display: grid;
+      grid-template-columns: 58px 1fr auto;
+      gap: 13px;
+      align-items: center;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--surface);
+    }
+    .decision-step.primary { border-color: var(--accent); box-shadow: inset 4px 0 var(--accent); }
+    .step-when { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+    .step-copy strong { display: block; margin-bottom: 4px; font-size: 15px; }
+    .step-copy span { color: var(--muted); font-size: 12px; }
+    .step-count { font-size: 27px; font-weight: 760; letter-spacing: -0.04em; }
+    .variant-c .projection-note { padding: 12px 14px; border-radius: 12px; background: var(--surface-soft); color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .variant-c .actions { margin-top: 16px; }
+
+    .empty-forecast {
+      display: none;
+      padding: 32px 16px;
+      text-align: center;
+      color: var(--muted);
+      border: 1px dashed var(--line);
+      border-radius: 14px;
+    }
+    [data-state="empty"] .forecast-content { display: none !important; }
+    [data-state="empty"] .empty-forecast { display: block; }
+
+    details.payload {
+      margin: 13px 2px 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    details.payload pre {
+      overflow: auto;
+      max-height: 250px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #171a18;
+      color: #d9e1db;
+      font-size: 11px;
+    }
+    .switcher {
+      position: fixed;
+      z-index: 20;
+      left: 50%;
+      bottom: 20px;
+      transform: translateX(-50%);
+      display: grid;
+      grid-template-columns: 42px minmax(175px, auto) 42px;
+      align-items: center;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 999px;
+      background: #151816;
+      color: white;
+      box-shadow: 0 12px 36px rgba(0,0,0,0.28);
+      overflow: hidden;
+    }
+    .switcher button { height: 44px; border: 0; background: transparent; color: white; cursor: pointer; font-size: 19px; }
+    .switcher-label { padding: 0 14px; text-align: center; font-size: 12px; font-weight: 700; }
+
+    @media (max-width: 520px) {
+      .page { width: 100%; padding: 0 0 112px; }
+      .prototype-note { padding: 12px 14px 0; margin-bottom: 8px; }
+      .state-picker { padding-left: 12px; padding-right: 12px; }
+      .chat-shell { border-left: 0; border-right: 0; border-radius: 0; box-shadow: none; }
+      .variant-a .now { grid-template-columns: 1fr; align-items: start; }
+      .variant-a .due-number { grid-row: 1; }
+      .week-ribbon { grid-template-columns: repeat(5, 104px); }
+      .decision-step { grid-template-columns: 50px 1fr auto; padding: 12px 10px; }
+      .switcher { bottom: 12px; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --canvas: #171917;
+        --surface: #202320;
+        --surface-soft: #2a2d2a;
+        --ink: #f0f2ed;
+        --muted: #adb2aa;
+        --line: #3b403a;
+        --accent: #e7ece6;
+        --shadow: 0 18px 55px rgba(0, 0, 0, 0.3);
+      }
+      .state-picker button[aria-pressed="true"], .action.primary { color: #1d211e; }
+      .refresh-error { background: #4b3518; color: #ffdfa6; }
+    }
+  </style>
+</head>
+<body>
+  <!-- PROTOTYPE: Three structurally different Review Forecast views, switchable via ?variant=, using only synthetic get_review_schedule data. -->
+  <main class="page">
+    <div class="prototype-note">
+      <strong>Prototype — not production</strong>
+      <span>390 px first · synthetic data</span>
+    </div>
+    <nav class="state-picker" aria-label="Synthetic data state"></nav>
+    <section class="chat-shell" aria-label="ChatGPT inline component preview">
+      <div class="tool-line"><span class="app-mark">文</span><strong>Bunpro</strong><span>Review schedule</span></div>
+      <div class="view" id="view"></div>
+    </section>
+    <details class="payload">
+      <summary>Show synthetic structured result</summary>
+      <pre id="payload"></pre>
+    </details>
+  </main>
+  <nav class="switcher" aria-label="Prototype variation switcher">
+    <button type="button" id="previous" aria-label="Previous variation">←</button>
+    <div class="switcher-label" id="variant-label"></div>
+    <button type="button" id="next" aria-label="Next variation">→</button>
+  </nav>
+  <script>
+    const variants = {
+      A: { name: "Do now", render: renderA },
+      B: { name: "Week ribbon", render: renderB },
+      C: { name: "Decision ladder", render: renderC }
+    };
+
+    const states = {
+      normal: {
+        label: "Normal",
+        result: schedule(20, 12, 8, [5, 10, 10, 10], [[2,3], [4,6], [6,4], [8,2]])
+      },
+      zero: {
+        label: "Nothing due",
+        result: schedule(0, 0, 0, [3, 8, 10, 4], [[1,2], [3,5], [6,4], [1,3]])
+      },
+      heavy: {
+        label: "Heavy week",
+        result: schedule(148, 92, 56, [28, 64, 87, 42], [[16,12], [36,28], [51,36], [22,20]])
+      },
+      empty: {
+        label: "No projection",
+        result: schedule(7, 5, 2, [], [])
+      },
+      "refresh-error": {
+        label: "Refresh failed",
+        result: schedule(20, 12, 8, [5, 10, 10, 10], [[2,3], [4,6], [6,4], [8,2]])
+      }
+    };
+
+    function schedule(total, grammar, vocabulary, totals, splits) {
+      const dates = ["2026-08-29", "2026-08-30", "2026-08-31", "2026-09-01"];
+      const buckets = ["later_today", "tomorrow", "date", "date"];
+      return {
+        source_timezone: "Asia/Tokyo",
+        retrieved_at: "2026-08-29T08:15:00.000Z",
+        due_now: { grammar, vocabulary, total },
+        forecast: totals.map((value, index) => ({
+          bucket: buckets[index],
+          date: dates[index],
+          grammar: splits[index][0],
+          vocabulary: splits[index][1],
+          total: value
+        })),
+        forecast_is_projection: true
+      };
+    }
+
+    function currentParams() {
+      const params = new URLSearchParams(location.search);
+      const variant = variants[params.get("variant")] ? params.get("variant") : "A";
+      const state = states[params.get("state")] ? params.get("state") : "normal";
+      return { variant, state };
+    }
+
+    function updateParams(changes) {
+      const params = new URLSearchParams(location.search);
+      Object.entries(changes).forEach(([key, value]) => params.set(key, value));
+      history.replaceState(null, "", `?${params.toString()}`);
+      render();
+    }
+
+    function dateLabel(item, index) {
+      if (item.bucket === "later_today") return "Later today";
+      if (item.bucket === "tomorrow") return "Tomorrow";
+      return new Intl.DateTimeFormat("en", { weekday: "short" }).format(new Date(`${item.date}T12:00:00Z`));
+    }
+
+    function dueMessage(due) {
+      if (due.total === 0) return "Nothing is due right now";
+      if (due.total >= 100) return "A heavy review queue is waiting";
+      return "Start with what is due now";
+    }
+
+    function maxForecast(result) {
+      return Math.max(1, ...result.forecast.map(item => item.total));
+    }
+
+    function commonActions() {
+      return `<div class="actions">
+        <button class="action primary" type="button" data-action="explain">Explain this load</button>
+        <button class="action" type="button" data-action="refresh">Refresh</button>
+      </div>
+      <div class="refresh-error" role="status">Couldn’t refresh. The last forecast is still shown.</div>`;
+    }
+
+    function emptyForecast() {
+      return `<div class="empty-forecast"><strong>No future projection returned</strong><br><span>The current due count is still available.</span></div>`;
+    }
+
+    function renderA(result) {
+      const max = maxForecast(result);
+      const rows = result.forecast.map((item, index) => {
+        const grammarWidth = item.total === 0 ? 0 : (item.grammar / max) * 100;
+        const vocabularyWidth = item.total === 0 ? 0 : (item.vocabulary / max) * 100;
+        return `<div class="forecast-row">
+          <span>${dateLabel(item, index)}</span>
+          <div class="bar-track" aria-label="${item.total} projected reviews: ${item.grammar} grammar and ${item.vocabulary} vocabulary">
+            <i class="bar-grammar" style="width:${grammarWidth}%"></i><i class="bar-vocab" style="width:${vocabularyWidth}%"></i>
+          </div>
+          <strong>${item.total}</strong>
+        </div>`;
+      }).join("");
+      return `<article class="variant-a">
+        <section class="now">
+          <div><div class="eyebrow">Due now</div><h1>${dueMessage(result.due_now)}</h1><p class="split"><b>${result.due_now.grammar}</b> grammar · <b>${result.due_now.vocabulary}</b> vocabulary</p></div>
+          <div class="due-number">${result.due_now.total}<br><small>reviews</small></div>
+        </section>
+        <div class="forecast-head"><h2>What’s coming</h2><span class="projection-label">Projection</span></div>
+        <div class="forecast-content forecast-bars">${rows}</div>${emptyForecast()}
+        ${commonActions()}
+        <p class="meta">Updated 5:15 PM JST · Bunpro time</p>
+      </article>`;
+    }
+
+    function renderB(result) {
+      const items = [{ bucket: "now", total: result.due_now.total, grammar: result.due_now.grammar, vocabulary: result.due_now.vocabulary }, ...result.forecast];
+      const max = Math.max(1, ...items.map(item => item.total));
+      const columns = items.map((item, index) => {
+        const label = index === 0 ? "Now" : dateLabel(item, index - 1);
+        const gHeight = Math.max(3, item.grammar / max * 84);
+        const vHeight = Math.max(3, item.vocabulary / max * 84);
+        return `<section class="day-column ${index === 0 ? "now-column" : ""}">
+          <span class="day">${label}</span><strong class="count">${item.total}</strong>
+          <span class="mini-split">${item.grammar} grammar<br>${item.vocabulary} vocabulary</span>
+          <div class="vertical-bar" aria-hidden="true"><i class="g" style="height:${gHeight}px"></i><i class="v" style="height:${vHeight}px"></i></div>
+        </section>`;
+      }).join("");
+      return `<article class="variant-b">
+        <header><div><div class="eyebrow">Review forecast</div><h1>${dueMessage(result.due_now)}</h1><span class="projection-label">Future columns are projections</span></div><span class="meta">5:15 PM JST</span></header>
+        <div class="forecast-content week-ribbon">${columns}</div><div style="padding:0 22px">${emptyForecast()}</div>
+        <footer>${commonActions()}</footer>
+      </article>`;
+    }
+
+    function renderC(result) {
+      const later = result.forecast[0];
+      const tomorrow = result.forecast[1];
+      const after = result.forecast.slice(2).reduce((sum, item) => sum + item.total, 0);
+      const steps = [
+        ["Now", dueMessage(result.due_now), `${result.due_now.grammar} grammar · ${result.due_now.vocabulary} vocabulary`, result.due_now.total, true],
+        ["Later", later ? "More may arrive today" : "No later-today projection", later ? `${later.grammar} grammar · ${later.vocabulary} vocabulary` : "", later?.total ?? 0, false],
+        ["Next", tomorrow ? "Tomorrow’s projected queue" : "No tomorrow projection", tomorrow ? `${tomorrow.grammar} grammar · ${tomorrow.vocabulary} vocabulary` : "", tomorrow?.total ?? 0, false],
+        ["After", after > 0 ? "Following days combined" : "Nothing else projected", "Projection only", after, false]
+      ].map(([when, title, detail, count, primary]) => `<section class="decision-step ${primary ? "primary" : ""}">
+        <span class="step-when">${when}</span><div class="step-copy"><strong>${title}</strong><span>${detail}</span></div><strong class="step-count">${count}</strong>
+      </section>`).join("");
+      return `<article class="variant-c">
+        <div class="eyebrow">Your next study decision</div><h1>${result.due_now.total === 0 ? "You’re clear for now." : `${result.due_now.total} reviews come first.`}</h1>
+        <p class="split">A quiet list instead of a chart—ordered by urgency.</p>
+        <div class="forecast-content decision-list">${steps}</div>${emptyForecast()}
+        <div class="projection-note"><span class="projection-label">Projection</span><br>Future counts can change as time passes or after you study.</div>
+        ${commonActions()}<p class="meta">Updated 5:15 PM JST · Bunpro time</p>
+      </article>`;
+    }
+
+    function renderStatePicker(activeState) {
+      const picker = document.querySelector(".state-picker");
+      picker.innerHTML = Object.entries(states).map(([key, value]) =>
+        `<button type="button" data-state-choice="${key}" aria-pressed="${key === activeState}">${value.label}</button>`
+      ).join("");
+    }
+
+    function render() {
+      const { variant, state } = currentParams();
+      const stateData = states[state];
+      const view = document.querySelector("#view");
+      view.dataset.state = state;
+      view.innerHTML = variants[variant].render(stateData.result);
+      document.querySelector("#variant-label").textContent = `${variant} — ${variants[variant].name}`;
+      document.querySelector("#payload").textContent = JSON.stringify(stateData.result, null, 2);
+      renderStatePicker(state);
+    }
+
+    function cycleVariant(direction) {
+      const keys = Object.keys(variants);
+      const { variant } = currentParams();
+      const index = keys.indexOf(variant);
+      updateParams({ variant: keys[(index + direction + keys.length) % keys.length] });
+    }
+
+    document.querySelector("#previous").addEventListener("click", () => cycleVariant(-1));
+    document.querySelector("#next").addEventListener("click", () => cycleVariant(1));
+    document.addEventListener("click", event => {
+      const stateButton = event.target.closest("[data-state-choice]");
+      if (stateButton) updateParams({ state: stateButton.dataset.stateChoice });
+      const action = event.target.closest("[data-action]");
+      if (action?.dataset.action === "refresh") updateParams({ state: "refresh-error" });
+      if (action?.dataset.action === "explain") alert("Prototype: ask ChatGPT to explain the existing forecast in conversation.");
+    });
+    document.addEventListener("keydown", event => {
+      if (["INPUT", "TEXTAREA"].includes(event.target.tagName) || event.target.isContentEditable) return;
+      if (event.key === "ArrowLeft") cycleVariant(-1);
+      if (event.key === "ArrowRight") cycleVariant(1);
+    });
+    addEventListener("popstate", render);
+    render();
+  </script>
+</body>
+</html>
