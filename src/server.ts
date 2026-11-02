@@ -1,15 +1,7 @@
 import { McpServer, type CallToolResult } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
-import {
-  BUNPRO_MINIMUM_REQUEST_INTERVAL_MS,
-  BunproRequestGate,
-  apiTokenFromEnvironment
-} from "./bunpro/client.js";
 import { connectionErrorMessage } from "./bunpro/errors.js";
-import {
-  createFrontendSourceOperationFactory,
-  type FrontendSourceOperationFactory
-} from "./bunpro/frontend-source.js";
+import type { FrontendSourceOperationFactory } from "./bunpro/frontend-source.js";
 import { ConnectionStatusOutputSchema, type ConnectionStatus } from "./bunpro/schemas.js";
 import {
   StudyDayInputSchema,
@@ -31,19 +23,13 @@ import { getLearningProgress } from "./bunpro/progress.js";
 export type { Clock } from "./bunpro/study.js";
 
 export interface BunproServerOptions {
-  sourceOperationFactory?: FrontendSourceOperationFactory;
+  sourceOperationFactory: FrontendSourceOperationFactory;
   clock?: Clock;
 }
 
-export function createServer(options: BunproServerOptions = {}): McpServer {
+export function createServer(options: BunproServerOptions): McpServer {
   const server = new McpServer({ name: "bunpro-mcp-server", version: "0.4.0" });
-  const requestGate = new BunproRequestGate({
-    maximumConcurrent: 4,
-    maximumQueued: 16,
-    minimumStartIntervalMs: BUNPRO_MINIMUM_REQUEST_INTERVAL_MS
-  });
-  const sourceOperationFactory = options.sourceOperationFactory
-    ?? createFrontendSourceOperationFactory(apiTokenFromEnvironment, fetch, { requestGate });
+  const { sourceOperationFactory } = options;
   const clock = options.clock ?? (() => new Date());
   const studyEvidence = new StudyEvidenceService(sourceOperationFactory, clock);
 

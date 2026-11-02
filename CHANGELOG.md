@@ -7,6 +7,11 @@ Notable changes to Bunpro MCP are recorded here. The project follows semantic ve
 - Made `Authorization: Bearer <token>` a supported hosted credential path alongside `X-Bunpro-Token`. The `Bearer ` prefix stays required, and a request with both headers is still rejected.
 - Changed the 401 response for a missing or invalid credential to name both methods.
 - Added `BUNPRO_SMOKE_AUTH=bearer` to the all-tools smoke. Its default stays `X-Bunpro-Token`.
+- Gave each tool call one 30-second deadline across all its Bunpro requests. It starts at the first request, and `get_connection_status` now has it too.
+- Extended the 10-second request timer and the request slot through the response body read, so a stalled body can no longer hang a tool call or free its slot early.
+- Changed a timeout, abort, or network failure during the body read from `BUNPRO_CONTRACT_CHANGED` to `BUNPRO_UPSTREAM_UNAVAILABLE`. Study History reports `upstream_unavailable` for that source.
+- Study History now stops at the deadline, keeps the results that arrived, and marks the remaining sources `not_queried`.
+- Cut the Request Budget to 4 running and 6 queued requests from 4 and 16, keeping the 2-second start interval. More callers see an immediate `BUNPRO_BUSY`, and a queued request returns `BUNPRO_UPSTREAM_UNAVAILABLE` when its deadline passes.
 
 ## 0.4.0 — 2026-08-25
 

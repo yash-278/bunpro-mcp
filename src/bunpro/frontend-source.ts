@@ -25,6 +25,7 @@ const TOTAL_CRAM_STATS_ROUTE = "/api/frontend/user_stats/total_cram_stats";
 const API_ORIGIN = "https://api.bunpro.jp";
 const FRONTEND_API_PREFIX = "/api/frontend/";
 const ACCOUNT_TOKEN_OPT_IN = "dangerously_authenticate_using_api_token";
+const OPERATION_TIMEOUT_MS = 30_000;
 const REQUEST_TIMEOUT_MS = 10_000;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 const MAX_FORECAST_BUCKETS = 14;
@@ -296,15 +297,12 @@ export interface LearningProgressSnapshot {
 }
 
 export interface FrontendSource {
-  getAccountContext(operationSignal?: AbortSignal): Promise<AccountContext>;
-  loadStudyHistory(operationSignal?: AbortSignal): Promise<StudyHistorySnapshot>;
-  loadReviewPlanning(operationSignal?: AbortSignal): Promise<ReviewPlanningSnapshot>;
-  loadDeckConfiguration(operationSignal?: AbortSignal): Promise<DeckConfigurationSnapshot>;
-  loadRecentActivity(
-    view: RecentActivityView,
-    operationSignal?: AbortSignal
-  ): Promise<RecentActivitySnapshot>;
-  loadLearningProgress(operationSignal?: AbortSignal): Promise<LearningProgressSnapshot>;
+  getAccountContext(): Promise<AccountContext>;
+  loadStudyHistory(): Promise<StudyHistorySnapshot>;
+  loadReviewPlanning(): Promise<ReviewPlanningSnapshot>;
+  loadDeckConfiguration(): Promise<DeckConfigurationSnapshot>;
+  loadRecentActivity(view: RecentActivityView): Promise<RecentActivitySnapshot>;
+  loadLearningProgress(): Promise<LearningProgressSnapshot>;
 }
 
 export type FrontendSourceOperationFactory = () => FrontendSource;
@@ -312,6 +310,7 @@ export type FrontendSourceOperationFactory = () => FrontendSource;
 export interface FrontendSourceOptions {
   tokenSource?: TokenSource;
   requestGate?: BunproRequestGate;
+  operationTimeoutMs?: number;
   requestTimeoutMs?: number;
   maximumResponseBytes?: number;
 }
@@ -338,51 +337,46 @@ export class BunproFrontendSource implements FrontendSource {
     this.#tokenSource = options.tokenSource ?? "environment";
   }
 
-  getAccountContext(operationSignal?: AbortSignal): Promise<AccountContext> {
-    this.#accountContext ??= this.#loadAccountContext(operationSignal);
+  getAccountContext(): Promise<AccountContext> {
+    this.#accountContext ??= this.#loadAccountContext();
     return this.#accountContext;
   }
 
-  async loadStudyHistory(operationSignal?: AbortSignal): Promise<StudyHistorySnapshot> {
-    const accountContext = await this.getAccountContext(operationSignal);
+  async loadStudyHistory(): Promise<StudyHistorySnapshot> {
+    const accountContext = await this.getAccountContext();
     const reviews = await this.#loadSourceOutcome(
       REVIEW_HISTORY_ROUTE,
       DailyCountSeriesResponseSchema,
-      normalizeDailyCountSeries,
-      operationSignal
+      normalizeDailyCountSeries
     );
-    const newContent = reviews.status === "rate_limited"
+    const newContent = this.#studyHistoryMustStop(reviews)
       ? { status: "not_queried" } as const
       : await this.#loadSourceOutcome(
         NEW_CONTENT_HISTORY_ROUTE,
         DailyCountSeriesResponseSchema,
-        normalizeDailyCountSeries,
-        operationSignal
+        normalizeDailyCountSeries
       );
-    const accuracy = reviews.status === "rate_limited" || newContent.status === "rate_limited"
+    const accuracy = this.#studyHistoryMustStop(reviews, newContent)
       ? { status: "not_queried" } as const
       : await this.#loadSourceOutcome(
         ACCURACY_HISTORY_ROUTE,
         AccuracySeriesResponseSchema,
-        value => value,
-        operationSignal
+        value => value
       );
     return { accountContext, reviews, newContent, accuracy };
   }
 
-  async loadReviewPlanning(operationSignal?: AbortSignal): Promise<ReviewPlanningSnapshot> {
-    const accountContext = await this.getAccountContext(operationSignal);
+  async loadReviewPlanning(): Promise<ReviewPlanningSnapshot> {
+    const accountContext = await this.getAccountContext();
     const due = await this.#loadRequired(
       DUE_ROUTE,
       DueResponseSchema,
-      "due counts",
-      operationSignal
+      "due counts"
     );
     const forecast = await this.#loadRequired(
       FORECAST_ROUTE,
       ForecastResponseSchema,
-      "daily forecast",
-      operationSignal
+      "daily forecast"
     );
     const grammarKeys = Object.keys(forecast.grammar).sort();
     const vocabularyKeys = Object.keys(forecast.vocab).sort();
@@ -429,13 +423,12 @@ export class BunproFrontendSource implements FrontendSource {
     };
   }
 
-  async loadDeckConfiguration(operationSignal?: AbortSignal): Promise<DeckConfigurationSnapshot> {
-    const accountContext = await this.getAccountContext(operationSignal);
+  async loadDeckConfiguration(): Promise<DeckConfigurationSnapshot> {
+    const accountContext = await this.getAccountContext();
     const response = await this.#loadRequired(
       DECK_CONFIGURATION_ROUTE,
       DeckConfigurationResponseSchema,
-      "study-deck configuration",
-      operationSignal
+      "study-deck configuration"
     );
     const metadataById = new Map(response.included.map(deck => [deck.id, deck.attributes]));
     const entries = response.data.map(userDeck => {
@@ -468,19 +461,15 @@ export class BunproFrontendSource implements FrontendSource {
     return { accountContext, entries };
   }
 
-  async loadRecentActivity(
-    view: RecentActivityView,
-    operationSignal?: AbortSignal
-  ): Promise<RecentActivitySnapshot> {
-    const accountContext = await this.getAccountContext(operationSignal);
+  async loadRecentActivity(view: RecentActivityView): Promise<RecentActivitySnapshot> {
+    const accountContext = await this.getAccountContext();
     let attempts: z.infer<typeof AttemptResponseSchema>[];
     let sessions: z.infer<typeof ReviewSessionResponseSchema>[] | null;
     if (view === "last_24_hours") {
       const response = await this.#loadRequired(
         LAST_24_HOURS_ACTIVITY_ROUTE,
         Last24HoursActivityResponseSchema,
-        "last-24-hours activity",
-        operationSignal
+        "last-24-hours activity"
       );
       attempts = response.history_objects;
       sessions = response.review_sessions.data;
@@ -488,8 +477,7 @@ export class BunproFrontendSource implements FrontendSource {
       attempts = await this.#loadRequired(
         LATEST_ACTIVITY_ROUTE,
         LatestActivityResponseSchema,
-        "latest review attempts",
-        operationSignal
+        "latest review attempts"
       );
       sessions = null;
     }
@@ -517,31 +505,27 @@ export class BunproFrontendSource implements FrontendSource {
     };
   }
 
-  async loadLearningProgress(operationSignal?: AbortSignal): Promise<LearningProgressSnapshot> {
-    const accountContext = await this.getAccountContext(operationSignal);
+  async loadLearningProgress(): Promise<LearningProgressSnapshot> {
+    const accountContext = await this.getAccountContext();
     const base = await this.#loadRequired(
       BASE_STATS_ROUTE,
       BaseStatsResponseSchema,
-      "base statistics",
-      operationSignal
+      "base statistics"
     );
     const jlpt = await this.#loadRequired(
       JLPT_PROGRESS_ROUTE,
       JlptProgressResponseSchema,
-      "JLPT progress",
-      operationSignal
+      "JLPT progress"
     );
     const reviews = await this.#loadRequired(
       TOTAL_REVIEW_STATS_ROUTE,
       TotalReviewStatsResponseSchema,
-      "total review statistics",
-      operationSignal
+      "total review statistics"
     );
     const cram = await this.#loadRequired(
       TOTAL_CRAM_STATS_ROUTE,
       TotalCramStatsResponseSchema,
-      "total cram statistics",
-      operationSignal
+      "total cram statistics"
     );
     assertJlptGroups(
       jlpt.grammar,
@@ -583,8 +567,13 @@ export class BunproFrontendSource implements FrontendSource {
     };
   }
 
-  async #loadAccountContext(operationSignal?: AbortSignal): Promise<AccountContext> {
-    const payload = await this.#transport.getJson(ACCOUNT_CONTEXT_ROUTE, operationSignal);
+  #studyHistoryMustStop(...outcomes: Array<SourceOutcome<unknown>>): boolean {
+    return this.#transport.deadlinePassed
+      || outcomes.some(outcome => outcome.status === "rate_limited");
+  }
+
+  async #loadAccountContext(): Promise<AccountContext> {
+    const payload = await this.#transport.getJson(ACCOUNT_CONTEXT_ROUTE);
     const parsed = AccountContextResponseSchema.safeParse(payload);
     if (!parsed.success) {
       throw new BunproError(
@@ -601,11 +590,10 @@ export class BunproFrontendSource implements FrontendSource {
   async #loadSourceOutcome<TWire, TFact>(
     route: string,
     schema: z.ZodType<TWire>,
-    normalize: (value: TWire) => TFact,
-    operationSignal?: AbortSignal
+    normalize: (value: TWire) => TFact
   ): Promise<SourceOutcome<TFact>> {
     try {
-      const payload = await this.#transport.getJson(route, operationSignal);
+      const payload = await this.#transport.getJson(route);
       const parsed = schema.safeParse(payload);
       if (!parsed.success) {
         throw new BunproError(
@@ -626,10 +614,9 @@ export class BunproFrontendSource implements FrontendSource {
   async #loadRequired<T>(
     route: string,
     schema: z.ZodType<T>,
-    name: string,
-    operationSignal?: AbortSignal
+    name: string
   ): Promise<T> {
-    const payload = await this.#transport.getJson(route, operationSignal);
+    const payload = await this.#transport.getJson(route);
     const parsed = schema.safeParse(payload);
     if (!parsed.success) {
       throw new BunproError(
@@ -645,8 +632,10 @@ class FrontendHttpTransport {
   readonly #apiToken: string;
   readonly #fetch: FetchLike;
   readonly #requestGate: BunproRequestGate | undefined;
+  readonly #operationTimeoutMs: number;
   readonly #requestTimeoutMs: number;
   readonly #maximumResponseBytes: number;
+  #operationDeadline: AbortSignal | undefined;
 
   constructor(
     apiToken: string,
@@ -656,11 +645,16 @@ class FrontendHttpTransport {
     this.#apiToken = validateApiToken(apiToken);
     this.#fetch = fetchImplementation;
     this.#requestGate = options.requestGate;
+    this.#operationTimeoutMs = options.operationTimeoutMs ?? OPERATION_TIMEOUT_MS;
     this.#requestTimeoutMs = options.requestTimeoutMs ?? REQUEST_TIMEOUT_MS;
     this.#maximumResponseBytes = options.maximumResponseBytes ?? MAX_RESPONSE_BYTES;
   }
 
-  async getJson(path: string, operationSignal?: AbortSignal): Promise<unknown> {
+  get deadlinePassed(): boolean {
+    return this.#operationDeadline?.aborted ?? false;
+  }
+
+  async getJson(path: string): Promise<unknown> {
     const url = new URL(path, API_ORIGIN);
     if (url.origin !== API_ORIGIN || !url.pathname.startsWith(FRONTEND_API_PREFIX)) {
       throw new BunproError(
@@ -669,19 +663,42 @@ class FrontendHttpTransport {
       );
     }
     url.searchParams.set(ACCOUNT_TOKEN_OPT_IN, "true");
-    const response = await this.#request(url, {
-      method: "GET",
-      ...(operationSignal ? { signal: operationSignal } : {}),
-      headers: {
-        accept: "application/json",
-        authorization: `Token token=${this.#apiToken}`,
-        origin: "https://bunpro.jp",
-        referer: "https://bunpro.jp/",
-        "user-agent": "bunpro-mcp-server/0.4"
-      }
-    });
-    this.#ensureApiSuccess(response);
-    return this.#readJson(response);
+    this.#operationDeadline ??= AbortSignal.timeout(this.#operationTimeoutMs);
+    const deadline = this.#operationDeadline;
+    const load = (): Promise<unknown> => this.#load(url, deadline);
+    return this.#requestGate ? this.#requestGate.run(load, deadline) : load();
+  }
+
+  async #load(url: URL, deadline: AbortSignal): Promise<unknown> {
+    const timeoutController = new AbortController();
+    const timeout = setTimeout(
+      () => timeoutController.abort(new DOMException("The Bunpro request timed out.", "TimeoutError")),
+      this.#requestTimeoutMs
+    );
+    try {
+      const response = await this.#fetch(url, {
+        method: "GET",
+        signal: AbortSignal.any([deadline, timeoutController.signal]),
+        headers: {
+          accept: "application/json",
+          authorization: `Token token=${this.#apiToken}`,
+          origin: "https://bunpro.jp",
+          referer: "https://bunpro.jp/",
+          "user-agent": "bunpro-mcp-server/0.4"
+        }
+      });
+      this.#ensureApiSuccess(response);
+      return await this.#readJson(response);
+    } catch (error) {
+      if (error instanceof BunproError) throw error;
+      throw new BunproError(
+        "BUNPRO_UPSTREAM_UNAVAILABLE",
+        "Bunpro did not finish responding before the request timeout. Try again later.",
+        { cause: error }
+      );
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   #ensureApiSuccess(response: Response): void {
@@ -711,55 +728,29 @@ class FrontendHttpTransport {
     }
   }
 
-  async #request(url: URL, init: RequestInit): Promise<Response> {
-    const request = async (): Promise<Response> => {
-      const timeoutController = new AbortController();
-      const timeout = setTimeout(
-        () => timeoutController.abort(new DOMException("The Bunpro request timed out.", "TimeoutError")),
-        this.#requestTimeoutMs
-      );
-      try {
-        return await this.#fetch(url, {
-          ...init,
-          signal: init.signal
-            ? AbortSignal.any([init.signal, timeoutController.signal])
-            : timeoutController.signal
-        });
-      } finally {
-        clearTimeout(timeout);
-      }
-    };
-    try {
-      return await (this.#requestGate ? this.#requestGate.run(request) : request());
-    } catch (error) {
-      if (error instanceof BunproError) throw error;
-      throw new BunproError(
-        "BUNPRO_UPSTREAM_UNAVAILABLE",
-        "Bunpro could not be reached before the request timeout. Try again later.",
-        { cause: error }
-      );
-    }
-  }
-
   async #readJson(response: Response): Promise<unknown> {
+    const contentLength = Number(response.headers.get("content-length"));
+    if (Number.isFinite(contentLength) && contentLength > this.#maximumResponseBytes) {
+      throw invalidResponse(new RangeError("Bunpro response exceeds the configured byte limit."));
+    }
+    const body = await response.arrayBuffer();
+    if (body.byteLength > this.#maximumResponseBytes) {
+      throw invalidResponse(new RangeError("Bunpro response exceeds the configured byte limit."));
+    }
     try {
-      const contentLength = Number(response.headers.get("content-length"));
-      if (Number.isFinite(contentLength) && contentLength > this.#maximumResponseBytes) {
-        throw new RangeError("Bunpro response exceeds the configured byte limit.");
-      }
-      const body = await response.arrayBuffer();
-      if (body.byteLength > this.#maximumResponseBytes) {
-        throw new RangeError("Bunpro response exceeds the configured byte limit.");
-      }
       return JSON.parse(new TextDecoder().decode(body));
     } catch (error) {
-      throw new BunproError(
-        "BUNPRO_CONTRACT_CHANGED",
-        "Bunpro accepted the Account API Token, but the API response was not valid JSON.",
-        { cause: error }
-      );
+      throw invalidResponse(error);
     }
   }
+}
+
+function invalidResponse(cause: unknown): BunproError {
+  return new BunproError(
+    "BUNPRO_CONTRACT_CHANGED",
+    "Bunpro accepted the Account API Token, but the API response was not valid JSON.",
+    { cause }
+  );
 }
 
 function assertJlptGroups(...groups: Array<Record<string, unknown>>): void {
