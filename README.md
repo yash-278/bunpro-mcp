@@ -11,7 +11,7 @@ An open-source, stateless, read-only Model Context Protocol (MCP) server for ask
 - **Tools:** Eight read-only workflows for activity, reviews, decks, progress, and trends
 
 > [!IMPORTANT]
-> Bunpro MCP is an unofficial community project. It is not affiliated with or endorsed by Bunpro or OpenAI. It uses experimental, undocumented Bunpro functionality that may change, become unavailable, or be rate-limited without notice.
+> Bunpro MCP is an unofficial, experimental community project. It is not affiliated with or endorsed by Bunpro, OpenAI or Anthropic. It uses experimental, undocumented Bunpro functionality that may change, become unavailable, or be rate-limited without notice.
 
 ## What you can ask
 
@@ -45,6 +45,16 @@ In the ChatGPT/Codex desktop app:
 The hosted deployment has no shared Bunpro credential or account database. Your MCP client attaches your token to each request, and the server does not persist it.
 
 The server also supports `Authorization: Bearer <token>`, which is the form Claude uses. Configure exactly one credential method; requests containing both headers are rejected.
+
+## Use with Claude
+
+| Surface | Path | State |
+| --- | --- | --- |
+| Claude Desktop | Local `.mcpb` from a GitHub release, running the stdio server with your token | Available from 0.5.0 |
+| Claude Code | Hosted or self-hosted URL with `Authorization: Bearer`, or local stdio | Works today |
+| claude.ai web and mobile | Custom connector with **No sign-in** and an `Authorization` request header | Personal accounts with the request-headers beta only, untested |
+
+Follow the [Claude setup guide](docs/claude-setup.md) for the steps and warnings on each surface.
 
 ## Self-host locally with stdio
 
