@@ -7,7 +7,9 @@ import type {
   RecentActivitySnapshot,
   RecentActivityView,
   ReviewPlanningSnapshot,
-  StudyHistorySnapshot
+  StudyHistorySnapshot,
+  WeakSpotFact,
+  WeakSpotPeriod
 } from "./frontend-source.js";
 
 export interface InMemoryFrontendSourceData {
@@ -20,6 +22,7 @@ export interface InMemoryFrontendSourceData {
     Omit<RecentActivitySnapshot, "accountContext" | "view">
   >>;
   learningProgress?: Omit<LearningProgressSnapshot, "accountContext">;
+  weakSpots?: Partial<Record<WeakSpotPeriod, WeakSpotFact[]>>;
 }
 
 export type FrontendSourceCapability =
@@ -28,7 +31,8 @@ export type FrontendSourceCapability =
   | "reviewPlanning"
   | "deckConfiguration"
   | "recentActivity"
-  | "learningProgress";
+  | "learningProgress"
+  | "weakSpots";
 
 export type InMemoryFrontendSourceFailures = Partial<Record<FrontendSourceCapability, BunproError>>;
 
@@ -71,6 +75,11 @@ export class InMemoryFrontendSource implements FrontendSource {
 
   async loadLearningProgress(): Promise<LearningProgressSnapshot> {
     return this.#loadCapability("learningProgress", this.#data.learningProgress);
+  }
+
+  async loadWeakSpots(period: WeakSpotPeriod): Promise<WeakSpotFact[]> {
+    this.#throwFailure("weakSpots");
+    return this.#required("weakSpots", this.#data.weakSpots?.[period]);
   }
 
   #throwFailure(capability: FrontendSourceCapability): void {

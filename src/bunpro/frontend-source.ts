@@ -23,6 +23,7 @@ const BASE_STATS_ROUTE = "/api/frontend/user_stats/base_stats";
 const JLPT_PROGRESS_ROUTE = "/api/frontend/user_stats/jlpt_progress_mixed";
 const TOTAL_REVIEW_STATS_ROUTE = "/api/frontend/user_stats/total_review_stats";
 const TOTAL_CRAM_STATS_ROUTE = "/api/frontend/user_stats/total_cram_stats";
+const TROUBLED_CONTENT_ROUTE = "/api/frontend/user_stats/troubled_content";
 const API_ORIGIN = "https://api.bunpro.jp";
 const FRONTEND_API_PREFIX = "/api/frontend/";
 const ACCOUNT_TOKEN_OPT_IN = "dangerously_authenticate_using_api_token";
@@ -167,6 +168,25 @@ const TotalCramStatsResponseSchema = z.object({
     total_time: z.string()
   }).loose()
 });
+const TroubledContentResponseSchema = z.array(z.object({
+  data: z.object({
+    attributes: z.object({
+      accuracy: z.number().min(0).max(100).nullable(),
+      streak: z.number().int().nonnegative()
+    }).loose()
+  }).loose(),
+  reviewable: z.object({
+    data: z.object({
+      attributes: z.object({
+        id: z.union([z.string(), z.number()]),
+        title: z.string(),
+        meaning: z.string(),
+        level: z.union([z.string(), z.number()]),
+        type_snake: z.string().min(1)
+      }).loose()
+    }).loose()
+  }).loose()
+}).loose());
 
 export interface AccountContext {
   sourceTimezone: string;
@@ -297,6 +317,18 @@ export interface LearningProgressSnapshot {
   };
 }
 
+export type WeakSpotPeriod = "overall" | "last_month";
+
+export interface WeakSpotFact {
+  contentId: string;
+  contentType: string;
+  label: string;
+  meaning: string;
+  level: string;
+  accuracy: number | null;
+  streak: number;
+}
+
 export interface FrontendSource {
   getAccountContext(): Promise<AccountContext>;
   loadStudyHistory(): Promise<StudyHistorySnapshot>;
@@ -304,6 +336,7 @@ export interface FrontendSource {
   loadDeckConfiguration(): Promise<DeckConfigurationSnapshot>;
   loadRecentActivity(view: RecentActivityView): Promise<RecentActivitySnapshot>;
   loadLearningProgress(): Promise<LearningProgressSnapshot>;
+  loadWeakSpots(period: WeakSpotPeriod): Promise<WeakSpotFact[]>;
 }
 
 export type FrontendSourceOperationFactory = () => FrontendSource;
@@ -566,6 +599,26 @@ export class BunproFrontendSource implements FrontendSource {
         }
       }
     };
+  }
+
+  async loadWeakSpots(period: WeakSpotPeriod): Promise<WeakSpotFact[]> {
+    const entries = await this.#loadRequired(
+      period === "overall" ? TROUBLED_CONTENT_ROUTE : `${TROUBLED_CONTENT_ROUTE}?period=${period}`,
+      TroubledContentResponseSchema,
+      "troubled content"
+    );
+    return entries.map(entry => {
+      const item = entry.reviewable.data.attributes;
+      return {
+        contentId: String(item.id),
+        contentType: item.type_snake,
+        label: item.title,
+        meaning: item.meaning,
+        level: String(item.level),
+        accuracy: entry.data.attributes.accuracy,
+        streak: entry.data.attributes.streak
+      };
+    });
   }
 
   #studyHistoryMustStop(...outcomes: Array<SourceOutcome<unknown>>): boolean {

@@ -2,11 +2,13 @@ import { BunproError } from "./errors.js";
 import type {
   ListStudyDecksInput,
   ListStudyDecksOutput,
+  ListWeakSpotsInput,
+  ListWeakSpotsOutput,
   RecentActivityInput,
   RecentActivityOutput,
   ReviewSchedule
 } from "./schemas.js";
-import type { FrontendSource } from "./frontend-source.js";
+import type { FrontendSource, WeakSpotFact } from "./frontend-source.js";
 import { nextDay, todayInTimeZone } from "./study-period.js";
 
 export async function getReviewSchedule(
@@ -115,4 +117,38 @@ export async function getRecentActivity(
       )
     }
   };
+}
+
+export async function listWeakSpots(
+  source: Pick<FrontendSource, "loadWeakSpots">,
+  input: ListWeakSpotsInput,
+  now: Date
+): Promise<ListWeakSpotsOutput> {
+  const items = await source.loadWeakSpots(input.period);
+  const weakSpots = [...items].sort(byLowestAccuracy).slice(0, input.limit);
+  return {
+    period: input.period,
+    retrieved_at: now.toISOString(),
+    order: "lowest_accuracy_first",
+    count: weakSpots.length,
+    total_available: items.length,
+    has_more: items.length > weakSpots.length,
+    completeness: "bunpro_selection_rule_unpublished",
+    weak_spots: weakSpots.map(item => ({
+      content_id: item.contentId,
+      content_type: item.contentType,
+      label: item.label,
+      meaning: item.meaning,
+      level: item.level,
+      accuracy: item.accuracy,
+      streak: item.streak
+    }))
+  };
+}
+
+function byLowestAccuracy(left: WeakSpotFact, right: WeakSpotFact): number {
+  if (left.accuracy !== right.accuracy) {
+    return (left.accuracy ?? Infinity) - (right.accuracy ?? Infinity);
+  }
+  return left.contentId.localeCompare(right.contentId, "en", { numeric: true });
 }

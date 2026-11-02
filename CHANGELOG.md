@@ -4,6 +4,7 @@ Notable changes to Bunpro MCP are recorded here. The project follows semantic ve
 
 ## Unreleased
 
+- Added `list_weak_spots`, which lists the items Bunpro currently marks as Troubled Content with Bunpro's reported accuracy and streak. It costs one Bunpro request per call, takes `period` and `limit`, and sorts lowest accuracy first. An empty list means Bunpro lists nothing right now, not that the learner has no weak spots.
 - Added a Claude Desktop `.mcpb`, built by `npm run build:mcpb`, that runs the stdio server locally and gets the token from a sensitive install field. Added `docs/claude-setup.md`, and `PRIVACY.md` now lists where each Claude surface holds the token.
 - Made `Authorization: Bearer <token>` a supported hosted credential path alongside `X-Bunpro-Token`. The `Bearer ` prefix stays required, and a request with both headers is still rejected.
 - Changed the 401 response for a missing or invalid credential to name both methods.

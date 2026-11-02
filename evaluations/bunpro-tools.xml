@@ -39,4 +39,16 @@
     <question>Check the connection timezone, then request the 2026-07-01 through 2026-07-07 range with Asia/Kolkata as the expected timezone. Do both the connection and range result confirm the same boundary? Answer True or False.</question>
     <answer>True</answer>
   </qa_pair>
+  <qa_pair>
+    <question>Find the item Bunpro currently lists as troubled with the lowest accuracy. What is its label? Answer with only the label.</question>
+    <answer>Vocabulary F</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>How many items does Bunpro currently list as troubled for the last_month period? Answer with only the number.</question>
+    <answer>0</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Compare the overall and last_month weak-spot lists. If the last_month list is empty, does that show the learner has no weak spots? Answer True or False.</question>
+    <answer>False</answer>
+  </qa_pair>
 </evaluation>

@@ -167,6 +167,15 @@ const sourceData = {
         totalTime: "00:40:00"
       }
     }
+  },
+  weakSpots: {
+    overall: [
+      weakSpot("401", "grammar_point", "Grammar E", 62.5, 1),
+      weakSpot("402", "vocabulary", "Vocabulary F", 38, 0),
+      weakSpot("403", "grammar_point", "Grammar G", 71, 2),
+      weakSpot("404", "vocabulary", "Vocabulary H", null, 0)
+    ],
+    last_month: []
   }
 };
 
@@ -186,6 +195,24 @@ function attempt(id: number, correct: boolean, label: string) {
     contentType: id % 2 === 0 ? "vocabulary" : "grammar",
     contentId: String(id * 10),
     label
+  };
+}
+
+function weakSpot(
+  contentId: string,
+  contentType: string,
+  label: string,
+  accuracy: number | null,
+  streak: number
+) {
+  return {
+    contentId,
+    contentType,
+    label,
+    meaning: `Synthetic meaning of ${label}`,
+    level: "JLPT4",
+    accuracy,
+    streak
   };
 }
 

@@ -8,7 +8,7 @@ An open-source, stateless, read-only Model Context Protocol (MCP) server for ask
 - **Hosted service:** [bunpro.yashkadam.com](https://bunpro.yashkadam.com/)
 - **Hosted MCP endpoint:** `https://bunpro.yashkadam.com/mcp`
 - **Self-hosting:** [Local, Docker, and Railway guide](docs/self-hosting.md)
-- **Tools:** Eight read-only workflows for activity, reviews, decks, progress, and trends
+- **Tools:** Nine read-only workflows for activity, reviews, decks, progress, trends, and weak spots
 
 > [!IMPORTANT]
 > Bunpro MCP is an unofficial, experimental community project. It is not affiliated with or endorsed by Bunpro, OpenAI or Anthropic. It uses experimental, undocumented Bunpro functionality that may change, become unavailable, or be rate-limited without notice.
@@ -21,6 +21,7 @@ An open-source, stateless, read-only Model Context Protocol (MCP) server for ask
 - “Which study decks are active?”
 - “How far along am I from JLPT N5 through N1?”
 - “How has my review volume and accuracy changed this month?”
+- “What does Bunpro currently list as troubled for me?”
 
 Every tool is read-only. Bunpro MCP cannot answer reviews, start lessons or crams, change SRS progress, edit decks, or update account settings.
 
@@ -111,6 +112,7 @@ For an HTTPS deployment on Railway or another host, follow [docs/self-hosting.md
 | `get_recent_activity` | Last-24-hours activity or Bunpro’s latest review attempts |
 | `get_learning_progress` | Account totals, JLPT progress, reviews, and cram aggregates |
 | `get_activity_trend` | Daily evidence with derived totals and averages for a date range |
+| `list_weak_spots` | Items Bunpro currently lists as troubled, with the accuracy and streak Bunpro reports |
 
 Missing source data is reported as unavailable, not silently converted to zero.
 
