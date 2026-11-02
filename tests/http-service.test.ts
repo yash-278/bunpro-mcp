@@ -75,6 +75,11 @@ test("the public HTTP service enforces its canonical host and bounded MCP reques
     assert.match(homepage.body, /Can I run it myself/);
     assert.match(homepage.body, /Self-hosting guide/);
     assert.match(homepage.body, /github\.com\/yash-278\/bunpro-mcp/);
+    assert.match(homepage.body, /Using Claude\?/);
+    assert.match(homepage.body, /blob\/main\/docs\/claude-setup\.md/);
+    assert.match(homepage.body, /not affiliated with or endorsed by Bunpro, OpenAI or Anthropic/);
+    assert.match(homepage.body, /Not affiliated with Bunpro, OpenAI or Anthropic/);
+    assert.doesNotMatch(homepage.body, /Bunpro or OpenAI/);
     assert.doesNotMatch(homepage.body, /Available in ChatGPT|Open in ChatGPT|data-concept=/);
     assert.doesNotMatch(homepage.body, /repository remains private|public self-hosting is not available/i);
     assert.doesNotMatch(homepage.body, /dangerously_authenticate|\/api\/frontend|Token token=/);

@@ -114,6 +114,10 @@ Never place a token in:
 - a log, screenshot, issue, or support message; or
 - a shared deployment variable for HTTP mode.
 
+## Use with Claude
+
+The [Claude setup guide](claude-setup.md) has the steps for Claude Code and claude.ai. To use your own server, replace `https://bunpro.yashkadam.com/mcp` in those steps with `https://your-domain.example/mcp`. The Claude Desktop `.mcpb` runs the server locally, so it needs no URL.
+
 ## Verification
 
 Without a token, `/mcp` should return HTTP 401 without echoing request data. `/healthz` intentionally requires no credential and exposes no account data.
