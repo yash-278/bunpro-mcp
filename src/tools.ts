@@ -1,6 +1,6 @@
 import * as z from "zod/v4";
 import type { FrontendSource } from "./bunpro/frontend-source.js";
-import { getRecentActivity, getReviewSchedule, listStudyDecks } from "./bunpro/planning.js";
+import { getRecentActivity, getReviewSchedule, listStudyDecks, listWeakSpots } from "./bunpro/planning.js";
 import { getLearningProgress } from "./bunpro/progress.js";
 import {
   ActivityTrendOutputSchema,
@@ -8,6 +8,8 @@ import {
   LearningProgressOutputSchema,
   ListStudyDecksInputSchema,
   ListStudyDecksOutputSchema,
+  ListWeakSpotsInputSchema,
+  ListWeakSpotsOutputSchema,
   RecentActivityInputSchema,
   RecentActivityOutputSchema,
   ReviewScheduleOutputSchema,
@@ -129,5 +131,14 @@ export const TOOL_DECLARATIONS: readonly ToolDeclaration[] = [
     inputSchema: StudyRangeInputSchema,
     outputSchema: ActivityTrendOutputSchema,
     run: (input, { source, now }) => getActivityTrend(source, input, now)
+  }),
+  declareTool({
+    name: "list_weak_spots",
+    title: "List Bunpro weak spots",
+    description:
+      "List the study items Bunpro currently lists as troubled, with the accuracy and streak Bunpro reports for each, lowest accuracy first and null accuracy last. Bunpro's selection rule is unpublished. An empty list means Bunpro lists nothing right now, not that the learner has no weak spots.",
+    inputSchema: ListWeakSpotsInputSchema,
+    outputSchema: ListWeakSpotsOutputSchema,
+    run: (input, { source, now }) => listWeakSpots(source, input, now)
   })
 ];

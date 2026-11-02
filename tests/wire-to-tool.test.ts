@@ -11,6 +11,7 @@ import {
   createBunproWire,
   reviewSession,
   stalledBodyReply,
+  troubledEntry,
   wireBodies,
   type WireOverrides
 } from "./fixtures/bunpro-wire.js";
@@ -969,6 +970,147 @@ test("a Study Day past its deadline keeps what arrived and reports honest covera
   });
 });
 
+test("list_weak_spots lists what Bunpro currently marks as troubled in one request", async t => {
+  const { result, routes } = await callTool(t, "list_weak_spots");
+
+  assert.deepEqual(routes, [bunproRoutes.troubledContent]);
+  assert.deepEqual(result.structuredContent, {
+    period: "overall",
+    retrieved_at: "2026-08-12T12:00:00.000Z",
+    order: "lowest_accuracy_first",
+    count: 3,
+    total_available: 3,
+    has_more: false,
+    completeness: "bunpro_selection_rule_unpublished",
+    weak_spots: [
+      weakSpot(303, "grammar_point", 40, 2),
+      weakSpot(301, "grammar_point", 72.5, 1),
+      weakSpot(302, "vocabulary", null, 0)
+    ]
+  });
+});
+
+test("list_weak_spots sends no period for overall and period=last_month for last month", async t => {
+  const { client, wire } = await connectClient(t);
+
+  const overall = await client.callTool({ name: "list_weak_spots", arguments: { period: "overall" } });
+  const lastMonth = await client.callTool({ name: "list_weak_spots", arguments: { period: "last_month" } });
+
+  assert.equal(structured(overall).period, "overall");
+  assert.equal(structured(lastMonth).period, "last_month");
+  assert.deepEqual(wire.routes(), [bunproRoutes.troubledContent, bunproRoutes.troubledContent]);
+  assert.equal(wire.calls[0]?.url.searchParams.has("period"), false);
+  assert.equal(wire.calls[1]?.url.searchParams.get("period"), "last_month");
+});
+
+test("list_weak_spots breaks ties by item ID and keeps every null accuracy last", async t => {
+  const { result } = await callTool(t, "list_weak_spots", {}, {
+    [bunproRoutes.troubledContent]: [
+      troubledEntry(11, "grammar_point", null, 0),
+      troubledEntry(10, "grammar_point", 50, 0),
+      troubledEntry(9, "grammar_point", 50, 0),
+      troubledEntry(2, "grammar_point", null, 0)
+    ]
+  });
+
+  const listed = structured(result).weak_spots as Array<{ content_id: string }>;
+  assert.deepEqual(listed.map(item => item.content_id), ["9", "10", "2", "11"]);
+});
+
+test("list_weak_spots sorts before it applies the limit", async t => {
+  const { result } = await callTool(t, "list_weak_spots", { limit: 1 });
+
+  assert.deepEqual(result.structuredContent, {
+    period: "overall",
+    retrieved_at: "2026-08-12T12:00:00.000Z",
+    order: "lowest_accuracy_first",
+    count: 1,
+    total_available: 3,
+    has_more: true,
+    completeness: "bunpro_selection_rule_unpublished",
+    weak_spots: [weakSpot(303, "grammar_point", 40, 2)]
+  });
+});
+
+test("list_weak_spots treats an empty Bunpro list as a valid result", async t => {
+  const { result, routes } = await callTool(t, "list_weak_spots", { period: "last_month" }, {
+    [bunproRoutes.troubledContent]: []
+  });
+
+  assert.deepEqual(routes, [bunproRoutes.troubledContent]);
+  assert.deepEqual(result.structuredContent, {
+    period: "last_month",
+    retrieved_at: "2026-08-12T12:00:00.000Z",
+    order: "lowest_accuracy_first",
+    count: 0,
+    total_available: 0,
+    has_more: false,
+    completeness: "bunpro_selection_rule_unpublished",
+    weak_spots: []
+  });
+});
+
+test("list_weak_spots returns the normal error for a failed source and tries no other route", async t => {
+  const { result, routes } = await callTool(t, "list_weak_spots", {}, {
+    [bunproRoutes.troubledContent]: new Response("synthetic outage", { status: 503 })
+  });
+
+  assert.deepEqual(routes, [bunproRoutes.troubledContent]);
+  assertToolError(
+    result,
+    "BUNPRO_UPSTREAM_UNAVAILABLE: Bunpro's frontend API returned HTTP 503. Try again later."
+  );
+});
+
+test("list_weak_spots reports a rejected token as the normal authentication error", async t => {
+  const { result, routes } = await callTool(t, "list_weak_spots", {}, {
+    [bunproRoutes.troubledContent]: new Response("synthetic rejection", { status: 403 })
+  });
+
+  assert.deepEqual(routes, [bunproRoutes.troubledContent]);
+  assertToolError(
+    result,
+    "BUNPRO_AUTH_FAILED: Bunpro rejected the Account API Token. Configure a current token from Bunpro Settings > API."
+  );
+});
+
+test("list_weak_spots rejects an accuracy outside 0 to 100 as a contract change", async t => {
+  const { result } = await callTool(t, "list_weak_spots", {}, {
+    [bunproRoutes.troubledContent]: [troubledEntry(301, "grammar_point", 100.5, 1)]
+  });
+
+  assertToolError(
+    result,
+    "BUNPRO_CONTRACT_CHANGED: Bunpro accepted the Account API Token, but the troubled content response shape changed."
+  );
+});
+
+test("list_weak_spots rejects item details outside reviewable.data.attributes", async t => {
+  const entry = troubledEntry(301, "grammar_point", 50, 1);
+  const { result } = await callTool(t, "list_weak_spots", {}, {
+    [bunproRoutes.troubledContent]: [{
+      data: entry.data,
+      reviewable: entry.reviewable.data.attributes
+    }]
+  });
+
+  assertToolError(
+    result,
+    "BUNPRO_CONTRACT_CHANGED: Bunpro accepted the Account API Token, but the troubled content response shape changed."
+  );
+});
+
+test("list_weak_spots rejects a bad period or limit before any Bunpro request", async t => {
+  const { client, wire } = await connectClient(t);
+
+  for (const args of [{ limit: 0 }, { limit: 101 }, { period: "all_time" }]) {
+    const result = await client.callTool({ name: "list_weak_spots", arguments: args });
+    assert.equal(result.isError, true);
+  }
+
+  assert.deepEqual(wire.routes(), []);
+});
+
 test("the wire fixture fails a test whose source requests an unknown route", async () => {
   const hooks: Array<() => void> = [];
   const wire = createBunproWire({ after: hook => void hooks.push(hook as () => void) });
@@ -1030,6 +1172,18 @@ function assertToolError(result: ToolResult, expected: string): void {
   assert.equal(result.isError, true);
   assert.equal(result.structuredContent, undefined);
   assert.deepEqual(result.content, [{ type: "text", text: expected }]);
+}
+
+function weakSpot(id: number, contentType: string, accuracy: number | null, streak: number) {
+  return {
+    content_id: String(id),
+    content_type: contentType,
+    label: `Synthetic item ${id}`,
+    meaning: `Synthetic meaning ${id}`,
+    level: "JLPT3",
+    accuracy,
+    streak
+  };
 }
 
 function forecastDates(count: number): string[] {

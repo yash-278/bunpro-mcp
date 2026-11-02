@@ -205,6 +205,33 @@ export const RecentActivityOutputSchema = z.object({
 export type RecentActivityInput = z.infer<typeof RecentActivityInputSchema>;
 export type RecentActivityOutput = z.infer<typeof RecentActivityOutputSchema>;
 
+export const ListWeakSpotsInputSchema = z.object({
+  period: z.enum(["overall", "last_month"]).default("overall").describe("Which Bunpro Troubled Content view to read."),
+  limit: z.number().int().min(1).max(100).default(20).describe("Maximum number of weak spots to return.")
+}).strict();
+
+export const ListWeakSpotsOutputSchema = z.object({
+  period: z.enum(["overall", "last_month"]),
+  retrieved_at: z.string().datetime(),
+  order: z.literal("lowest_accuracy_first"),
+  count: z.number().int().nonnegative(),
+  total_available: z.number().int().nonnegative(),
+  has_more: z.boolean(),
+  completeness: z.literal("bunpro_selection_rule_unpublished"),
+  weak_spots: z.array(z.object({
+    content_id: z.string().min(1),
+    content_type: z.string().min(1),
+    label: z.string(),
+    meaning: z.string(),
+    level: z.string(),
+    accuracy: z.number().min(0).max(100).nullable(),
+    streak: z.number().int().nonnegative()
+  })).max(100)
+});
+
+export type ListWeakSpotsInput = z.infer<typeof ListWeakSpotsInputSchema>;
+export type ListWeakSpotsOutput = z.infer<typeof ListWeakSpotsOutputSchema>;
+
 const SrsStageCountsSchema = z.object({
   beginner: z.number().int().nonnegative(),
   seasoned: z.number().int().nonnegative(),

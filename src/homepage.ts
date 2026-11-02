@@ -127,6 +127,13 @@ const tools = [
     icon: "trend" as const,
     description: "See how your reviews, new lessons, and accuracy change over time.",
     prompt: "How has my consistency changed over the last 30 days?"
+  },
+  {
+    name: "Weak spots",
+    key: "list_weak_spots",
+    icon: "chart" as const,
+    description: "See what Bunpro currently lists as troubled, with the accuracy and streak it reports.",
+    prompt: "What does Bunpro currently list as troubled for me?"
   }
 ];
 
@@ -376,7 +383,7 @@ function toolCatalog(): string {
   return `<section class="section tools" id="tools">
     <div class="shell">
       <div class="section-heading reveal">
-        <div><span class="kicker">What you can ask</span><h2>Eight ways to understand<br><em>your learning.</em></h2></div>
+        <div><span class="kicker">What you can ask</span><h2>Nine ways to understand<br><em>your learning.</em></h2></div>
         <p>From today's workload to long-term JLPT progress, each tool answers a familiar study question without changing your Bunpro account.</p>
       </div>
       <div class="tool-grid">
@@ -470,7 +477,7 @@ function faq(): string {
   const items = [
     ["Is this an official Bunpro, OpenAI or Anthropic plugin?", "No. It is an unofficial community MCP, is not affiliated with or endorsed by Bunpro, OpenAI or Anthropic, and is not published as an official ChatGPT or Claude listing."],
     ["Can a link install it or prefill the ChatGPT form?", "No supported deep link currently pre-populates the custom MCP creation form. The ChatGPT Plugins URL can take you to the area, but you must enter and review the connection values yourself."],
-    ["Can it change anything in Bunpro?", "No. All eight published tools are read only. The server does not start or submit reviews, change SRS state, add lessons, run crams, edit decks, or modify account settings."],
+    ["Can it change anything in Bunpro?", "No. All nine published tools are read only. The server does not start or submit reviews, change SRS state, add lessons, run crams, edit decks, or modify account settings."],
     ["Does the website receive my token?", "No. This page is static and contains no token field. You paste the token only into your MCP client's protected credential configuration—not into this website or a chat message."],
     ["Does the server store my data?", "No. This service has no account or saved study-history database. It uses your token and Bunpro data only while answering the current request."],
     ["Is the source code public?", `Yes. Bunpro MCP is open source under the MIT license. You can inspect, fork, and contribute to it on <a class="inline-link" href="${SOURCE_REPOSITORY_URL}" target="_blank" rel="noreferrer">GitHub ${icon("external")}</a>.`],
@@ -777,10 +784,10 @@ function styles(): string {
     .source-actions .inline-link { color: var(--red); }
 
     .tools { background: var(--paper); }
-    .tool-grid { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); }
+    .tool-grid { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); }
     .tool-card { min-height: 360px; padding: 27px; display: flex; flex-direction: column; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: rgba(255,255,255,.17); }
-    .tool-card:nth-child(4n) { border-right: 0; }
-    .tool-card:nth-child(n+5) { border-bottom: 0; }
+    .tool-card:nth-child(3n) { border-right: 0; }
+    .tool-card:nth-child(n+7) { border-bottom: 0; }
     .tool-top { display: flex; align-items: center; justify-content: space-between; }
     .tool-icon { width: 46px; height: 46px; display: grid; place-items: center; color: var(--red); border: 1px solid var(--line); }
     .read-badge { padding: 5px 7px; color: var(--moss); border: 1px solid #adb6a8; font: 800 7px/1 var(--mono); letter-spacing: .08em; }
@@ -891,10 +898,10 @@ function styles(): string {
       .trust-grid > div:nth-child(3) { border-left: 1px solid rgba(255,255,255,.12); border-top: 1px solid rgba(255,255,255,.12); }
       .trust-grid > div:nth-child(4) { border-top: 1px solid rgba(255,255,255,.12); }
       .tool-grid { grid-template-columns: repeat(2, 1fr); }
+      .tool-card:nth-child(3n) { border-right: 1px solid var(--line); }
       .tool-card:nth-child(2n) { border-right: 0; }
-      .tool-card:nth-child(4n) { border-right: 0; }
-      .tool-card:nth-child(n+5) { border-bottom: 1px solid var(--line); }
-      .tool-card:nth-child(n+7) { border-bottom: 0; }
+      .tool-card:nth-child(n+7) { border-bottom: 1px solid var(--line); }
+      .tool-card:nth-child(n+9) { border-bottom: 0; }
       .explainer-grid, .limitations-grid { gap: 60px; }
       .flow-card { padding: 22px; }
     }
@@ -981,7 +988,7 @@ function styles(): string {
       .copy-field code { font-size: 10px; }
       .auth-fallback { grid-template-columns: 1fr; margin-top: 52px; }
       .tool-grid { grid-template-columns: 1fr; }
-      .tool-card, .tool-card:nth-child(2n), .tool-card:nth-child(4n), .tool-card:nth-child(n+5), .tool-card:nth-child(n+7) { border-right: 0; border-bottom: 1px solid var(--line); }
+      .tool-card, .tool-card:nth-child(2n), .tool-card:nth-child(3n), .tool-card:nth-child(n+7), .tool-card:nth-child(n+9) { border-right: 0; border-bottom: 1px solid var(--line); }
       .tool-card:last-child { border-bottom: 0; }
       .tool-card { min-height: 330px; }
       .prompt-row { grid-template-columns: 55px 1fr 28px; gap: 10px; }

@@ -15,7 +15,8 @@ export const bunproRoutes = {
   baseStats: "/api/frontend/user_stats/base_stats",
   jlptProgress: "/api/frontend/user_stats/jlpt_progress_mixed",
   totalReviewStats: "/api/frontend/user_stats/total_review_stats",
-  totalCramStats: "/api/frontend/user_stats/total_cram_stats"
+  totalCramStats: "/api/frontend/user_stats/total_cram_stats",
+  troubledContent: "/api/frontend/user_stats/troubled_content"
 } as const;
 
 export type BunproRoute = (typeof bunproRoutes)[keyof typeof bunproRoutes];
@@ -194,7 +195,12 @@ export function wireBodies() {
         session_count: 2,
         total_time: "00:20:00"
       }
-    }
+    },
+    [bunproRoutes.troubledContent]: [
+      troubledEntry(301, "grammar_point", 72.5, 1),
+      troubledEntry(302, "vocabulary", null, 0),
+      troubledEntry(303, "grammar_point", 40, 2)
+    ] as unknown[]
   };
 }
 
@@ -238,6 +244,37 @@ function grammarAttempt(id: number, time: string, correct: boolean) {
         id: 100 + id,
         type: "grammar_point",
         attributes: { title: `Synthetic grammar ${id}`, meaning: "Synthetic lesson text" }
+      }
+    }
+  };
+}
+
+/** One Troubled Content entry, with the fields the tool must leave out. */
+export function troubledEntry(
+  id: number,
+  typeSnake: string,
+  accuracy: number | null,
+  streak: number
+) {
+  return {
+    data: {
+      id: `review-${id}`,
+      type: "review",
+      attributes: { accuracy, streak },
+      relationships: {}
+    },
+    reviewable: {
+      data: {
+        attributes: {
+          id,
+          title: `Synthetic item ${id}`,
+          meaning: `Synthetic meaning ${id}`,
+          slug: `synthetic-item-${id}`,
+          furigana: `synthetic-furigana-${id}`,
+          level: "JLPT3",
+          type_pascal: "SyntheticPascal",
+          type_snake: typeSnake
+        }
       }
     }
   };

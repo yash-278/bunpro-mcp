@@ -46,6 +46,8 @@ try {
     end_date: yesterday,
     expected_timezone: timezone
   });
+  await pause();
+  reportAccuracyScale(await call("list_weak_spots", { limit: 100 }));
 } finally {
   await client.close();
   await handler?.close();
@@ -57,6 +59,14 @@ async function call(name: string, args: Record<string, unknown>): Promise<Record
   assert.ok(result.structuredContent, `${name} did not return structured content.`);
   process.stdout.write(`${name}: ok\n`);
   return result.structuredContent as Record<string, unknown>;
+}
+
+// Prints one yes or no and never a value. A yes rules out a 0-to-1 scale, for the
+// release check on `accuracy`.
+function reportAccuracyScale(result: Record<string, unknown>): void {
+  const items = result.weak_spots as Array<{ accuracy: number | null }>;
+  const aboveOne = items.some(item => item.accuracy !== null && item.accuracy > 1);
+  process.stdout.write(`list_weak_spots: accuracy above 1 seen: ${aboveOne ? "yes" : "no"}\n`);
 }
 
 function requiredString(value: Record<string, unknown>, key: string): string {
