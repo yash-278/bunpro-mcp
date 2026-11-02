@@ -8,3 +8,6 @@ coverage/
 *.log
 .DS_Store
 .scratch/
+
+# Claude plugin evaluation output
+plugins/bunpro-mcp/evals/results/
