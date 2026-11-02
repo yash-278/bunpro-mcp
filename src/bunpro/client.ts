@@ -38,7 +38,7 @@ export class BunproRequestGate {
   }
 
   async run<T>(operation: () => Promise<T>, signal: AbortSignal): Promise<T> {
-    if (signal.aborted) throw deadlinePassed(signal.reason);
+    if (signal.aborted) throw notStartedBeforeDeadline(signal.reason);
     if (this.#active >= this.#maximumConcurrent) {
       if (this.#queue.length >= this.#maximumQueued) {
         throw new BunproError(
@@ -57,7 +57,7 @@ export class BunproRequestGate {
       const waitMs = startAt - now;
       if (waitMs > 0) {
         await delay(waitMs, undefined, { signal }).catch((error: unknown) => {
-          throw deadlinePassed(error);
+          throw notStartedBeforeDeadline(error);
         });
       }
       return await operation();
@@ -75,7 +75,7 @@ export class BunproRequestGate {
       };
       const leave = (): void => {
         this.#queue.splice(this.#queue.indexOf(admit), 1);
-        reject(deadlinePassed(signal.reason));
+        reject(notStartedBeforeDeadline(signal.reason));
       };
       this.#queue.push(admit);
       signal.addEventListener("abort", leave, { once: true });
@@ -83,7 +83,7 @@ export class BunproRequestGate {
   }
 }
 
-function deadlinePassed(cause: unknown): BunproError {
+function notStartedBeforeDeadline(cause: unknown): BunproError {
   return new BunproError(
     "BUNPRO_UPSTREAM_UNAVAILABLE",
     "The Bunpro request did not start before the operation deadline. Try again later.",

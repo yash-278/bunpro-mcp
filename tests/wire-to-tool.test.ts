@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test, { type TestContext } from "node:test";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
+import { apiTokenFromEnvironment } from "../src/bunpro/client.js";
 import {
   createFrontendSourceOperationFactory,
   type FrontendSourceOptions
 } from "../src/bunpro/frontend-source.js";
+import { ListWeakSpotsOutputSchema } from "../src/bunpro/schemas.js";
 import { createServer } from "../src/server.js";
 import {
   bunproRoutes,
@@ -17,6 +20,10 @@ import {
 } from "./fixtures/bunpro-wire.js";
 
 type ToolResult = Awaited<ReturnType<Client["callTool"]>>;
+type ConnectOptions = FrontendSourceOptions & {
+  clock?: Date | (() => Date);
+  apiToken?: () => string;
+};
 
 const syntheticToken = "synthetic-account-api-token";
 const fixedClock = new Date("2026-08-12T12:00:00.000Z");
@@ -1111,6 +1118,103 @@ test("list_weak_spots rejects a bad period or limit before any Bunpro request", 
   assert.deepEqual(wire.routes(), []);
 });
 
+test("get_connection_status names both HTTP credential headers", async t => {
+  const description = (await listedTool(t, "get_connection_status")).description ?? "";
+
+  assert.match(description, /X-Bunpro-Token/);
+  assert.match(description, /Authorization: Bearer/);
+});
+
+test("get_study_range_summary keeps its name under the Study Period title", async t => {
+  const tool = await listedTool(t, "get_study_range_summary");
+
+  assert.equal(tool.title, "Get Bunpro Study Period summary");
+});
+
+test("end_date describes the Study Period limit in inclusive Study Days", async t => {
+  for (const name of ["get_study_range_summary", "get_activity_trend"]) {
+    const { inputSchema } = await listedTool(t, name);
+    const endDate = inputSchema.properties?.end_date as { description?: string };
+
+    assert.match(endDate.description ?? "", /at most 93 Study Days, counting the start and end dates/, name);
+    assert.doesNotMatch(endDate.description ?? "", /days after/, name);
+  }
+});
+
+test("list_weak_spots output rejects a field the schema does not declare", async t => {
+  const { result } = await callTool(t, "list_weak_spots");
+  const output = structured(result);
+  const [firstWeakSpot, ...otherWeakSpots] = output.weak_spots as Array<Record<string, unknown>>;
+
+  assert.equal(ListWeakSpotsOutputSchema.safeParse(output).success, true);
+  assert.equal(ListWeakSpotsOutputSchema.safeParse({ ...output, undeclared: true }).success, false);
+  assert.equal(ListWeakSpotsOutputSchema.safeParse({
+    ...output,
+    weak_spots: [{ ...firstWeakSpot, undeclared: true }, ...otherWeakSpots]
+  }).success, false);
+});
+
+test("the server reports the package version to its MCP client and to Bunpro", async t => {
+  const { version } = JSON.parse(await readFile("package.json", "utf8")) as { version: string };
+  const { client, wire } = await connectClient(t);
+
+  await client.callTool({ name: "get_connection_status", arguments: {} });
+
+  assert.equal(client.getServerVersion()?.version, version);
+  const headers = wire.calls[0]?.init.headers as Record<string, string>;
+  assert.equal(headers["user-agent"], `bunpro-mcp-server/${version}`);
+});
+
+test("a stdio caller with no token gets BUNPRO_CONFIG_MISSING even for an impossible date", async t => {
+  const impossibleDate = "2026-02-30";
+  const period = { start_date: impossibleDate, end_date: impossibleDate };
+  const cases = [
+    { name: "get_study_day_summary", args: { date: impossibleDate } },
+    { name: "get_study_range_summary", args: period },
+    { name: "get_activity_trend", args: period }
+  ];
+
+  for (const item of cases) {
+    await t.test(item.name, async st => {
+      const { result, routes } = await callTool(st, item.name, item.args, {}, {
+        apiToken: () => apiTokenFromEnvironment({})
+      });
+
+      assert.deepEqual(routes, []);
+      assertToolError(
+        result,
+        "BUNPRO_CONFIG_MISSING: Set BUNPRO_API_TOKEN in the MCP host's secret environment configuration."
+      );
+    });
+  }
+});
+
+test("one tool call reads the clock once, whichever tool it is", async t => {
+  const period = { start_date: "2026-08-10", end_date: "2026-08-12" };
+  const toolArguments: Record<string, Record<string, unknown>> = {
+    get_study_day_summary: { date: "2026-08-10" },
+    get_study_range_summary: period,
+    get_activity_trend: period
+  };
+  let clockReads = 0;
+  const { client } = await connectClient(t, {}, {
+    clock: () => {
+      clockReads += 1;
+      return fixedClock;
+    }
+  });
+  const { tools } = await client.listTools();
+  assert.equal(clockReads, 0);
+
+  for (const { name } of tools) {
+    clockReads = 0;
+    const result = await client.callTool({ name, arguments: toolArguments[name] ?? {} });
+
+    assert.equal(result.isError, undefined, name);
+    assert.equal(clockReads, 1, name);
+  }
+});
+
 test("the wire fixture fails a test whose source requests an unknown route", async () => {
   const hooks: Array<() => void> = [];
   const wire = createBunproWire({ after: hook => void hooks.push(hook as () => void) });
@@ -1130,7 +1234,7 @@ async function callTool(
   name: string,
   args: Record<string, unknown> = {},
   overrides: WireOverrides = {},
-  options: FrontendSourceOptions & { clock?: Date } = {}
+  options: ConnectOptions = {}
 ) {
   const { client, wire } = await connectClient(t, overrides, options);
   const result = await client.callTool({ name, arguments: args });
@@ -1140,16 +1244,16 @@ async function callTool(
 async function connectClient(
   t: TestContext,
   overrides: WireOverrides = {},
-  { clock = fixedClock, ...sourceOptions }: FrontendSourceOptions & { clock?: Date } = {}
+  { clock = fixedClock, apiToken = () => syntheticToken, ...sourceOptions }: ConnectOptions = {}
 ) {
   const wire = createBunproWire(t, overrides);
   const server = createServer({
     sourceOperationFactory: createFrontendSourceOperationFactory(
-      () => syntheticToken,
+      apiToken,
       wire.fetch,
       sourceOptions
     ),
-    clock: () => clock
+    clock: typeof clock === "function" ? clock : () => clock
   });
   const client = new Client({ name: "wire-to-tool-test", version: "0.1.0" });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -1160,6 +1264,14 @@ async function connectClient(
   await server.connect(serverTransport);
   await client.connect(clientTransport);
   return { client, wire };
+}
+
+async function listedTool(t: TestContext, name: string) {
+  const { client } = await connectClient(t);
+  const { tools } = await client.listTools();
+  const tool = tools.find(item => item.name === name);
+  assert.ok(tool, `${name} is not listed`);
+  return tool;
 }
 
 function structured(result: ToolResult): Record<string, unknown> {

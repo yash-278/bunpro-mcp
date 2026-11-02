@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { request as httpRequest } from "node:http";
+import { renderHomepage } from "../src/homepage.js";
 import { startHttpServer } from "../src/http-server.js";
+import { TOOL_DECLARATIONS } from "../src/tools.js";
 
 interface HttpResult {
   status: number;
@@ -45,6 +47,19 @@ async function request(
     outgoing.end();
   });
 }
+
+test("the homepage labels the range tool as a Study Period", () => {
+  const homepage = renderHomepage(new URL("https://mcp.example"));
+
+  assert.match(homepage, /<h3>Study Period<\/h3>/);
+  assert.doesNotMatch(homepage, /Study range/);
+});
+
+test("the homepage names every declared tool", () => {
+  const homepage = renderHomepage(new URL("https://mcp.example"));
+
+  for (const { name } of TOOL_DECLARATIONS) assert.ok(homepage.includes(name), name);
+});
 
 test("the public HTTP service enforces its canonical host and bounded MCP request contract", async () => {
   const telemetry: unknown[] = [];

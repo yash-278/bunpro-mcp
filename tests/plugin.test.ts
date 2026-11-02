@@ -162,6 +162,25 @@ for (const [description, problem, breakIt] of failures) {
   });
 }
 
+test("every packaged description says unofficial and experimental", async () => {
+  const marketplace = await readJson<{ description: string; plugins: Array<{ description: string }> }>(
+    join(".claude-plugin", "marketplace.json")
+  );
+  const plugin = await readJson<{ description: string }>(join(pluginRoot, ".claude-plugin", "plugin.json"));
+  const bundle = await readJson<{ description: string }>(join("mcpb", "manifest.json"));
+  const descriptions = [
+    marketplace.description,
+    ...marketplace.plugins.map(entry => entry.description),
+    plugin.description,
+    bundle.description
+  ];
+
+  for (const description of descriptions) {
+    assert.match(description, /unofficial/i);
+    assert.match(description, /experimental/i);
+  }
+});
+
 test("the plugin ships one skill, one connector and no other components", async () => {
   const entries = await readdir(pluginRoot, { recursive: true });
   const topLevel = [...new Set(entries.map(entry => entry.split(sep)[0]))].sort();

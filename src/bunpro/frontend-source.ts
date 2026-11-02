@@ -5,8 +5,9 @@ import {
   validateApiToken
 } from "./client.js";
 import { BunproError } from "./errors.js";
-import type { TokenSource } from "./schemas.js";
+import type { TokenSource, WeakSpotPeriod } from "./schemas.js";
 import { isIsoCalendarDate } from "./study-period.js";
+import { SERVER_VERSION } from "../version.js";
 
 export type { FetchLike } from "./client.js";
 
@@ -317,8 +318,6 @@ export interface LearningProgressSnapshot {
   };
 }
 
-export type WeakSpotPeriod = "overall" | "last_month";
-
 export interface WeakSpotFact {
   contentId: string;
   contentType: string;
@@ -421,10 +420,7 @@ export class BunproFrontendSource implements FrontendSource {
       );
     }
     if (!Object.hasOwn(forecast.grammar, "later") || !Object.hasOwn(forecast.grammar, "tomorrow")) {
-      throw new BunproError(
-        "BUNPRO_CONTRACT_CHANGED",
-        "Bunpro returned an unexpected daily forecast horizon."
-      );
+      throw unexpectedForecastHorizon();
     }
     const datedKeys = grammarKeys.filter(key => key !== "later" && key !== "tomorrow");
     if (!datedKeys.every(isIsoCalendarDate)) {
@@ -434,10 +430,7 @@ export class BunproFrontendSource implements FrontendSource {
       );
     }
     if (grammarKeys.length > MAX_FORECAST_BUCKETS) {
-      throw new BunproError(
-        "BUNPRO_CONTRACT_CHANGED",
-        "Bunpro returned an unexpected daily forecast horizon."
-      );
+      throw unexpectedForecastHorizon();
     }
     const countsFor = (key: string): ReviewCounts => ({
       grammar: forecast.grammar[key] ?? 0,
@@ -738,7 +731,7 @@ class FrontendHttpTransport {
           authorization: `Token token=${this.#apiToken}`,
           origin: "https://bunpro.jp",
           referer: "https://bunpro.jp/",
-          "user-agent": "bunpro-mcp-server/0.4"
+          "user-agent": `bunpro-mcp-server/${SERVER_VERSION}`
         }
       });
       this.#ensureApiSuccess(response);
@@ -804,6 +797,13 @@ function invalidResponse(cause: unknown): BunproError {
     "BUNPRO_CONTRACT_CHANGED",
     "Bunpro accepted the Account API Token, but the API response was not valid JSON.",
     { cause }
+  );
+}
+
+function unexpectedForecastHorizon(): BunproError {
+  return new BunproError(
+    "BUNPRO_CONTRACT_CHANGED",
+    "Bunpro returned an unexpected daily forecast horizon."
   );
 }
 

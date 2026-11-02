@@ -2,6 +2,7 @@ import { McpServer, type CallToolResult } from "@modelcontextprotocol/server";
 import { toolErrorMessage } from "./bunpro/errors.js";
 import type { FrontendSourceOperationFactory } from "./bunpro/frontend-source.js";
 import { TOOL_DECLARATIONS } from "./tools.js";
+import { SERVER_VERSION } from "./version.js";
 
 export type Clock = () => Date;
 
@@ -18,7 +19,7 @@ const READ_ONLY_ANNOTATIONS = {
 };
 
 export function createServer(options: BunproServerOptions): McpServer {
-  const server = new McpServer({ name: "bunpro-mcp-server", version: "0.4.0" });
+  const server = new McpServer({ name: "bunpro-mcp-server", version: SERVER_VERSION });
   const { sourceOperationFactory } = options;
   const clock = options.clock ?? (() => new Date());
 

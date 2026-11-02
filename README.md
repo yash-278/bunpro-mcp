@@ -21,7 +21,7 @@ An open-source, stateless, read-only Model Context Protocol (MCP) server for ask
 - “Which study decks are active?”
 - “How far along am I from JLPT N5 through N1?”
 - “How has my review volume and accuracy changed this month?”
-- “What does Bunpro currently list as troubled for me?”
+- "What does Bunpro currently list as troubled for me?"
 
 Every tool is read-only. Bunpro MCP cannot answer reviews, start lessons or crams, change SRS progress, edit decks, or update account settings.
 
@@ -49,13 +49,13 @@ The server also supports `Authorization: Bearer <token>`, which is the form Clau
 
 ## Use with Claude
 
-| Surface | Path | State |
+| App | Path | State |
 | --- | --- | --- |
 | Claude Desktop | Local `.mcpb` from a GitHub release, running the stdio server with your token | Available from 0.5.0 |
 | Claude Code | Plugin from this repository's marketplace, hosted or self-hosted URL with `Authorization: Bearer`, or local stdio | Plugin available from 0.5.0, the rest works today |
 | claude.ai web and mobile | Custom connector with **No sign-in** and an `Authorization` request header | Personal accounts with the request-headers beta only, untested |
 
-Follow the [Claude setup guide](docs/claude-setup.md) for the steps and warnings on each surface.
+Follow the [Claude setup guide](docs/claude-setup.md) for the steps and warnings for each app.
 
 ## Self-host locally with stdio
 

@@ -25,7 +25,7 @@ export const StudyDayInputSchema = z.object({
 
 export const StudyRangeInputSchema = z.object({
   start_date: IsoDateSchema.describe("First inclusive Bunpro calendar day."),
-  end_date: IsoDateSchema.describe(`Last inclusive Bunpro calendar day, at most ${MAX_STUDY_PERIOD_DAYS} days after the start.`),
+  end_date: IsoDateSchema.describe(`Last inclusive Bunpro calendar day. A Study Period may include at most ${MAX_STUDY_PERIOD_DAYS} Study Days, counting the start and end dates.`),
   expected_timezone: z.string().min(1).optional().describe(
     "Optional IANA timezone to compare with the Bunpro account timezone."
   )
@@ -39,6 +39,8 @@ export const DailyCountEvidenceSchema = z.object({
   component_sum: z.number().int().nonnegative().nullable(),
   consistency: z.enum(["match", "mismatch", "not_comparable"])
 });
+
+export type DailyCountEvidence = z.infer<typeof DailyCountEvidenceSchema>;
 
 export const AccuracyEvidenceSchema = z.object({
   coverage: z.enum(["available", "no_source_record", "unavailable"]),
@@ -205,13 +207,17 @@ export const RecentActivityOutputSchema = z.object({
 export type RecentActivityInput = z.infer<typeof RecentActivityInputSchema>;
 export type RecentActivityOutput = z.infer<typeof RecentActivityOutputSchema>;
 
+const WeakSpotPeriodSchema = z.enum(["overall", "last_month"]);
+
+export type WeakSpotPeriod = z.infer<typeof WeakSpotPeriodSchema>;
+
 export const ListWeakSpotsInputSchema = z.object({
-  period: z.enum(["overall", "last_month"]).default("overall").describe("Which Bunpro Troubled Content view to read."),
+  period: WeakSpotPeriodSchema.default("overall").describe("Which Bunpro Troubled Content view to read."),
   limit: z.number().int().min(1).max(100).default(20).describe("Maximum number of weak spots to return.")
 }).strict();
 
 export const ListWeakSpotsOutputSchema = z.object({
-  period: z.enum(["overall", "last_month"]),
+  period: WeakSpotPeriodSchema,
   retrieved_at: z.string().datetime(),
   order: z.literal("lowest_accuracy_first"),
   count: z.number().int().nonnegative(),
@@ -226,8 +232,8 @@ export const ListWeakSpotsOutputSchema = z.object({
     level: z.string(),
     accuracy: z.number().min(0).max(100).nullable(),
     streak: z.number().int().nonnegative()
-  })).max(100)
-});
+  }).strict()).max(100)
+}).strict();
 
 export type ListWeakSpotsInput = z.infer<typeof ListWeakSpotsInputSchema>;
 export type ListWeakSpotsOutput = z.infer<typeof ListWeakSpotsOutputSchema>;

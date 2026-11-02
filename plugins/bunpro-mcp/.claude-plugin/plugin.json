@@ -2,7 +2,7 @@
   "name": "bunpro-mcp",
   "displayName": "Bunpro MCP (unofficial)",
   "version": "0.4.0",
-  "description": "Unofficial connector and study-plan skill for Bunpro, using your own Account API Token.",
+  "description": "Unofficial, experimental connector and study-plan skill for Bunpro, using your own Account API Token.",
   "author": {
     "name": "Yash Kadam",
     "url": "https://github.com/yash-278"
