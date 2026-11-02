@@ -3,6 +3,7 @@
 !.env.example
 node_modules/
 dist/
+*.mcpb
 coverage/
 *.log
 .DS_Store

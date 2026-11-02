@@ -4,6 +4,7 @@ Notable changes to Bunpro MCP are recorded here. The project follows semantic ve
 
 ## Unreleased
 
+- Added a Claude Desktop `.mcpb`, built by `npm run build:mcpb`, that runs the stdio server locally and gets the token from a sensitive install field. Added `docs/claude-setup.md`, and `PRIVACY.md` now lists where each Claude surface holds the token.
 - Made `Authorization: Bearer <token>` a supported hosted credential path alongside `X-Bunpro-Token`. The `Bearer ` prefix stays required, and a request with both headers is still rejected.
 - Changed the 401 response for a missing or invalid credential to name both methods.
 - Added `BUNPRO_SMOKE_AUTH=bearer` to the all-tools smoke. Its default stays `X-Bunpro-Token`.

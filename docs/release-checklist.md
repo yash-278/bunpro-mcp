@@ -34,3 +34,11 @@
 - [ ] Production website shows the open-source release content.
 
 Atlas integration remains out of scope for this release.
+
+## Claude Desktop bundle
+
+The `.mcpb` is a release asset and is never committed.
+
+- [ ] Run `npm ci` and `npm run build:mcpb` on the release commit. The script fails if the manifest doesn't pass `mcpb validate`.
+- [ ] Install `dist/bunpro-mcp.mcpb` in Claude Desktop and call `get_connection_status`.
+- [ ] Attach `dist/bunpro-mcp.mcpb` to the GitHub release under that exact name, because `docs/claude-setup.md` tells learners to look for it.
