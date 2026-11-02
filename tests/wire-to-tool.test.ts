@@ -425,7 +425,7 @@ test("get_study_range_summary stays partial when one source route is removed", a
     ],
     aggregates: {
       reviews: { source_record_days: 2, source_total: 10 },
-      new_content: { source_record_days: 0, source_total: 0 },
+      new_content: { source_record_days: null, source_total: null },
       accuracy: { source_record_days: 2, average_percent: 94.25 }
     },
     contiguous_checked_through: {
@@ -510,7 +510,7 @@ test("get_activity_trend stays partial when one source returns 503", async t => 
       }
     ],
     metrics: {
-      reviews: { source_record_days: 0, total: 0, average_per_source_record_day: null },
+      reviews: { source_record_days: null, total: null, average_per_source_record_day: null },
       new_content: { source_record_days: 1, total: 3, average_per_source_record_day: 3 },
       accuracy: { source_record_days: 2, average_percent: 94.25 }
     },
@@ -521,6 +521,117 @@ test("get_activity_trend stays partial when one source returns 503", async t => 
       accuracy: accuracyCoverage
     }
   });
+});
+
+test("an available source with no records in the Study Period reports 0 record days and a null total", async t => {
+  const period = { start_date: "2026-08-01", end_date: "2026-08-02" };
+  const expected = {
+    aggregates: {
+      reviews: { source_record_days: 0, source_total: null },
+      new_content: { source_record_days: 0, source_total: null },
+      accuracy: { source_record_days: 0, average_percent: null }
+    },
+    metrics: {
+      reviews: { source_record_days: 0, total: null, average_per_source_record_day: null },
+      new_content: { source_record_days: 0, total: null, average_per_source_record_day: null },
+      accuracy: { source_record_days: 0, average_percent: null }
+    }
+  };
+
+  await t.test("get_study_range_summary", async st => {
+    const { result } = await callTool(st, "get_study_range_summary", period);
+
+    assert.equal(structured(result).overall_query_status, "complete");
+    assert.deepEqual(structured(result).source_coverage, completeCoverage);
+    assert.deepEqual(structured(result).aggregates, expected.aggregates);
+  });
+
+  await t.test("get_activity_trend", async st => {
+    const { result } = await callTool(st, "get_activity_trend", period);
+
+    assert.equal(structured(result).overall_query_status, "complete");
+    assert.deepEqual(structured(result).source_coverage, completeCoverage);
+    assert.deepEqual(structured(result).metrics, expected.metrics);
+  });
+});
+
+test("a recorded zero stays 0 in range and trend aggregates", async t => {
+  const period = { start_date: "2026-08-10", end_date: "2026-08-10" };
+  const zeroDay = {
+    grammar: { "2026-08-10": 0 },
+    vocab: { "2026-08-10": 0 },
+    mixed: { "2026-08-10": 0 }
+  };
+  const overrides = {
+    [bunproRoutes.reviewHeatmap]: zeroDay,
+    [bunproRoutes.newContentHeatmap]: zeroDay,
+    [bunproRoutes.accuracyOverTime]: { "2026-08-10": 0 }
+  };
+
+  await t.test("get_study_range_summary", async st => {
+    const { result } = await callTool(st, "get_study_range_summary", period, overrides);
+
+    assert.deepEqual(structured(result).aggregates, {
+      reviews: { source_record_days: 1, source_total: 0 },
+      new_content: { source_record_days: 1, source_total: 0 },
+      accuracy: { source_record_days: 1, average_percent: 0 }
+    });
+  });
+
+  await t.test("get_activity_trend", async st => {
+    const { result } = await callTool(st, "get_activity_trend", period, overrides);
+
+    assert.deepEqual(structured(result).metrics, {
+      reviews: { source_record_days: 1, total: 0, average_per_source_record_day: 0 },
+      new_content: { source_record_days: 1, total: 0, average_per_source_record_day: 0 },
+      accuracy: { source_record_days: 1, average_percent: 0 }
+    });
+  });
+});
+
+test("an unavailable accuracy source reports null record days in range and trend aggregates", async t => {
+  const period = { start_date: "2026-08-10", end_date: "2026-08-12" };
+  const accuracyOutage = () => ({
+    [bunproRoutes.accuracyOverTime]: new Response("synthetic outage", { status: 503 })
+  });
+  const unavailableAccuracyAggregate = { source_record_days: null, average_percent: null };
+
+  await t.test("get_study_range_summary", async st => {
+    const { result } = await callTool(st, "get_study_range_summary", period, accuracyOutage());
+
+    assert.deepEqual(structured(result).aggregates, {
+      reviews: { source_record_days: 2, source_total: 10 },
+      new_content: { source_record_days: 1, source_total: 3 },
+      accuracy: unavailableAccuracyAggregate
+    });
+    assert.deepEqual(structured(result).contiguous_checked_through, {
+      activity: "2026-08-12",
+      accuracy: null,
+      all_sources: null
+    });
+  });
+
+  await t.test("get_activity_trend", async st => {
+    const { result } = await callTool(st, "get_activity_trend", period, accuracyOutage());
+
+    assert.deepEqual(structured(result).metrics, {
+      reviews: { source_record_days: 2, total: 10, average_per_source_record_day: 5 },
+      new_content: { source_record_days: 1, total: 3, average_per_source_record_day: 3 },
+      accuracy: unavailableAccuracyAggregate
+    });
+  });
+});
+
+test("range and trend tool descriptions say a null aggregate is not zero", async t => {
+  const { client } = await connectClient(t);
+  const { tools } = await client.listTools();
+
+  for (const name of ["get_study_range_summary", "get_activity_trend"]) {
+    assert.match(
+      tools.find(tool => tool.name === name)?.description ?? "",
+      /A null aggregate means no evidence supports it, not zero\./
+    );
+  }
 });
 
 test("get_review_schedule separates due reviews from the sorted forecast", async t => {
@@ -877,6 +988,16 @@ async function callTool(
   name: string,
   args: Record<string, unknown> = {},
   overrides: WireOverrides = {},
+  options: FrontendSourceOptions & { clock?: Date } = {}
+) {
+  const { client, wire } = await connectClient(t, overrides, options);
+  const result = await client.callTool({ name, arguments: args });
+  return { result, routes: wire.routes() };
+}
+
+async function connectClient(
+  t: TestContext,
+  overrides: WireOverrides = {},
   { clock = fixedClock, ...sourceOptions }: FrontendSourceOptions & { clock?: Date } = {}
 ) {
   const wire = createBunproWire(t, overrides);
@@ -896,9 +1017,13 @@ async function callTool(
   });
   await server.connect(serverTransport);
   await client.connect(clientTransport);
+  return { client, wire };
+}
 
-  const result = await client.callTool({ name, arguments: args });
-  return { result, routes: wire.routes() };
+function structured(result: ToolResult): Record<string, unknown> {
+  assert.equal(result.isError, undefined);
+  assert.ok(result.structuredContent);
+  return result.structuredContent as Record<string, unknown>;
 }
 
 function assertToolError(result: ToolResult, expected: string): void {
