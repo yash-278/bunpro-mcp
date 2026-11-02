@@ -262,6 +262,94 @@ test("get_study_day_summary stops the sequence and stays partial when a later so
   });
 });
 
+test("get_study_day_summary reports a rate limit ahead of an earlier source failure", async t => {
+  const { result, routes } = await callTool(t, "get_study_day_summary", { date: "2026-08-10" }, {
+    [bunproRoutes.reviewHeatmap]: new Response("synthetic removal", { status: 404 }),
+    [bunproRoutes.newContentHeatmap]: new Response("synthetic throttle", { status: 429 })
+  });
+
+  assert.deepEqual(routes, [
+    bunproRoutes.user,
+    bunproRoutes.reviewHeatmap,
+    bunproRoutes.newContentHeatmap
+  ]);
+  assertToolError(
+    result,
+    "BUNPRO_RATE_LIMITED: Bunpro rate-limited the Study Day request. Wait before trying again."
+  );
+});
+
+test("get_study_day_summary keeps zero counts, missing components, and null accuracy on the source timezone's today", async t => {
+  const { result, routes } = await callTool(t, "get_study_day_summary", { date: "2026-08-12" }, {
+    [bunproRoutes.reviewHeatmap]: {
+      grammar: {},
+      vocab: { "2026-08-12": 0 },
+      mixed: { "2026-08-12": 0 }
+    },
+    [bunproRoutes.newContentHeatmap]: { grammar: {}, vocab: {}, mixed: {} },
+    [bunproRoutes.accuracyOverTime]: { "2026-08-12": null }
+  }, { clock: new Date("2026-08-11T18:45:00.000Z") });
+
+  assert.deepEqual(routes, studyHistoryRoutes);
+  assert.deepEqual(result.structuredContent, {
+    study_day: "2026-08-12",
+    in_progress: true,
+    activity_evidence: "recorded",
+    reviews: {
+      coverage: "available",
+      grammar: null,
+      vocabulary: 0,
+      source_total: 0,
+      component_sum: null,
+      consistency: "not_comparable"
+    },
+    new_content: noRecordCounts,
+    accuracy: { coverage: "available", percent: null },
+    source_timezone: "Asia/Kolkata",
+    expected_timezone: null,
+    timezone_matches: null,
+    overall_query_status: "complete",
+    source_coverage: {
+      reviews: {
+        status: "available",
+        first_record_date: "2026-08-12",
+        last_record_date: "2026-08-12"
+      },
+      new_content: { status: "available", first_record_date: null, last_record_date: null },
+      accuracy: {
+        status: "available",
+        first_record_date: "2026-08-12",
+        last_record_date: "2026-08-12"
+      }
+    },
+    unavailable_measures: unavailableMeasures
+  });
+});
+
+test("a future end date stops after Account Context with one message from every Study Period tool", async t => {
+  const cases = [
+    { name: "get_study_day_summary", args: { date: "2026-08-13" } },
+    { name: "get_study_range_summary", args: { start_date: "2026-08-10", end_date: "2026-08-13" } },
+    { name: "get_activity_trend", args: { start_date: "2026-08-10", end_date: "2026-08-13" } }
+  ];
+
+  for (const item of cases) {
+    await t.test(item.name, async st => {
+      const { result, routes } = await callTool(st, item.name, item.args);
+
+      assert.deepEqual(routes, [bunproRoutes.user]);
+      assertToolError(result, "BUNPRO_INVALID_INPUT: Study Period cannot end in the future.");
+    });
+  }
+});
+
+test("get_study_day_summary rejects an impossible date without an upstream call", async t => {
+  const { result, routes } = await callTool(t, "get_study_day_summary", { date: "2026-02-30" });
+
+  assert.deepEqual(routes, []);
+  assertToolError(result, "BUNPRO_INVALID_INPUT: Study Day is not a valid calendar date.");
+});
+
 test("get_study_range_summary reports every day of a Study Period from one set of requests", async t => {
   const { result, routes } = await callTool(t, "get_study_range_summary", {
     start_date: "2026-08-10",
@@ -789,7 +877,7 @@ async function callTool(
   name: string,
   args: Record<string, unknown> = {},
   overrides: WireOverrides = {},
-  sourceOptions: FrontendSourceOptions = {}
+  { clock = fixedClock, ...sourceOptions }: FrontendSourceOptions & { clock?: Date } = {}
 ) {
   const wire = createBunproWire(t, overrides);
   const server = createServer({
@@ -798,7 +886,7 @@ async function callTool(
       wire.fetch,
       sourceOptions
     ),
-    clock: () => fixedClock
+    clock: () => clock
   });
   const client = new Client({ name: "wire-to-tool-test", version: "0.1.0" });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();

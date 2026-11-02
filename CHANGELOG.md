@@ -13,6 +13,7 @@ Notable changes to Bunpro MCP are recorded here. The project follows semantic ve
 - Changed a timeout, abort, or network failure during the body read from `BUNPRO_CONTRACT_CHANGED` to `BUNPRO_UPSTREAM_UNAVAILABLE`. Study History reports `upstream_unavailable` for that source.
 - Study History now stops at the deadline, keeps the results that arrived, and marks the remaining sources `not_queried`.
 - Cut the Request Budget to 4 running and 6 queued requests from 4 and 16, keeping the 2-second start interval. More callers see an immediate `BUNPRO_BUSY`, and a queued request returns `BUNPRO_UPSTREAM_UNAVAILABLE` when its deadline passes.
+- Added `BUNPRO_INVALID_INPUT` for caller mistakes. An invalid calendar date, a `start_date` after `end_date`, more than 93 days, or a future end date now returns it instead of `BUNPRO_CONTRACT_CHANGED`. Error text now says "Study Period" instead of "Study range", and every future date returns "Study Period cannot end in the future."
 
 ## 0.4.0 — 2026-08-25
 

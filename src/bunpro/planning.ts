@@ -7,14 +7,15 @@ import type {
   ReviewSchedule
 } from "./schemas.js";
 import type { FrontendSource } from "./frontend-source.js";
+import { nextDay, todayInTimeZone } from "./study-period.js";
 
 export async function getReviewSchedule(
   source: Pick<FrontendSource, "loadReviewPlanning">,
   now: Date = new Date()
 ): Promise<ReviewSchedule> {
   const planning = await source.loadReviewPlanning();
-  const today = dateInTimeZone(now, planning.accountContext.sourceTimezone);
-  const tomorrow = addDays(today, 1);
+  const today = todayInTimeZone(now, planning.accountContext.sourceTimezone);
+  const tomorrow = nextDay(today);
   const forecast = [
     { bucket: "later_today" as const, date: today, ...planning.forecast.laterToday },
     { bucket: "tomorrow" as const, date: tomorrow, ...planning.forecast.tomorrow },
@@ -114,19 +115,4 @@ export async function getRecentActivity(
       )
     }
   };
-}
-
-function dateInTimeZone(value: Date, timeZone: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(value);
-}
-
-function addDays(value: string, days: number): string {
-  const date = new Date(`${value}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
 }

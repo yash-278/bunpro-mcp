@@ -1,4 +1,5 @@
 import * as z from "zod/v4";
+import { ISO_DATE_PATTERN, MAX_STUDY_PERIOD_DAYS } from "./study-period.js";
 
 export const ConnectionStatusOutputSchema = z.object({
   connected: z.literal(true),
@@ -13,7 +14,7 @@ export const ConnectionStatusOutputSchema = z.object({
 export type ConnectionStatus = z.infer<typeof ConnectionStatusOutputSchema>;
 export type TokenSource = ConnectionStatus["token_source"];
 
-export const IsoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use an ISO date in YYYY-MM-DD format.");
+export const IsoDateSchema = z.string().regex(ISO_DATE_PATTERN, "Use an ISO date in YYYY-MM-DD format.");
 
 export const StudyDayInputSchema = z.object({
   date: IsoDateSchema.describe("Bunpro calendar day in YYYY-MM-DD format."),
@@ -24,7 +25,7 @@ export const StudyDayInputSchema = z.object({
 
 export const StudyRangeInputSchema = z.object({
   start_date: IsoDateSchema.describe("First inclusive Bunpro calendar day."),
-  end_date: IsoDateSchema.describe("Last inclusive Bunpro calendar day, at most 93 days after the start."),
+  end_date: IsoDateSchema.describe(`Last inclusive Bunpro calendar day, at most ${MAX_STUDY_PERIOD_DAYS} days after the start.`),
   expected_timezone: z.string().min(1).optional().describe(
     "Optional IANA timezone to compare with the Bunpro account timezone."
   )
@@ -79,7 +80,7 @@ export const StudyRangeSummaryOutputSchema = z.object({
   expected_timezone: z.string().min(1).nullable(),
   timezone_matches: z.boolean().nullable(),
   overall_query_status: z.enum(["complete", "partial"]),
-  days: z.array(StudyDayEvidenceSchema).max(93),
+  days: z.array(StudyDayEvidenceSchema).max(MAX_STUDY_PERIOD_DAYS),
   aggregates: z.object({
     reviews: z.object({
       source_record_days: z.number().int().nonnegative(),
@@ -261,7 +262,7 @@ export const ActivityTrendOutputSchema = z.object({
   expected_timezone: z.string().min(1).nullable(),
   timezone_matches: z.boolean().nullable(),
   overall_query_status: z.enum(["complete", "partial"]),
-  days: z.array(StudyDayEvidenceSchema).max(93),
+  days: z.array(StudyDayEvidenceSchema).max(MAX_STUDY_PERIOD_DAYS),
   metrics: z.object({
     reviews: z.object({
       source_record_days: z.number().int().nonnegative(),
