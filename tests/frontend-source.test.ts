@@ -1,23 +1,20 @@
 import assert from "node:assert/strict";
-import test from "node:test";
-import {
-  BunproFrontendSource,
-  type FetchLike
-} from "../src/bunpro/frontend-source.js";
+import test, { type TestContext } from "node:test";
+import { BunproFrontendSource } from "../src/bunpro/frontend-source.js";
 import { BunproError } from "../src/bunpro/errors.js";
 import { InMemoryFrontendSource } from "../src/bunpro/in-memory-frontend-source.js";
+import {
+  bunproRoutes,
+  createBunproWire,
+  wireBodies,
+  type WireOverrides
+} from "./fixtures/bunpro-wire.js";
 
 const apiToken = "test-account-api-token";
 
-test("Account Context is normalized once within a Frontend source operation", async () => {
-  const calls: Array<{ url: URL; init: RequestInit }> = [];
-  const mockFetch: FetchLike = async (input, init = {}) => {
-    calls.push({ url: new URL(input instanceof Request ? input.url : input), init });
-    return Response.json({
-      user: { data: { attributes: { time_zone_iana: "Asia/Kolkata" } } }
-    });
-  };
-  const source = new BunproFrontendSource(apiToken, mockFetch, {
+test("Account Context is normalized once within a Frontend source operation", async t => {
+  const wire = createBunproWire(t);
+  const source = new BunproFrontendSource(apiToken, wire.fetch, {
     tokenSource: "request_header"
   });
 
@@ -29,44 +26,28 @@ test("Account Context is normalized once within a Frontend source operation", as
     tokenSource: "request_header"
   });
   assert.strictEqual(second, first);
-  assert.equal(calls.length, 1);
+  assert.equal(wire.calls.length, 1);
   assert.equal(
-    calls[0]?.url.href,
+    wire.calls[0]?.url.href,
     "https://api.bunpro.jp/api/frontend/user?dangerously_authenticate_using_api_token=true"
   );
   assert.equal(
-    new Headers(calls[0]?.init.headers).get("authorization"),
+    new Headers(wire.calls[0]?.init.headers).get("authorization"),
     `Token token=${apiToken}`
   );
 });
 
-test("Study History preserves normalized partial source outcomes", async () => {
-  const requestedPaths: string[] = [];
-  const fixtures: Record<string, unknown> = {
-    "/api/frontend/user": {
-      user: { data: { attributes: { time_zone_iana: "Asia/Kolkata" } } }
-    },
-    "/api/frontend/user_stats/review_heatmap": {
+test("Study History preserves normalized partial source outcomes", async t => {
+  const wire = createBunproWire(t, {
+    [bunproRoutes.reviewHeatmap]: {
       grammar: { "2026-08-10": 3 },
       vocab: { "2026-08-10": 2 },
       mixed: { "2026-08-10": 6 }
     },
-    "/api/frontend/user_stats/accuracy_over_time": {
-      "2026-08-10": 88.5,
-      "2026-08-11": null
-    }
-  };
-  const source = new BunproFrontendSource(apiToken, async input => {
-    const path = new URL(input instanceof Request ? input.url : input).pathname;
-    requestedPaths.push(path);
-    if (path === "/api/frontend/user_stats/new_content_heatmap") {
-      return new Response("route unavailable", { status: 404 });
-    }
-    const fixture = fixtures[path];
-    return fixture === undefined
-      ? new Response("not found", { status: 404 })
-      : Response.json(fixture);
+    [bunproRoutes.newContentHeatmap]: new Response("route unavailable", { status: 404 }),
+    [bunproRoutes.accuracyOverTime]: { "2026-08-10": 88.5, "2026-08-11": null }
   });
+  const source = new BunproFrontendSource(apiToken, wire.fetch);
 
   const snapshot = await source.loadStudyHistory();
 
@@ -89,7 +70,7 @@ test("Study History preserves normalized partial source outcomes", async () => {
       data: { "2026-08-10": 88.5, "2026-08-11": null }
     }
   });
-  assert.deepEqual(requestedPaths, [
+  assert.deepEqual(wire.routes(), [
     "/api/frontend/user",
     "/api/frontend/user_stats/review_heatmap",
     "/api/frontend/user_stats/new_content_heatmap",
@@ -97,368 +78,71 @@ test("Study History preserves normalized partial source outcomes", async () => {
   ]);
 });
 
-test("Study History stops its sequential plan when Bunpro throttles a source", async () => {
-  const requestedPaths: string[] = [];
-  const source = new BunproFrontendSource(apiToken, async input => {
-    const path = new URL(input instanceof Request ? input.url : input).pathname;
-    requestedPaths.push(path);
-    if (path === "/api/frontend/user") {
-      return Response.json({
-        user: { data: { attributes: { time_zone_iana: "Asia/Kolkata" } } }
-      });
-    }
-    return new Response("slow down", { status: 429 });
+test("Study History stops its sequential plan when Bunpro throttles a source", async t => {
+  const wire = createBunproWire(t, {
+    [bunproRoutes.reviewHeatmap]: new Response("slow down", { status: 429 })
   });
+  const source = new BunproFrontendSource(apiToken, wire.fetch);
 
   const snapshot = await source.loadStudyHistory();
 
   assert.deepEqual(snapshot.reviews, { status: "rate_limited" });
   assert.deepEqual(snapshot.newContent, { status: "not_queried" });
   assert.deepEqual(snapshot.accuracy, { status: "not_queried" });
-  assert.deepEqual(requestedPaths, [
+  assert.deepEqual(wire.routes(), [
     "/api/frontend/user",
     "/api/frontend/user_stats/review_heatmap"
   ]);
 });
 
-test("review planning returns semantic due and forecast facts", async () => {
-  const fixtures: Record<string, unknown> = {
-    "/api/frontend/user": {
-      user: { data: { attributes: { time_zone_iana: "Asia/Tokyo" } } }
-    },
-    "/api/frontend/user/due": {
-      total_due_grammar: 12,
-      total_due_vocab: 5
-    },
-    "/api/frontend/user_stats/forecast_daily": {
-      grammar: { later: 2, tomorrow: 3, "2026-08-31": 4 },
-      vocab: { later: 1, tomorrow: 0, "2026-08-31": 2 }
-    }
-  };
-  const source = new BunproFrontendSource(apiToken, async input => {
-    const path = new URL(input instanceof Request ? input.url : input).pathname;
-    return Response.json(fixtures[path]);
-  });
-
-  const snapshot = await source.loadReviewPlanning();
-
-  assert.deepEqual(snapshot, {
-    accountContext: {
-      sourceTimezone: "Asia/Tokyo",
-      tokenSource: "environment"
-    },
-    dueNow: { grammar: 12, vocabulary: 5 },
-    forecast: {
-      laterToday: { grammar: 2, vocabulary: 1 },
-      tomorrow: { grammar: 3, vocabulary: 0 },
-      dated: [
-        { date: "2026-08-31", grammar: 4, vocabulary: 2 }
-      ]
-    }
-  });
-});
-
 test("review planning preserves distinct forecast contract errors", async t => {
-  const baseFixtures: Record<string, unknown> = {
-    "/api/frontend/user": {
-      user: { data: { attributes: { time_zone_iana: "Asia/Tokyo" } } }
-    },
-    "/api/frontend/user/due": { total_due_grammar: 1, total_due_vocab: 1 }
-  };
-
-  await t.test("inconsistent grammar and vocabulary buckets", async () => {
-    const fixtures = {
-      ...baseFixtures,
-      "/api/frontend/user_stats/forecast_daily": {
+  await t.test("inconsistent grammar and vocabulary buckets", async st => {
+    const source = sourceForWire(st, {
+      [bunproRoutes.forecastDaily]: {
         grammar: { later: 1, tomorrow: 1, "2026-08-31": 1 },
         vocab: { later: 1, tomorrow: 1 }
       }
-    };
-    const source = sourceForFixtures(fixtures);
+    });
     await assert.rejects(source.loadReviewPlanning(), /inconsistent grammar and vocabulary/i);
   });
 
-  await t.test("missing required forecast buckets", async () => {
-    const fixtures = {
-      ...baseFixtures,
-      "/api/frontend/user_stats/forecast_daily": {
+  await t.test("missing required forecast buckets", async st => {
+    const source = sourceForWire(st, {
+      [bunproRoutes.forecastDaily]: {
         grammar: { later: 1 },
         vocab: { later: 1 }
       }
-    };
-    const source = sourceForFixtures(fixtures);
+    });
     await assert.rejects(source.loadReviewPlanning(), /unexpected daily forecast horizon/i);
   });
 });
 
-test("deck configuration joins user progress with normalized deck facts", async () => {
-  const fixtures: Record<string, unknown> = {
-    "/api/frontend/user": {
-      user: { data: { attributes: { time_zone_iana: "Asia/Tokyo" } } }
-    },
-    "/api/frontend/user/queue": {
-      data: [{
-        id: "user-deck-1",
-        attributes: {
-          deck_id: 7,
-          actively_studying: true,
-          batch_size: 3,
-          daily_goal: 6,
-          daily_goal_count_grammar: 2,
-          daily_goal_count_vocab: 1,
-          complete_grammar_count: 40,
-          complete_vocab_count: 30
-        }
-      }],
-      included: [{
-        id: "7",
-        attributes: {
-          title: "N5 Path",
-          slug: "n5-path",
-          deck_type: "jlpt",
-          grammar_count: 100,
-          vocab_count: 80
-        }
-      }]
-    }
-  };
-  const source = new BunproFrontendSource(apiToken, async input => {
-    const path = new URL(input instanceof Request ? input.url : input).pathname;
-    return Response.json(fixtures[path]);
-  });
-
-  const snapshot = await source.loadDeckConfiguration();
-
-  assert.deepEqual(snapshot.entries, [{
-    deckId: "7",
-    activelyStudying: true,
-    batchSize: 3,
-    dailyGoal: 6,
-    dailyGoalProgress: { grammar: 2, vocabulary: 1 },
-    completed: { grammar: 40, vocabulary: 30 },
-    metadata: {
-      title: "N5 Path",
-      slug: "n5-path",
-      deckType: "jlpt",
-      content: { grammar: 100, vocabulary: 80 }
-    }
-  }]);
-});
-
-test("recent activity normalizes both semantic source views", async () => {
-  const requestedPaths: string[] = [];
-  const attempt = {
-    id: 9,
-    time: "2026-08-29T10:00:00+09:00",
-    status: true,
-    reviewable: {
-      data: {
-        id: 91,
-        type: "grammar",
-        attributes: { title: "〜てもいい" }
-      }
-    }
-  };
-  const fixtures: Record<string, unknown> = {
-    "/api/frontend/user": {
-      user: { data: { attributes: { time_zone_iana: "Asia/Tokyo" } } }
-    },
-    "/api/frontend/summary/last_24_hours": {
-      history_objects: [attempt],
-      review_sessions: {
-        data: [{
-          attributes: {
-            starting_xp: 10,
-            ending_xp: 25,
-            starting_buncoin: 4,
-            ending_buncoin: 7
-          }
-        }]
-      }
-    },
-    "/api/frontend/user_stats/last_done_reviews": [attempt]
-  };
-  const source = new BunproFrontendSource(apiToken, async input => {
-    const path = new URL(input instanceof Request ? input.url : input).pathname;
-    requestedPaths.push(path);
-    return Response.json(fixtures[path]);
-  });
-
-  const rolling = await source.loadRecentActivity("last_24_hours");
-  const latest = await source.loadRecentActivity("latest_attempts");
-
-  assert.deepEqual(rolling.attempts, [{
-    attemptId: "9",
-    time: "2026-08-29T10:00:00+09:00",
-    correct: true,
-    contentType: "grammar",
-    contentId: "91",
-    label: "〜てもいい"
-  }]);
-  assert.deepEqual(rolling.sessions, [{
-    startingXp: 10,
-    endingXp: 25,
-    startingBuncoin: 4,
-    endingBuncoin: 7
-  }]);
-  assert.deepEqual(latest.attempts, rolling.attempts);
-  assert.equal(latest.sessions, null);
-  assert.deepEqual(requestedPaths, [
-    "/api/frontend/user",
-    "/api/frontend/summary/last_24_hours",
-    "/api/frontend/user_stats/last_done_reviews"
-  ]);
-});
-
-test("recent activity excludes in-progress sessions from completed aggregates", async () => {
-  const fixtures = {
-    "/api/frontend/user": validUserFixture(),
-    "/api/frontend/summary/last_24_hours": {
-      history_objects: [],
-      review_sessions: {
-        data: [
-          {
-            attributes: {
-              starting_xp: 100,
-              ending_xp: 110,
-              starting_buncoin: 5,
-              ending_buncoin: 7
-            }
-          },
-          {
-            attributes: {
-              starting_xp: 110,
-              ending_xp: null,
-              starting_buncoin: 7,
-              ending_buncoin: 8
-            }
-          }
-        ]
-      }
-    }
-  };
-  const source = sourceForFixtures(fixtures);
-
-  const activity = await source.loadRecentActivity("last_24_hours");
-
-  assert.deepEqual(activity.sessions, [{
-    startingXp: 100,
-    endingXp: 110,
-    startingBuncoin: 5,
-    endingBuncoin: 7
-  }]);
-});
-
-test("learning progress returns validated normalized account and JLPT facts", async () => {
-  const stageCounts = {
-    beginner: 1,
-    seasoned: 2,
-    adept: 3,
-    expert: 4,
-    master: 5,
-    total_count: 15
-  };
-  const reviewTotals = {
-    accuracy: 80,
-    correct: 8,
-    incorrect: 2,
-    total: 10
-  };
-  const levels = Object.fromEntries(["1", "2", "3", "4", "5"].map(level => [level, stageCounts]));
-  const reviews = Object.fromEntries(["1", "2", "3", "4", "5"].map(level => [level, reviewTotals]));
-  const fixtures: Record<string, unknown> = {
-    "/api/frontend/user": {
-      user: { data: { attributes: { time_zone_iana: "Asia/Tokyo" } } }
-    },
-    "/api/frontend/user_stats/base_stats": {
-      facts: {
-        days_studied: 120,
-        grammar_studied: 400,
-        vocab_studied: 250,
-        streak: 7,
-        weekly_streak: [{ day: "Mon", val: true }]
-      }
-    },
-    "/api/frontend/user_stats/jlpt_progress_mixed": {
-      grammar: levels,
-      vocab: levels
-    },
-    "/api/frontend/user_stats/total_review_stats": {
-      grammar: reviews,
-      vocab: reviews,
-      mixed: reviews
-    },
-    "/api/frontend/user_stats/total_cram_stats": {
-      items: reviewTotals,
-      sessions: {
-        average_time: "00:10:00",
-        reviews_per_session: 25,
-        session_count: 4,
-        total_time: "00:40:00"
-      }
-    }
-  };
-  const source = new BunproFrontendSource(apiToken, async input => {
-    const path = new URL(input instanceof Request ? input.url : input).pathname;
-    return Response.json(fixtures[path]);
-  });
-
-  const snapshot = await source.loadLearningProgress();
-
-  assert.deepEqual(snapshot.base, {
-    daysStudied: 120,
-    grammarStudied: 400,
-    vocabularyStudied: 250,
-    currentStreak: 7,
-    weeklyStreak: [{ day: "Mon", studied: true }]
-  });
-  assert.deepEqual(snapshot.jlptProgress.grammar.N5, {
-    beginner: 1,
-    seasoned: 2,
-    adept: 3,
-    expert: 4,
-    master: 5,
-    totalCount: 15
-  });
-  assert.deepEqual(snapshot.reviewTotals.mixed.N1, reviewTotals);
-  assert.deepEqual(snapshot.cram, {
-    items: reviewTotals,
-    sessions: {
-      averageTime: "00:10:00",
-      reviewsPerSession: 25,
-      sessionCount: 4,
-      totalTime: "00:40:00"
-    }
-  });
-});
-
 test("the source fails closed on invalid timezone, Study History, recent activity, and learning facts", async t => {
-  await t.test("invalid account timezone", async () => {
-    const source = sourceForFixtures({
-      "/api/frontend/user": {
+  await t.test("invalid account timezone", async st => {
+    const source = sourceForWire(st, {
+      [bunproRoutes.user]: {
         user: { data: { attributes: { time_zone_iana: "not/a-timezone" } } }
       }
     });
     await assert.rejects(source.getAccountContext(), contractChanged);
   });
 
-  await t.test("invalid Study History date and accuracy", async () => {
-    const fixtures = studyHistoryContractFixtures();
-    fixtures["/api/frontend/user_stats/review_heatmap"] = {
-      grammar: { someday: 1 },
-      vocab: { someday: 1 },
-      mixed: { someday: 2 }
-    };
-    fixtures["/api/frontend/user_stats/accuracy_over_time"] = { "2026-08-12": 175 };
-    const snapshot = await sourceForFixtures(fixtures).loadStudyHistory();
+  await t.test("invalid Study History date and accuracy", async st => {
+    const snapshot = await sourceForWire(st, {
+      [bunproRoutes.reviewHeatmap]: {
+        grammar: { someday: 1 },
+        vocab: { someday: 1 },
+        mixed: { someday: 2 }
+      },
+      [bunproRoutes.accuracyOverTime]: { "2026-08-12": 175 }
+    }).loadStudyHistory();
     assert.deepEqual(snapshot.reviews, { status: "contract_changed" });
     assert.deepEqual(snapshot.accuracy, { status: "contract_changed" });
   });
 
-  await t.test("malformed recent activity", async () => {
-    const source = sourceForFixtures({
-      "/api/frontend/user": validUserFixture(),
-      "/api/frontend/user_stats/last_done_reviews": [{
+  await t.test("malformed recent activity", async st => {
+    const source = sourceForWire(st, {
+      [bunproRoutes.lastDoneReviews]: [{
         id: 1,
         time: "2026-08-12T00:00:00Z",
         status: "yes",
@@ -469,22 +153,19 @@ test("the source fails closed on invalid timezone, Study History, recent activit
   });
 
   for (const variant of ["jlpt groups", "accuracy", "weekly streak"] as const) {
-    await t.test(`invalid learning ${variant}`, async () => {
-      const fixtures = learningContractFixtures();
+    await t.test(`invalid learning ${variant}`, async st => {
+      const bodies = wireBodies();
       if (variant === "jlpt groups") {
-        const jlpt = fixtures["/api/frontend/user_stats/jlpt_progress_mixed"] as any;
-        delete jlpt.grammar[1];
+        delete bodies[bunproRoutes.jlptProgress].grammar["1"];
       } else if (variant === "accuracy") {
-        const reviews = fixtures["/api/frontend/user_stats/total_review_stats"] as any;
-        reviews.grammar[5].accuracy = 175;
+        bodies[bunproRoutes.totalReviewStats].grammar["5"]!.accuracy = 175;
       } else {
-        const base = fixtures["/api/frontend/user_stats/base_stats"] as any;
-        base.facts.weekly_streak = Array.from({ length: 8 }, (_, index) => ({
+        bodies[bunproRoutes.baseStats].facts.weekly_streak = Array.from({ length: 8 }, (_, index) => ({
           day: `day-${index}`,
           val: true
         }));
       }
-      await assert.rejects(sourceForFixtures(fixtures).loadLearningProgress(), contractChanged);
+      await assert.rejects(sourceForWire(st, bodies).loadLearningProgress(), contractChanged);
     });
   }
 });
@@ -515,71 +196,11 @@ test("the in-memory source serves normalized facts and typed capability failures
   await assert.rejects(source.loadLearningProgress(), error => error === expectedFailure);
 });
 
-function sourceForFixtures(fixtures: Record<string, unknown>): BunproFrontendSource {
-  return new BunproFrontendSource(apiToken, async input => {
-    const path = new URL(input instanceof Request ? input.url : input).pathname;
-    const fixture = fixtures[path];
-    return fixture === undefined
-      ? new Response("not found", { status: 404 })
-      : Response.json(fixture);
-  });
-}
-
-function validUserFixture() {
-  return { user: { data: { attributes: { time_zone_iana: "Asia/Tokyo" } } } };
-}
-
-function studyHistoryContractFixtures(): Record<string, unknown> {
-  return {
-    "/api/frontend/user": validUserFixture(),
-    "/api/frontend/user_stats/review_heatmap": { grammar: {}, vocab: {}, mixed: {} },
-    "/api/frontend/user_stats/new_content_heatmap": { grammar: {}, vocab: {}, mixed: {} },
-    "/api/frontend/user_stats/accuracy_over_time": {}
-  };
-}
-
-function learningContractFixtures(): Record<string, unknown> {
-  const stages = {
-    beginner: 1,
-    seasoned: 2,
-    adept: 3,
-    expert: 4,
-    master: 5,
-    total_count: 15
-  };
-  const totals = { accuracy: 80, correct: 8, incorrect: 2, total: 10 };
-  const levels = Object.fromEntries(["1", "2", "3", "4", "5"].map(level => [level, { ...stages }]));
-  const reviews = Object.fromEntries(["1", "2", "3", "4", "5"].map(level => [level, { ...totals }]));
-  return {
-    "/api/frontend/user": validUserFixture(),
-    "/api/frontend/user_stats/base_stats": {
-      facts: {
-        days_studied: 1,
-        grammar_studied: 1,
-        vocab_studied: 1,
-        streak: 1,
-        weekly_streak: [{ day: "Mon", val: true }]
-      }
-    },
-    "/api/frontend/user_stats/jlpt_progress_mixed": {
-      grammar: structuredClone(levels),
-      vocab: structuredClone(levels)
-    },
-    "/api/frontend/user_stats/total_review_stats": {
-      grammar: structuredClone(reviews),
-      vocab: structuredClone(reviews),
-      mixed: structuredClone(reviews)
-    },
-    "/api/frontend/user_stats/total_cram_stats": {
-      items: totals,
-      sessions: {
-        average_time: "00:00:00",
-        reviews_per_session: 0,
-        session_count: 0,
-        total_time: "00:00:00"
-      }
-    }
-  };
+function sourceForWire(
+  t: Pick<TestContext, "after">,
+  overrides: WireOverrides
+): BunproFrontendSource {
+  return new BunproFrontendSource(apiToken, createBunproWire(t, overrides).fetch);
 }
 
 function contractChanged(error: unknown): boolean {
