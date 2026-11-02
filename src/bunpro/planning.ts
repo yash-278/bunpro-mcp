@@ -21,11 +21,8 @@ export async function getReviewSchedule(
     { bucket: "tomorrow" as const, date: tomorrow, ...planning.forecast.tomorrow },
     ...[...planning.forecast.dated]
       .sort((left, right) => left.date.localeCompare(right.date))
-      .map(item => ({ bucket: "date" as const, ...item, date: validForecastDate(item.date) }))
+      .map(item => ({ bucket: "date" as const, ...item }))
   ];
-  if (forecast.length > 14) {
-    throw new BunproError("BUNPRO_CONTRACT_CHANGED", "Bunpro returned an unexpected daily forecast horizon.");
-  }
 
   return {
     source_timezone: planning.accountContext.sourceTimezone,
@@ -120,16 +117,6 @@ export async function getRecentActivity(
       )
     }
   };
-}
-
-function validForecastDate(value: string): string {
-  const parsed = new Date(`${value}T00:00:00Z`);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) ||
-    Number.isNaN(parsed.valueOf()) ||
-    parsed.toISOString().slice(0, 10) !== value) {
-    throw new BunproError("BUNPRO_CONTRACT_CHANGED", "Bunpro returned an invalid forecast date.");
-  }
-  return value;
 }
 
 function dateInTimeZone(value: Date, timeZone: string): string {
