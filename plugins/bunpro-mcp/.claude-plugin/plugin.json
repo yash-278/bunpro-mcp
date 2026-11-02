@@ -1,0 +1,23 @@
+{
+  "name": "bunpro-mcp",
+  "displayName": "Bunpro MCP (unofficial)",
+  "version": "0.4.0",
+  "description": "Unofficial connector and study-plan skill for Bunpro, using your own Account API Token.",
+  "author": {
+    "name": "Yash Kadam",
+    "url": "https://github.com/yash-278"
+  },
+  "homepage": "https://bunpro.yashkadam.com/",
+  "repository": "https://github.com/yash-278/bunpro-mcp",
+  "license": "MIT",
+  "keywords": ["bunpro", "japanese", "language-learning"],
+  "userConfig": {
+    "bunpro_token": {
+      "type": "string",
+      "title": "Bunpro Account API Token",
+      "description": "Copy it from Bunpro Settings > API. Treat it like a password.",
+      "sensitive": true,
+      "required": true
+    }
+  }
+}

@@ -18,7 +18,30 @@ If **Extensions** doesn't appear in settings, your organization has turned exten
 
 ## Claude Code
 
-Claude Code connects to a Bunpro MCP server with `Authorization: Bearer`, and it reads the token from an environment variable.
+Claude Code connects to a Bunpro MCP server with `Authorization: Bearer`. The plugin keeps your token in the system secure store and adds a `study-plan` skill. Manual configuration reads the token from an environment variable and works with any server URL.
+
+### Plugin
+
+The plugin always connects to the hosted service, so your token reaches that service. To use your own server, follow [Manual configuration](#manual-configuration). You can still install the plugin for its skill, which works with the tools from either connection.
+
+1. Start a Claude Code session. Run these commands inside the session, not in your shell:
+
+   ```text
+   /plugin marketplace add yash-278/bunpro-mcp
+   /plugin install bunpro-mcp@bunpro-mcp
+   ```
+
+2. Paste your token into the masked **Bunpro Account API Token** field when Claude Code asks for it.
+3. Run `/reload-plugins`, then run `/mcp` and check that `plugin:bunpro-mcp:bunpro` shows as connected.
+4. Ask `I have 20 minutes. What should I study in Bunpro today?`
+
+`claude plugin install` in a shell doesn't ask for the token, and its `--config` flag would put the token in your shell history. Use the commands above instead.
+
+The `study-plan` skill reads your due reviews and weak spots, then suggests a plan. It saves nothing between chats and can't change anything in Bunpro.
+
+Automatic updates are off by default for this marketplace. To update, run `/plugin marketplace update bunpro-mcp`, then `/reload-plugins`. To replace your token, follow the [revocation steps](../PRIVACY.md#revocation).
+
+### Manual configuration
 
 1. Set `BUNPRO_API_TOKEN` in the environment that starts Claude Code.
 2. Add this to `.mcp.json`:
@@ -69,3 +92,7 @@ On a Free, Pro, Max or Ultra plan:
 6. Start a new chat and ask `Check my Bunpro connection.`
 
 To use a new token, remove the connector under **Customize > Connectors** and add it again with the new value. Claude doesn't let you change authentication settings after you add a connector.
+
+### Add the study-plan skill
+
+To add the skill on claude.ai, go to **Customize > Plugins > Add > Add marketplace**, enter `yash-278/bunpro-mcp`, and add the plugin. The skill needs the connector above, so add that by hand first. Cowork gets the skill and no tools, because it ignores a connector that needs a token from you.

@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "bunpro": {
+      "type": "http",
+      "url": "https://bunpro.yashkadam.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${user_config.bunpro_token}"
+      }
+    }
+  }
+}

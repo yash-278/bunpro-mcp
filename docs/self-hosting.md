@@ -116,7 +116,7 @@ Never place a token in:
 
 ## Use with Claude
 
-The [Claude setup guide](claude-setup.md) has the steps for Claude Code and claude.ai. To use your own server, replace `https://bunpro.yashkadam.com/mcp` in those steps with `https://your-domain.example/mcp`. The Claude Desktop `.mcpb` runs the server locally, so it needs no URL.
+The [Claude setup guide](claude-setup.md) has the steps for Claude Code and claude.ai. To use your own server, replace `https://bunpro.yashkadam.com/mcp` in those steps with `https://your-domain.example/mcp`. The Claude Desktop `.mcpb` runs the server locally, so it needs no URL. The Claude plugin's URL is fixed to the hosted service, so configure your server by hand. You can still install the plugin for its `study-plan` skill.
 
 ## Verification
 
