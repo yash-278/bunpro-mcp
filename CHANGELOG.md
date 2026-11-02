@@ -15,6 +15,7 @@ Notable changes to Bunpro MCP are recorded here. The project follows semantic ve
 - Cut the Request Budget to 4 running and 6 queued requests from 4 and 16, keeping the 2-second start interval. More callers see an immediate `BUNPRO_BUSY`, and a queued request returns `BUNPRO_UPSTREAM_UNAVAILABLE` when its deadline passes.
 - Added `BUNPRO_INVALID_INPUT` for caller mistakes. An invalid calendar date, a `start_date` after `end_date`, more than 93 days, or a future end date now returns it instead of `BUNPRO_CONTRACT_CHANGED`. Error text now says "Study Period" instead of "Study range", and every future date returns "Study Period cannot end in the future."
 - Breaking: made the aggregates in `get_study_range_summary` and `get_activity_trend` nullable. An unavailable source now reports `source_record_days: null` and a null total instead of `0`. An available source with no records in the period reports `source_record_days: 0` and a null total. A recorded zero stays `0`. There is no compatibility alias, so a caller that reads these fields as numbers must handle null.
+- A missing token now outranks an invalid date. A stdio call with no `BUNPRO_API_TOKEN` and a bad date returns `BUNPRO_CONFIG_MISSING` instead of `BUNPRO_INVALID_INPUT`.
 
 ## 0.4.0 — 2026-08-25
 
