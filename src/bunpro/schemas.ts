@@ -83,15 +83,15 @@ export const StudyRangeSummaryOutputSchema = z.object({
   days: z.array(StudyDayEvidenceSchema).max(MAX_STUDY_PERIOD_DAYS),
   aggregates: z.object({
     reviews: z.object({
-      source_record_days: z.number().int().nonnegative(),
-      source_total: z.number().int().nonnegative()
+      source_record_days: z.number().int().nonnegative().nullable(),
+      source_total: z.number().int().nonnegative().nullable()
     }),
     new_content: z.object({
-      source_record_days: z.number().int().nonnegative(),
-      source_total: z.number().int().nonnegative()
+      source_record_days: z.number().int().nonnegative().nullable(),
+      source_total: z.number().int().nonnegative().nullable()
     }),
     accuracy: z.object({
-      source_record_days: z.number().int().nonnegative(),
+      source_record_days: z.number().int().nonnegative().nullable(),
       average_percent: z.number().nullable()
     })
   }),
@@ -265,17 +265,17 @@ export const ActivityTrendOutputSchema = z.object({
   days: z.array(StudyDayEvidenceSchema).max(MAX_STUDY_PERIOD_DAYS),
   metrics: z.object({
     reviews: z.object({
-      source_record_days: z.number().int().nonnegative(),
-      total: z.number().int().nonnegative(),
+      source_record_days: z.number().int().nonnegative().nullable(),
+      total: z.number().int().nonnegative().nullable(),
       average_per_source_record_day: z.number().nullable()
     }),
     new_content: z.object({
-      source_record_days: z.number().int().nonnegative(),
-      total: z.number().int().nonnegative(),
+      source_record_days: z.number().int().nonnegative().nullable(),
+      total: z.number().int().nonnegative().nullable(),
       average_per_source_record_day: z.number().nullable()
     }),
     accuracy: z.object({
-      source_record_days: z.number().int().nonnegative(),
+      source_record_days: z.number().int().nonnegative().nullable(),
       average_percent: z.number().nullable()
     })
   }),

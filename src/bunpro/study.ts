@@ -21,6 +21,7 @@ import {
 
 type SourceStatus = StudyDaySummary["source_coverage"]["reviews"]["status"];
 type SourceRecords = DailyCountSeries | Record<string, number | null>;
+type CountAggregate = StudyRangeSummary["aggregates"]["reviews"];
 export type Clock = () => Date;
 
 interface StudyPeriodEvidence {
@@ -85,8 +86,6 @@ export class StudyEvidenceService {
 
   async getTrend(input: StudyRangeInput): Promise<ActivityTrend> {
     const period = await this.#analyzePeriod(input);
-    const reviewCount = period.aggregates.reviews.source_record_days;
-    const newContentCount = period.aggregates.new_content.source_record_days;
     return {
       requested_start_date: period.requestedStartDate,
       requested_end_date: period.requestedEndDate,
@@ -96,20 +95,8 @@ export class StudyEvidenceService {
       overall_query_status: period.overallQueryStatus,
       days: [...period.days],
       metrics: {
-        reviews: {
-          source_record_days: reviewCount,
-          total: period.aggregates.reviews.source_total,
-          average_per_source_record_day: reviewCount === 0
-            ? null
-            : period.aggregates.reviews.source_total / reviewCount
-        },
-        new_content: {
-          source_record_days: newContentCount,
-          total: period.aggregates.new_content.source_total,
-          average_per_source_record_day: newContentCount === 0
-            ? null
-            : period.aggregates.new_content.source_total / newContentCount
-        },
+        reviews: countMetric(period.aggregates.reviews),
+        new_content: countMetric(period.aggregates.new_content),
         accuracy: {
           source_record_days: period.aggregates.accuracy.source_record_days,
           average_percent: period.aggregates.accuracy.average_percent
@@ -128,8 +115,6 @@ export class StudyEvidenceService {
     rejectFutureStudyPeriod(input.end_date, currentDate);
     const evidence = await loadEvidence(source);
     const days = dates.map(date => buildDayEvidence(evidence, date, currentDate));
-    const reviewDays = days.filter(day => day.reviews.coverage === "available");
-    const newContentDays = days.filter(day => day.new_content.coverage === "available");
     const accuracyDays = days.filter(
       day => day.accuracy.coverage === "available" && day.accuracy.percent !== null
     );
@@ -152,19 +137,10 @@ export class StudyEvidenceService {
       overallQueryStatus: overallStatus(evidence),
       days,
       aggregates: {
-        reviews: {
-          source_record_days: reviewDays.length,
-          source_total: reviewDays.reduce((total, day) => total + (day.reviews.source_total ?? 0), 0)
-        },
-        new_content: {
-          source_record_days: newContentDays.length,
-          source_total: newContentDays.reduce(
-            (total, day) => total + (day.new_content.source_total ?? 0),
-            0
-          )
-        },
+        reviews: countAggregate(evidence.reviews, days.map(day => day.reviews)),
+        new_content: countAggregate(evidence.newContent, days.map(day => day.new_content)),
         accuracy: {
-          source_record_days: accuracyDays.length,
+          source_record_days: accuracyChecked ? accuracyDays.length : null,
           average_percent: accuracyDays.length === 0 ? null : accuracyTotal / accuracyDays.length
         }
       },
@@ -248,6 +224,32 @@ function buildDayEvidence(
       : Object.hasOwn(evidence.accuracy.data, date)
         ? { coverage: "available", percent: evidence.accuracy.data[date] ?? null }
         : { coverage: "no_source_record", percent: null }
+  };
+}
+
+function countAggregate(
+  source: SourceOutcome<DailyCountSeries>,
+  days: readonly StudyDaySummary["reviews"][]
+): CountAggregate {
+  if (source.status !== "available") {
+    return { source_record_days: null, source_total: null };
+  }
+  const recordedDays = days.filter(day => day.coverage === "available");
+  if (recordedDays.length === 0) {
+    return { source_record_days: 0, source_total: null };
+  }
+  return {
+    source_record_days: recordedDays.length,
+    source_total: recordedDays.reduce((total, day) => total + (day.source_total ?? 0), 0)
+  };
+}
+
+function countMetric(aggregate: CountAggregate): ActivityTrend["metrics"]["reviews"] {
+  const { source_record_days: recordDays, source_total: total } = aggregate;
+  return {
+    source_record_days: recordDays,
+    total,
+    average_per_source_record_day: !recordDays || total === null ? null : total / recordDays
   };
 }
 

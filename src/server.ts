@@ -110,7 +110,7 @@ export function createServer(options: BunproServerOptions): McpServer {
     {
       title: "Get Bunpro Study range summary",
       description:
-        `Return one source-backed entry for every inclusive Bunpro calendar day in a range of at most ${MAX_STUDY_PERIOD_DAYS} days, using one bounded set of upstream requests.`,
+        `Return one source-backed entry for every inclusive Bunpro calendar day in a range of at most ${MAX_STUDY_PERIOD_DAYS} days, using one bounded set of upstream requests. A null aggregate means no evidence supports it, not zero.`,
       inputSchema: StudyRangeInputSchema,
       outputSchema: StudyRangeSummaryOutputSchema,
       annotations: {
@@ -265,7 +265,7 @@ export function createServer(options: BunproServerOptions): McpServer {
     {
       title: "Get Bunpro activity trend",
       description:
-        `Return preserved daily review, new-content, and accuracy evidence plus explicitly derived totals and source-present-day averages for a range of at most ${MAX_STUDY_PERIOD_DAYS} days.`,
+        `Return preserved daily review, new-content, and accuracy evidence plus explicitly derived totals and source-present-day averages for a range of at most ${MAX_STUDY_PERIOD_DAYS} days. A null aggregate means no evidence supports it, not zero.`,
       inputSchema: StudyRangeInputSchema,
       outputSchema: ActivityTrendOutputSchema,
       annotations: {
