@@ -55,6 +55,12 @@ test("the homepage labels the range tool as a Study Period", () => {
   assert.doesNotMatch(homepage, /Study range/);
 });
 
+test("the homepage names every declared tool", () => {
+  const homepage = renderHomepage(new URL("https://mcp.example"));
+
+  for (const { name } of TOOL_DECLARATIONS) assert.ok(homepage.includes(name), name);
+});
+
 test("the public HTTP service enforces its canonical host and bounded MCP request contract", async () => {
   const telemetry: unknown[] = [];
   const service = await startHttpServer({

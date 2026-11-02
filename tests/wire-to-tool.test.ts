@@ -1165,6 +1165,56 @@ test("the server reports the package version to its MCP client and to Bunpro", a
   assert.equal(headers["user-agent"], `bunpro-mcp-server/${version}`);
 });
 
+test("a stdio caller with no token gets BUNPRO_CONFIG_MISSING even for an impossible date", async t => {
+  const impossibleDate = "2026-02-30";
+  const period = { start_date: impossibleDate, end_date: impossibleDate };
+  const cases = [
+    { name: "get_study_day_summary", args: { date: impossibleDate } },
+    { name: "get_study_range_summary", args: period },
+    { name: "get_activity_trend", args: period }
+  ];
+
+  for (const item of cases) {
+    await t.test(item.name, async st => {
+      const { result, routes } = await callTool(st, item.name, item.args, {}, {
+        apiToken: () => apiTokenFromEnvironment({})
+      });
+
+      assert.deepEqual(routes, []);
+      assertToolError(
+        result,
+        "BUNPRO_CONFIG_MISSING: Set BUNPRO_API_TOKEN in the MCP host's secret environment configuration."
+      );
+    });
+  }
+});
+
+test("one tool call reads the clock once, whichever tool it is", async t => {
+  const period = { start_date: "2026-08-10", end_date: "2026-08-12" };
+  const toolArguments: Record<string, Record<string, unknown>> = {
+    get_study_day_summary: { date: "2026-08-10" },
+    get_study_range_summary: period,
+    get_activity_trend: period
+  };
+  let clockReads = 0;
+  const { client } = await connectClient(t, {}, {
+    clock: () => {
+      clockReads += 1;
+      return fixedClock;
+    }
+  });
+  const { tools } = await client.listTools();
+  assert.equal(clockReads, 0);
+
+  for (const { name } of tools) {
+    clockReads = 0;
+    const result = await client.callTool({ name, arguments: toolArguments[name] ?? {} });
+
+    assert.equal(result.isError, undefined, name);
+    assert.equal(clockReads, 1, name);
+  }
+});
+
 test("the wire fixture fails a test whose source requests an unknown route", async () => {
   const hooks: Array<() => void> = [];
   const wire = createBunproWire({ after: hook => void hooks.push(hook as () => void) });
