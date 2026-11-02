@@ -230,7 +230,7 @@ async function routeRequest(
         401,
         {
           error: "bunpro_token_required",
-          message: `Configure the Bunpro Account API Token in the ${BUNPRO_TOKEN_HEADER} request header.`
+          message: `Configure the Bunpro Account API Token in the ${BUNPRO_TOKEN_HEADER} request header or as Authorization: Bearer <token>. Use one method, not both.`
         }
       );
     }
