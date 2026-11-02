@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { createHttpMcpHandler } from "../src/http-server.js";
+import { smokeCredentialHeaders } from "./smoke-credential.js";
 
 const apiToken = process.env.BUNPRO_API_TOKEN;
 assert.ok(apiToken, "BUNPRO_API_TOKEN must be configured for the live tool smoke test.");
@@ -8,7 +9,7 @@ assert.ok(apiToken, "BUNPRO_API_TOKEN must be configured for the live tool smoke
 const remoteUrl = process.env.BUNPRO_MCP_URL;
 const handler = remoteUrl === undefined ? createHttpMcpHandler() : undefined;
 const transport = new StreamableHTTPClientTransport(new URL(remoteUrl ?? "https://local-smoke.invalid/mcp"), {
-  requestInit: { headers: { "X-Bunpro-Token": apiToken } },
+  requestInit: { headers: smokeCredentialHeaders(apiToken, process.env.BUNPRO_SMOKE_AUTH) },
   fetch: handler === undefined
     ? fetch
     : (input, init) => handler.fetch(new Request(input, init))
