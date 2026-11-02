@@ -20,7 +20,7 @@ Include the affected version or commit, expected impact, and minimal reproductio
 Remote deployments must:
 
 - use HTTPS;
-- accept each caller's Bunpro Account API Token through `X-Bunpro-Token`, with `Authorization: Bearer ...` retained only for backwards compatibility;
+- accept each caller's Bunpro Account API Token through `X-Bunpro-Token` or `Authorization: Bearer ...`;
 - reject requests that supply both credential headers;
 - never configure a deployment-wide Bunpro token;
 - never put tokens in URLs, tool arguments, logs, fixtures, errors, or persistent storage;
@@ -28,6 +28,8 @@ Remote deployments must:
 - preserve host-header validation and request-size limits; and
 - fail closed on Bunpro authentication rejection, throttling, unavailable routes, or schema drift.
 
-`X-Bunpro-Token` is a protected transport container for the caller's Bunpro credential, not a separate identity system. The server does not validate an Auth0 issuer or maintain user accounts; Bunpro determines whether the passed token is valid.
+`X-Bunpro-Token` and `Authorization: Bearer ...` are protected transport containers for the caller's Bunpro credential, not a separate identity system. The server does not validate an Auth0 issuer or maintain user accounts; Bunpro determines whether the passed token is valid.
+
+A plugin's `.mcp.json` never holds a token, because everyone who installs the plugin receives that file. It may reference only a placeholder that the MCP host fills from sensitive configuration.
 
 This project integrates with an undocumented, experimental frontend interface. A Bunpro contract or whitelist change must fail closed rather than return guessed or malformed data.

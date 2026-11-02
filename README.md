@@ -44,7 +44,7 @@ In the ChatGPT/Codex desktop app:
 
 The hosted deployment has no shared Bunpro credential or account database. Your MCP client attaches your token to each request, and the server does not persist it.
 
-Clients already configured with `Authorization: Bearer <token>` remain compatible. Configure exactly one credential method; requests containing both headers are rejected.
+The server also supports `Authorization: Bearer <token>`, which is the form Claude uses. Configure exactly one credential method; requests containing both headers are rejected.
 
 ## Self-host locally with stdio
 
@@ -85,7 +85,7 @@ docker run --rm -p 8080:8080 \
   bunpro-mcp
 ```
 
-Your endpoint will be `http://localhost:8080/mcp`. Each caller must still provide their own token through `X-Bunpro-Token`; do not configure a deployment-wide `BUNPRO_API_TOKEN` for HTTP mode.
+Your endpoint will be `http://localhost:8080/mcp`. Each caller must still provide their own token through `X-Bunpro-Token` or `Authorization: Bearer`; do not configure a deployment-wide `BUNPRO_API_TOKEN` for HTTP mode.
 
 For an HTTPS deployment on Railway or another host, follow [docs/self-hosting.md](docs/self-hosting.md).
 
@@ -128,7 +128,10 @@ Optional live tests use your own Bunpro token and perform read-only, deliberatel
 BUNPRO_API_TOKEN="your token" npm run live:test:auth
 BUNPRO_API_TOKEN="your token" npm run live:test:tools
 BUNPRO_API_TOKEN="your token" BUNPRO_MCP_URL="https://your-host.example/mcp" npm run live:test:tools
+BUNPRO_API_TOKEN="your token" BUNPRO_MCP_URL="https://your-host.example/mcp" BUNPRO_SMOKE_AUTH=bearer npm run live:test:tools
 ```
+
+`live:test:tools` sends `X-Bunpro-Token` by default. Set `BUNPRO_SMOKE_AUTH=bearer` to send `Authorization: Bearer` instead.
 
 The live scripts print only bounded status information. Never attach raw Bunpro responses or credentials to an issue.
 

@@ -11,7 +11,7 @@ This document explains how Bunpro MCP handles the Bunpro Account API Token and s
 
 ## Hosted Streamable HTTP mode
 
-- Your MCP host sends your Account API Token in the HTTPS `X-Bunpro-Token` header.
+- Your MCP host sends your Account API Token in the HTTPS `X-Bunpro-Token` or `Authorization: Bearer` header.
 - The server uses it only to make the Bunpro requests needed to answer that MCP call.
 - The application does not create an identity profile, account link, setup session, or database record.
 - The application does not intentionally log or persist token-bearing request headers, the token, Bunpro response bodies, or study history.
