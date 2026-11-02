@@ -13,8 +13,14 @@ import type {
   StudyRangeInput,
   StudyRangeSummary
 } from "./schemas.js";
+import {
+  expandStudyPeriod,
+  rejectFutureStudyPeriod,
+  todayInTimeZone
+} from "./study-period.js";
 
 type SourceStatus = StudyDaySummary["source_coverage"]["reviews"]["status"];
+type SourceRecords = DailyCountSeries | Record<string, number | null>;
 export type Clock = () => Date;
 
 interface StudyPeriodEvidence {
@@ -50,16 +56,13 @@ export class StudyEvidenceService {
   }
 
   async getDay(input: StudyDayInput): Promise<StudyDaySummary> {
-    const period = await this.#analyzePeriod(
-      {
-        start_date: input.date,
-        end_date: input.date,
-        ...(input.expected_timezone === undefined
-          ? {}
-          : { expected_timezone: input.expected_timezone })
-      },
-      "Study Day cannot be in the future."
-    );
+    const period = await this.#analyzePeriod({
+      start_date: input.date,
+      end_date: input.date,
+      ...(input.expected_timezone === undefined
+        ? {}
+        : { expected_timezone: input.expected_timezone })
+    });
     const day = period.days[0];
     if (!day) {
       throw new BunproError("BUNPRO_CONTRACT_CHANGED", "Study Day analysis returned no calendar day.");
@@ -76,12 +79,12 @@ export class StudyEvidenceService {
   }
 
   async getRange(input: StudyRangeInput): Promise<StudyRangeSummary> {
-    const period = await this.#analyzePeriod(input, "Study range cannot end in the future.");
+    const period = await this.#analyzePeriod(input);
     return projectRange(period);
   }
 
   async getTrend(input: StudyRangeInput): Promise<ActivityTrend> {
-    const period = await this.#analyzePeriod(input, "Study range cannot end in the future.");
+    const period = await this.#analyzePeriod(input);
     const reviewCount = period.aggregates.reviews.source_record_days;
     const newContentCount = period.aggregates.new_content.source_record_days;
     return {
@@ -117,24 +120,12 @@ export class StudyEvidenceService {
     };
   }
 
-  async #analyzePeriod(
-    input: StudyRangeInput,
-    futureErrorMessage: string
-  ): Promise<StudyPeriodEvidence> {
-    const dates = inclusiveDates(input.start_date, input.end_date);
-    if (dates.length > 93) {
-      throw new BunproError(
-        "BUNPRO_CONTRACT_CHANGED",
-        "Study ranges may include at most 93 calendar days."
-      );
-    }
-
+  async #analyzePeriod(input: StudyRangeInput): Promise<StudyPeriodEvidence> {
+    const dates = expandStudyPeriod(input.start_date, input.end_date);
     const source = this.#sourceOperationFactory();
     const accountContext = await source.getAccountContext();
-    const currentDate = dateInTimeZone(this.#clock(), accountContext.sourceTimezone);
-    if (input.end_date > currentDate) {
-      throw new BunproError("BUNPRO_CONTRACT_CHANGED", futureErrorMessage);
-    }
+    const currentDate = todayInTimeZone(this.#clock(), accountContext.sourceTimezone);
+    rejectFutureStudyPeriod(input.end_date, currentDate);
     const evidence = await loadEvidence(source);
     const days = dates.map(date => buildDayEvidence(evidence, date, currentDate));
     const reviewDays = days.filter(day => day.reviews.coverage === "available");
@@ -312,8 +303,8 @@ function unavailableCountEvidence(): StudyDaySummary["reviews"] {
   };
 }
 
-function coverageForSource<T>(
-  result: SourceOutcome<T>
+function coverageForSource(
+  result: SourceOutcome<SourceRecords>
 ): StudyDaySummary["source_coverage"]["reviews"] {
   if (result.status !== "available") {
     return { status: result.status as SourceStatus, first_record_date: null, last_record_date: null };
@@ -321,7 +312,7 @@ function coverageForSource<T>(
   return coverageForMap(result.data);
 }
 
-function coverageForMap(payload: unknown): StudyDaySummary["source_coverage"]["reviews"] {
+function coverageForMap(payload: SourceRecords): StudyDaySummary["source_coverage"]["reviews"] {
   const dates = collectIsoDates(payload);
   return {
     status: "available",
@@ -330,50 +321,9 @@ function coverageForMap(payload: unknown): StudyDaySummary["source_coverage"]["r
   };
 }
 
-function collectIsoDates(payload: unknown): string[] {
-  if (!isRecord(payload)) return [];
-  const candidates = Object.values(payload).every(value => isRecord(value))
-    ? Object.values(payload).flatMap(value => Object.keys(value as Record<string, unknown>))
-    : Object.keys(payload);
-  return [...new Set(candidates.filter(value => /^\d{4}-\d{2}-\d{2}$/.test(value)))].sort();
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function assertValidCalendarDate(value: string): void {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    throw new BunproError("BUNPRO_CONTRACT_CHANGED", "Use an ISO date in YYYY-MM-DD format.");
-  }
-  const parsed = new Date(`${value}T00:00:00Z`);
-  if (Number.isNaN(parsed.valueOf()) || parsed.toISOString().slice(0, 10) !== value) {
-    throw new BunproError("BUNPRO_CONTRACT_CHANGED", "Study Day is not a valid calendar date.");
-  }
-}
-
-function inclusiveDates(start: string, end: string): string[] {
-  assertValidCalendarDate(start);
-  assertValidCalendarDate(end);
-  if (start > end) {
-    throw new BunproError("BUNPRO_CONTRACT_CHANGED", "Study range start_date must not follow end_date.");
-  }
-  const dates: string[] = [];
-  const cursor = new Date(`${start}T00:00:00Z`);
-  const endValue = new Date(`${end}T00:00:00Z`).valueOf();
-  while (cursor.valueOf() <= endValue && dates.length <= 93) {
-    dates.push(cursor.toISOString().slice(0, 10));
-    cursor.setUTCDate(cursor.getUTCDate() + 1);
-  }
-  if (cursor.valueOf() <= endValue) dates.push(cursor.toISOString().slice(0, 10));
-  return dates;
-}
-
-function dateInTimeZone(value: Date, timeZone: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(value);
+function collectIsoDates(payload: SourceRecords): string[] {
+  const dates = Object.entries(payload).flatMap(([key, value]) =>
+    typeof value === "object" && value !== null ? Object.keys(value) : [key]
+  );
+  return [...new Set(dates)].sort();
 }
