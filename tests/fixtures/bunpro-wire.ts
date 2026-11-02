@@ -20,8 +20,11 @@ export const bunproRoutes = {
 
 export type BunproRoute = (typeof bunproRoutes)[keyof typeof bunproRoutes];
 
-/** A JSON body for the route, or a `Response` to send a status or malformed body instead. */
+/** A JSON body for the route, a `Response` to send a status or malformed body, or a `WireReply`. */
 export type WireOverrides = Partial<Record<BunproRoute, unknown>>;
+
+/** Builds a reply from the request, for a body that has to follow the request's signal. */
+export type WireReply = (init: RequestInit) => Response;
 
 export interface WireCall {
   url: URL;
@@ -62,10 +65,23 @@ export function createBunproWire(
         throw new Error(`No synthetic response for ${url.pathname}.`);
       }
       const reply = replies[url.pathname];
+      if (typeof reply === "function") return (reply as WireReply)(init);
       return reply instanceof Response ? reply.clone() : Response.json(reply);
     }
   };
 }
+
+/** Headers arrive, then the body stalls until the signal aborts it, as it does with `fetch`. */
+export function stalledBody(signal: AbortSignal | null | undefined): Response {
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      signal?.addEventListener("abort", () => controller.error(signal.reason), { once: true });
+    }
+  });
+  return new Response(body, { status: 200 });
+}
+
+export const stalledBodyReply: WireReply = init => stalledBody(init.signal);
 
 /** A fresh set of default bodies, safe for a test to change before overriding a route. */
 export function wireBodies() {

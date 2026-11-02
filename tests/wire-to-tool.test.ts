@@ -1,12 +1,16 @@
 import assert from "node:assert/strict";
 import test, { type TestContext } from "node:test";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
-import { createFrontendSourceOperationFactory } from "../src/bunpro/frontend-source.js";
+import {
+  createFrontendSourceOperationFactory,
+  type FrontendSourceOptions
+} from "../src/bunpro/frontend-source.js";
 import { createServer } from "../src/server.js";
 import {
   bunproRoutes,
   createBunproWire,
   reviewSession,
+  stalledBodyReply,
   wireBodies,
   type WireOverrides
 } from "./fixtures/bunpro-wire.js";
@@ -733,6 +737,39 @@ test("the shared transport turns upstream failures into sanitized errors without
   }
 });
 
+test("get_connection_status has a deadline", { timeout: 1_000 }, async t => {
+  const { result, routes } = await callTool(t, "get_connection_status", {}, {
+    [bunproRoutes.user]: stalledBodyReply
+  }, { operationTimeoutMs: 20 });
+
+  assert.deepEqual(routes, [bunproRoutes.user]);
+  assertToolError(
+    result,
+    "BUNPRO_UPSTREAM_UNAVAILABLE: Bunpro did not finish responding before the request timeout. Try again later."
+  );
+});
+
+test("a Study Day past its deadline keeps what arrived and reports honest coverage", { timeout: 1_000 }, async t => {
+  const { result, routes } = await callTool(t, "get_study_day_summary", { date: "2026-08-10" }, {
+    [bunproRoutes.newContentHeatmap]: stalledBodyReply
+  }, { operationTimeoutMs: 40 });
+
+  assert.deepEqual(routes, [
+    bunproRoutes.user,
+    bunproRoutes.reviewHeatmap,
+    bunproRoutes.newContentHeatmap
+  ]);
+  assert.equal(result.isError, undefined);
+  const summary = result.structuredContent as Record<string, unknown>;
+  assert.equal(summary.overall_query_status, "partial");
+  assert.deepEqual(summary.reviews, reviewsAugust10);
+  assert.deepEqual(summary.source_coverage, {
+    reviews: reviewsCoverage,
+    new_content: { status: "upstream_unavailable", first_record_date: null, last_record_date: null },
+    accuracy: { status: "not_queried", first_record_date: null, last_record_date: null }
+  });
+});
+
 test("the wire fixture fails a test whose source requests an unknown route", async () => {
   const hooks: Array<() => void> = [];
   const wire = createBunproWire({ after: hook => void hooks.push(hook as () => void) });
@@ -751,11 +788,16 @@ async function callTool(
   t: TestContext,
   name: string,
   args: Record<string, unknown> = {},
-  overrides: WireOverrides = {}
+  overrides: WireOverrides = {},
+  sourceOptions: FrontendSourceOptions = {}
 ) {
   const wire = createBunproWire(t, overrides);
   const server = createServer({
-    sourceOperationFactory: createFrontendSourceOperationFactory(() => syntheticToken, wire.fetch),
+    sourceOperationFactory: createFrontendSourceOperationFactory(
+      () => syntheticToken,
+      wire.fetch,
+      sourceOptions
+    ),
     clock: () => fixedClock
   });
   const client = new Client({ name: "wire-to-tool-test", version: "0.1.0" });

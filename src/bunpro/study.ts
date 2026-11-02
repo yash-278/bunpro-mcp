@@ -130,13 +130,12 @@ export class StudyEvidenceService {
     }
 
     const source = this.#sourceOperationFactory();
-    const operationSignal = AbortSignal.timeout(30_000);
-    const accountContext = await source.getAccountContext(operationSignal);
+    const accountContext = await source.getAccountContext();
     const currentDate = dateInTimeZone(this.#clock(), accountContext.sourceTimezone);
     if (input.end_date > currentDate) {
       throw new BunproError("BUNPRO_CONTRACT_CHANGED", futureErrorMessage);
     }
-    const evidence = await loadEvidence(source, operationSignal);
+    const evidence = await loadEvidence(source);
     const days = dates.map(date => buildDayEvidence(evidence, date, currentDate));
     const reviewDays = days.filter(day => day.reviews.coverage === "available");
     const newContentDays = days.filter(day => day.new_content.coverage === "available");
@@ -206,10 +205,9 @@ function projectRange(period: StudyPeriodEvidence): StudyRangeSummary {
 }
 
 async function loadEvidence(
-  source: ReturnType<FrontendSourceOperationFactory>,
-  operationSignal: AbortSignal
+  source: ReturnType<FrontendSourceOperationFactory>
 ): Promise<StudyHistorySnapshot> {
-  const evidence = await source.loadStudyHistory(operationSignal);
+  const evidence = await source.loadStudyHistory();
   const outcomes = [evidence.reviews, evidence.newContent, evidence.accuracy];
   if (!outcomes.some(result => result.status === "available")) {
     if (outcomes.some(result => result.status === "rate_limited")) {

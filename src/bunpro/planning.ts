@@ -12,8 +12,7 @@ export async function getReviewSchedule(
   source: Pick<FrontendSource, "loadReviewPlanning">,
   now: Date = new Date()
 ): Promise<ReviewSchedule> {
-  const operationSignal = AbortSignal.timeout(30_000);
-  const planning = await source.loadReviewPlanning(operationSignal);
+  const planning = await source.loadReviewPlanning();
   const today = dateInTimeZone(now, planning.accountContext.sourceTimezone);
   const tomorrow = addDays(today, 1);
   const forecast = [
@@ -46,8 +45,7 @@ export async function listStudyDecks(
   source: Pick<FrontendSource, "loadDeckConfiguration">,
   input: ListStudyDecksInput
 ): Promise<ListStudyDecksOutput> {
-  const operationSignal = AbortSignal.timeout(30_000);
-  const configuration = await source.loadDeckConfiguration(operationSignal);
+  const configuration = await source.loadDeckConfiguration();
   const matching = configuration.entries.filter(
     entry => !input.active_only || entry.activelyStudying
   );
@@ -84,8 +82,7 @@ export async function getRecentActivity(
   source: Pick<FrontendSource, "loadRecentActivity">,
   input: RecentActivityInput
 ): Promise<RecentActivityOutput> {
-  const operationSignal = AbortSignal.timeout(30_000);
-  const activity = await source.loadRecentActivity(input.view, operationSignal);
+  const activity = await source.loadRecentActivity(input.view);
   const isRollingWindow = activity.view === "last_24_hours";
   const normalizedAttempts = activity.attempts.slice(0, input.limit).map(attempt => ({
     attempt_id: attempt.attemptId,
