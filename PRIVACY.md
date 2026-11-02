@@ -20,7 +20,7 @@ The hosted operator and infrastructure provider can technically inspect applicat
 
 ## Where Claude holds the token
 
-| Surface | Where the token is held |
+| Setup | Where the token is held |
 | --- | --- |
 | Plugin in Claude Code | System secure store |
 | Manual Claude Code config | Environment variable |
@@ -37,9 +37,9 @@ The application includes no analytics or advertising code. It emits bounded oper
 
 ## Revocation
 
-There is no MCP-side account data to disconnect or delete. To invalidate a token, rotate it through Bunpro Settings → API. Then replace it in each place you use it:
+There is no MCP-side account data to disconnect or delete. To invalidate a token, rotate it through Bunpro Settings > API. Then replace it in each place you use it:
 
-| Surface | How to replace or remove the token |
+| Setup | How to replace or remove the token |
 | --- | --- |
 | Plugin in Claude Code | Update the `bunpro_token` option in `/plugin`, or uninstall the plugin |
 | Manual Claude Code config | Change the `BUNPRO_API_TOKEN` environment variable |

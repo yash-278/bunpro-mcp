@@ -29,7 +29,7 @@ Work through this list in order for every server release. Commands that take a t
 
 ### 3. Version and changelog
 
-- [ ] Open the final release pull request. Bump `package.json` and `plugins/bunpro-mcp/.claude-plugin/plugin.json` to the same version, even if the plugin didn't change. Claude Code users get new plugin files only when the version changes, so this bump publishes the plugin. `npm run check` fails if the two differ.
+- [ ] Open the final release pull request. Bump `package.json`, `plugins/bunpro-mcp/.claude-plugin/plugin.json` and `src/version.ts` to the same version, even if the plugin didn't change. Claude Code users get new plugin files only when the version changes, so this bump publishes the plugin. `npm run check` fails if they differ.
 - [ ] In `CHANGELOG.md`, move the `## Unreleased` entries under a heading for the new version and date.
 - [ ] If the `study-plan` skill changed, run the [skill evaluations](../evaluations/README.md#skill-evaluations).
 - [ ] Merge the pull request after its checks pass.
@@ -42,9 +42,11 @@ Work through this list in order for every server release. Commands that take a t
 
 ### 5. Claude Desktop and GitHub release
 
-- [ ] Run `npm ci` and `npm run build:mcpb` on the release commit.
+The `.mcpb` is a release asset and is never committed.
+
+- [ ] Run `npm ci` and `npm run build:mcpb` on the release commit. The script fails if the manifest doesn't pass `mcpb validate`.
 - [ ] Install `dist/bunpro-mcp.mcpb` in Claude Desktop and call `get_connection_status`.
-- [ ] Publish the GitHub release with `dist/bunpro-mcp.mcpb` attached under that exact name.
+- [ ] Publish the GitHub release with `dist/bunpro-mcp.mcpb` attached under that exact name, because `docs/claude-setup.md` tells learners to look for it.
 
 ## 0.4.0 record
 
@@ -84,11 +86,3 @@ This is the open-source community release checklist as it stood for 0.4.0.
 - [ ] Production website shows the open-source release content.
 
 Atlas integration remains out of scope for this release.
-
-### Claude Desktop bundle
-
-The `.mcpb` is a release asset and is never committed.
-
-- [ ] Run `npm ci` and `npm run build:mcpb` on the release commit. The script fails if the manifest doesn't pass `mcpb validate`.
-- [ ] Install `dist/bunpro-mcp.mcpb` in Claude Desktop and call `get_connection_status`.
-- [ ] Attach `dist/bunpro-mcp.mcpb` to the GitHub release under that exact name, because `docs/claude-setup.md` tells learners to look for it.

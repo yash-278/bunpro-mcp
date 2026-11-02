@@ -1,6 +1,6 @@
 {
   "name": "bunpro-mcp",
-  "description": "Unofficial, read-only Bunpro study tools for Claude.",
+  "description": "Unofficial, experimental, read-only Bunpro study tools for Claude.",
   "owner": {
     "name": "Yash Kadam",
     "url": "https://github.com/yash-278"
@@ -9,7 +9,7 @@
     {
       "name": "bunpro-mcp",
       "source": "./plugins/bunpro-mcp",
-      "description": "Unofficial connector and study-plan skill for Bunpro, using your own Account API Token."
+      "description": "Unofficial, experimental connector and study-plan skill for Bunpro, using your own Account API Token."
     }
   ]
 }

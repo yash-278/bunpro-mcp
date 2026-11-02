@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "bunpro-mcp",
   "display_name": "Bunpro MCP (unofficial)",
-  "description": "Unofficial, read-only access to your Bunpro study data, using your own Account API Token.",
+  "description": "Unofficial, experimental, read-only access to your Bunpro study data, using your own Account API Token.",
   "long_description": "Bunpro MCP is an unofficial, experimental community project. It is not affiliated with or endorsed by Bunpro, OpenAI or Anthropic. The server runs on your computer and sends your token only to Bunpro.",
   "author": {
     "name": "Yash Kadam",
