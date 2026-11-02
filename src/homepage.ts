@@ -87,7 +87,7 @@ const tools = [
     prompt: "What did I study on 2026-08-11?"
   },
   {
-    name: "Study range",
+    name: "Study Period",
     key: "get_study_range_summary",
     icon: "layers" as const,
     description: "Look back across a week, month, or any period up to 93 days.",

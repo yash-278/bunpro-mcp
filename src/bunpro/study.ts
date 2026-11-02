@@ -7,6 +7,7 @@ import type {
 } from "./frontend-source.js";
 import type {
   ActivityTrend,
+  DailyCountEvidence,
   StudyDayEvidence,
   StudyDayInput,
   StudyDaySummary,
@@ -229,7 +230,7 @@ function buildDayEvidence(
 
 function countAggregate(
   source: SourceOutcome<DailyCountSeries>,
-  days: readonly StudyDaySummary["reviews"][]
+  days: readonly DailyCountEvidence[]
 ): CountAggregate {
   if (source.status !== "available") {
     return { source_record_days: null, source_total: null };
@@ -267,7 +268,7 @@ function sourceCoverage(evidence: StudyHistorySnapshot): StudyDaySummary["source
   };
 }
 
-function countEvidence(payload: DailyCountSeries, date: string): StudyDaySummary["reviews"] {
+function countEvidence(payload: DailyCountSeries, date: string): DailyCountEvidence {
   if (!Object.hasOwn(payload.mixed, date)) {
     return {
       coverage: "no_source_record",
@@ -294,7 +295,7 @@ function countEvidence(payload: DailyCountSeries, date: string): StudyDaySummary
   };
 }
 
-function unavailableCountEvidence(): StudyDaySummary["reviews"] {
+function unavailableCountEvidence(): DailyCountEvidence {
   return {
     coverage: "unavailable",
     grammar: null,

@@ -8,9 +8,9 @@ import type {
   RecentActivityView,
   ReviewPlanningSnapshot,
   StudyHistorySnapshot,
-  WeakSpotFact,
-  WeakSpotPeriod
+  WeakSpotFact
 } from "./frontend-source.js";
+import type { WeakSpotPeriod } from "./schemas.js";
 
 export interface InMemoryFrontendSourceData {
   accountContext: AccountContext;

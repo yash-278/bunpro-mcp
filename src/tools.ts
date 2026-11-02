@@ -53,7 +53,7 @@ export const TOOL_DECLARATIONS: readonly ToolDeclaration[] = [
     name: "get_connection_status",
     title: "Check Bunpro connection",
     description:
-      "Verify that the caller's Bunpro Account API Token can access the read-only Frontend API. The token comes from BUNPRO_API_TOKEN in stdio mode or X-Bunpro-Token in HTTP mode. The MCP never returns or stores the token.",
+      "Verify that the caller's Bunpro Account API Token can access the read-only Frontend API. The token comes from BUNPRO_API_TOKEN in stdio mode, or from X-Bunpro-Token or Authorization: Bearer in HTTP mode. The MCP never returns or stores the token.",
     inputSchema: NoInputSchema,
     outputSchema: ConnectionStatusOutputSchema,
     run: async (_input, { source }): Promise<ConnectionStatus> => {
@@ -80,7 +80,7 @@ export const TOOL_DECLARATIONS: readonly ToolDeclaration[] = [
   }),
   declareTool({
     name: "get_study_range_summary",
-    title: "Get Bunpro Study range summary",
+    title: "Get Bunpro Study Period summary",
     description:
       `Return one source-backed entry for every inclusive Bunpro calendar day in a range of at most ${MAX_STUDY_PERIOD_DAYS} days, using one bounded set of upstream requests. A null aggregate means no evidence supports it, not zero.`,
     inputSchema: StudyRangeInputSchema,
