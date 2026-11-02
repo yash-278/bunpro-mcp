@@ -17,7 +17,7 @@ export class BunproError extends Error {
   }
 }
 
-export function connectionErrorMessage(error: unknown): string {
+export function toolErrorMessage(error: unknown): string {
   if (error instanceof BunproError) {
     return `${error.code}: ${error.message}`;
   }
