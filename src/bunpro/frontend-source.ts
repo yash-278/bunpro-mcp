@@ -27,6 +27,7 @@ const FRONTEND_API_PREFIX = "/api/frontend/";
 const ACCOUNT_TOKEN_OPT_IN = "dangerously_authenticate_using_api_token";
 const REQUEST_TIMEOUT_MS = 10_000;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
+const MAX_FORECAST_BUCKETS = 14;
 const JLPT_LEVELS = [
   ["5", "N5"],
   ["4", "N4"],
@@ -397,6 +398,19 @@ export class BunproFrontendSource implements FrontendSource {
         "Bunpro returned an unexpected daily forecast horizon."
       );
     }
+    const datedKeys = grammarKeys.filter(key => key !== "later" && key !== "tomorrow");
+    if (!datedKeys.every(isIsoCalendarDate)) {
+      throw new BunproError(
+        "BUNPRO_CONTRACT_CHANGED",
+        "Bunpro returned an invalid forecast date."
+      );
+    }
+    if (grammarKeys.length > MAX_FORECAST_BUCKETS) {
+      throw new BunproError(
+        "BUNPRO_CONTRACT_CHANGED",
+        "Bunpro returned an unexpected daily forecast horizon."
+      );
+    }
     const countsFor = (key: string): ReviewCounts => ({
       grammar: forecast.grammar[key] ?? 0,
       vocabulary: forecast.vocab[key] ?? 0
@@ -410,9 +424,7 @@ export class BunproFrontendSource implements FrontendSource {
       forecast: {
         laterToday: countsFor("later"),
         tomorrow: countsFor("tomorrow"),
-        dated: grammarKeys
-          .filter(key => key !== "later" && key !== "tomorrow")
-          .map(date => ({ date, ...countsFor(date) }))
+        dated: datedKeys.map(date => ({ date, ...countsFor(date) }))
       }
     };
   }
