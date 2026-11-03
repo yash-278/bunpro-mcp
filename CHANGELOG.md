@@ -2,6 +2,10 @@
 
 Notable changes to Bunpro MCP are recorded here. The project follows semantic versioning.
 
+## Unreleased
+
+- Moved the hosted Railway settings from `railway.json`, which Railway stops reading on 2026-12-01, to `.railway/railway.ts`, applied with `railway config apply`. A Railway self-host now sets the start command and `/healthz` healthcheck in its service settings, as `docs/self-hosting.md` describes.
+
 ## 0.5.0 — 2026-11-03
 
 ### Breaking
