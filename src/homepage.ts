@@ -230,7 +230,7 @@ function claudeSetup(): string {
 
       <div class="paths" data-ui>
         <div class="path-tabs" role="tablist" aria-label="Claude apps">
-          <button type="button" role="tab" id="tab-code" aria-controls="path-code" aria-selected="true"><span class="tab-name">Claude Code plugin</span><span class="tab-note">Adds a study-plan skill</span></button>
+          <button type="button" role="tab" id="tab-code" aria-controls="path-code" aria-selected="true"><span class="tab-name">Claude Code<span class="tab-extra"> plugin</span></span><span class="tab-note">Adds a study-plan skill</span></button>
           <button type="button" role="tab" id="tab-desktop" aria-controls="path-desktop" aria-selected="false" tabindex="-1"><span class="tab-name">Claude Desktop</span><span class="tab-note">Token stays on your computer</span></button>
           <button type="button" role="tab" id="tab-web" aria-controls="path-web" aria-selected="false" tabindex="-1"><span class="tab-name">claude.ai</span><span class="tab-note">Needs the request-headers beta</span></button>
         </div>
@@ -685,7 +685,7 @@ function styles(): string {
     .hero h1 { font-size: var(--s-display); font-weight: 600; line-height: 1; letter-spacing: -.04em; max-width: 9.2em; }
     .lede { margin-top: 32px; max-width: 40ch; font-size: var(--s-body); }
     .hero-paths { margin-top: 24px; max-width: 40ch; font-size: var(--s-small); color: var(--soft); }
-    .stage { position: relative; margin-top: clamp(-260px, -18vw, -160px); margin-left: calc(var(--margin) + max(0px, (100vw - 2 * var(--margin) - var(--frame)) / 2) + min(100vw - 2 * var(--margin), var(--frame)) * 5 / 12); background: var(--accent); padding: 56px 0 72px 56px; clip-path: polygon(120px 0, 100% 0, 100% 100%, 0 100%, 0 120px); }
+    .stage { position: relative; margin-top: clamp(-260px, -18vw, -160px); margin-left: calc(var(--margin) + max(0px, (100vw - 2 * var(--margin) - var(--frame)) / 2) + min(100vw - 2 * var(--margin), var(--frame)) * 5 / 12); background: var(--accent); padding: 80px 0 72px 80px; clip-path: polygon(100px 0, 100% 0, 100% 100%, 0 100%, 0 100px); }
 
     [data-ui] { font-size: 16px; line-height: 1.5; color: var(--ink); }
     .chat { width: min(640px, 100%); background: var(--ui); border-radius: 10px; padding: 8px 8px 0; }
@@ -863,7 +863,7 @@ function styles(): string {
     .toast.visible { opacity: 1; transform: translate(-50%, 0); }
 
     @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes shutter { from { clip-path: polygon(120px 0, 120px 0, 120px 100%, 0 100%, 0 120px); } to { clip-path: polygon(120px 0, 100% 0, 100% 100%, 0 100%, 0 120px); } }
+    @keyframes shutter { from { clip-path: polygon(100px 0, 100px 0, 100px 100%, 0 100%, 0 100px); } to { clip-path: polygon(100px 0, 100% 0, 100% 100%, 0 100%, 0 100px); } }
     @keyframes settle { from { transform: scale(1.06); opacity: 0; } to { transform: none; opacity: 1; } }
     .has-motion .stage { animation: shutter 1.1s cubic-bezier(.7, 0, .2, 1) both; }
     .has-motion .stage .chat { animation: settle 1s .35s cubic-bezier(.2, .7, .2, 1) both; }
@@ -901,7 +901,7 @@ function styles(): string {
       .lede { margin-top: 24px; }
       .hero-actions { gap: 16px; }
       .hero-actions .button { width: 100%; }
-      .stage { margin: 48px 0 0; padding: 72px 16px 24px; clip-path: polygon(72px 0, 100% 0, 100% 100%, 0 100%, 0 72px); }
+      .stage { margin: 48px 0 0; padding: 88px 16px 24px; clip-path: polygon(72px 0, 100% 0, 100% 100%, 0 100%, 0 72px); }
       @keyframes shutter { from { clip-path: polygon(72px 0, 72px 0, 72px 100%, 0 100%, 0 72px); } to { clip-path: polygon(72px 0, 100% 0, 100% 100%, 0 100%, 0 72px); } }
       .chat { width: 100%; }
       .chat-tabs [role="tab"] { padding: 0 6px; }
@@ -913,8 +913,9 @@ function styles(): string {
       .tool { padding: 22px 18px; }
       .token-note { padding: 18px; }
       .paths { margin-inline: calc(-1 * var(--margin)); border-radius: 0; padding: 8px 8px 24px; }
-      .path-tabs [role="tab"] { min-height: 48px; padding: 8px; }
+      .path-tabs [role="tab"] { flex: 1 1 auto; min-height: 48px; padding: 8px 10px; white-space: nowrap; }
       .tab-name { font-size: 15px; }
+      .tab-extra { display: none; }
       .path { padding: 22px 8px 0; }
       .tab-note { display: none; }
       .copy code { padding: 10px 12px; }
