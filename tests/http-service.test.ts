@@ -55,6 +55,37 @@ test("the homepage labels the range tool as a Study Period", () => {
   assert.doesNotMatch(homepage, /Study range/);
 });
 
+test("the homepage walks a learner through each Claude path", () => {
+  const homepage = renderHomepage(new URL("https://mcp.example"));
+  const claude = homepage.slice(homepage.indexOf('id="claude"'), homepage.indexOf('id="self-host"'));
+
+  assert.ok(homepage.indexOf('id="setup"') < homepage.indexOf('id="claude"'));
+  assert.match(homepage, /class="desktop-nav"[\s\S]*?href="#claude"/);
+  assert.match(homepage, /class="mobile-nav"[\s\S]*?href="#claude"/);
+  assert.match(claude, /<h2>Connect it to Claude<\/h2>/);
+  assert.match(claude, /data-copy="\/plugin marketplace add yash-278\/bunpro-mcp"/);
+  assert.match(claude, /data-copy="\/plugin install bunpro-mcp@bunpro-mcp"/);
+  assert.match(claude, /inside that session, not in your shell/);
+  assert.match(claude, /Don't run <code>claude plugin install<\/code> from a shell/);
+  assert.match(claude, /data-copy="\/reload-plugins"/);
+  assert.match(claude, /data-copy="\/mcp"/);
+  assert.match(claude, /plugin:bunpro-mcp:bunpro shows as connected/);
+  assert.match(claude, /data-copy="I have 20 minutes\. What should I study in Bunpro today\?"/);
+  assert.match(claude, /bunpro-mcp\.mcpb/);
+  assert.match(claude, /github\.com\/yash-278\/bunpro-mcp\/releases\/latest/);
+  assert.match(claude, /Releases before 0\.5\.0 don't include it/);
+  assert.match(claude, /Settings &gt; Extensions/);
+  assert.match(claude, /Your token stays there and goes only to Bunpro/);
+  assert.match(claude, />Untested</);
+  assert.match(claude, /Don't use this on a Team or Enterprise plan/);
+  assert.match(claude, /Request headers are a limited Anthropic beta/);
+  assert.match(claude, /data-copy="Bearer &lt;token&gt;"/);
+  assert.match(claude, /blob\/main\/docs\/claude-setup\.md/);
+  assert.doesNotMatch(homepage, /Using Claude\?/);
+  assert.doesNotMatch(homepage, /Study View/);
+  assert.doesNotMatch(claude, /Bearer (?!&lt;token&gt;)[A-Za-z0-9]/);
+});
+
 test("the homepage names every declared tool", () => {
   const homepage = renderHomepage(new URL("https://mcp.example"));
 
@@ -90,7 +121,7 @@ test("the public HTTP service enforces its canonical host and bounded MCP reques
     assert.match(homepage.body, /Can I run it myself/);
     assert.match(homepage.body, /Self-hosting guide/);
     assert.match(homepage.body, /github\.com\/yash-278\/bunpro-mcp/);
-    assert.match(homepage.body, /Using Claude\?/);
+    assert.match(homepage.body, /Connect it to Claude/);
     assert.match(homepage.body, /blob\/main\/docs\/claude-setup\.md/);
     assert.match(homepage.body, /not affiliated with or endorsed by Bunpro, OpenAI or Anthropic/);
     assert.match(homepage.body, /Not affiliated with Bunpro, OpenAI or Anthropic/);

@@ -5,6 +5,7 @@ const BUNPRO_TOKEN_HEADER = "X-Bunpro-Token";
 const SOURCE_REPOSITORY_URL = "https://github.com/yash-278/bunpro-mcp";
 const SELF_HOSTING_GUIDE_URL = `${SOURCE_REPOSITORY_URL}/blob/main/docs/self-hosting.md`;
 const CLAUDE_SETUP_GUIDE_URL = `${SOURCE_REPOSITORY_URL}/blob/main/docs/claude-setup.md`;
+const LATEST_RELEASE_URL = `${SOURCE_REPOSITORY_URL}/releases/latest`;
 
 export const HOMEPAGE_ROBOTS = `User-agent: *
 Allow: /
@@ -165,6 +166,7 @@ export function renderHomepage(_url: URL): string {
     ${useCases()}
     ${explanation()}
     ${setupGuide()}
+    ${claudeSetup()}
     ${openSource()}
     ${toolCatalog()}
     ${promptGallery()}
@@ -190,7 +192,8 @@ function header(): string {
       </a>
       <nav class="desktop-nav" aria-label="Primary navigation">
         <a href="#possibilities">What it does</a>
-        <a href="#setup">Set up</a>
+        <a href="#setup">ChatGPT</a>
+        <a href="#claude">Claude</a>
         <a href="#self-host">Self-host</a>
         <a href="#tools">Tools</a>
         <a href="#privacy">Privacy</a>
@@ -202,7 +205,7 @@ function header(): string {
       </button>
     </div>
     <nav class="mobile-nav" id="mobile-menu" aria-label="Mobile navigation" hidden>
-      <a href="#possibilities">What it does</a><a href="#setup">Set up</a><a href="#self-host">Self-host</a><a href="#tools">Tools</a><a href="#privacy">Privacy</a><a href="#help">Help</a>
+      <a href="#possibilities">What it does</a><a href="#setup">ChatGPT</a><a href="#claude">Claude</a><a href="#self-host">Self-host</a><a href="#tools">Tools</a><a href="#privacy">Privacy</a><a href="#help">Help</a>
       <a class="button button-primary" href="#setup">Connect to ChatGPT ${icon("arrow")}</a>
     </nav>
   </header>`;
@@ -351,9 +354,100 @@ function setupGuide(): string {
       <aside class="auth-fallback reveal">
         <span>${icon("plug")}</span><div><b>Using another MCP app?</b><p>Use the same server URL and add your token as a protected <code>${BUNPRO_TOKEN_HEADER}</code> header. If your app only offers Bearer authentication, use your token there instead. Choose one method, never both.</p></div>
       </aside>
+    </div>
+  </section>`;
+}
+
+function claudeSetup(): string {
+  return `<section class="section setup claude-setup" id="claude">
+    <div class="shell">
+      <div class="setup-heading reveal">
+        <div><span class="kicker kicker-light">Claude Code · Claude Desktop · claude.ai</span><h2>Connect it to Claude</h2></div>
+        <p>Each Claude app connects in its own way. The Claude Code plugin and the Claude Desktop extension work today. The claude.ai connector is untested.</p>
+      </div>
+
+      <aside class="availability-note reveal">
+        <span class="note-icon">${icon("lock")}</span>
+        <div><b>Before you start</b><p>Copy your Account API Token from <strong>Bunpro &gt; Settings &gt; API</strong> and treat it like a password. Paste it only into the masked field your Claude app shows. Never put it in a chat, prompt, URL or screenshot.</p></div>
+        <a href="${CLAUDE_SETUP_GUIDE_URL}" target="_blank" rel="noreferrer">Full Claude setup guide ${icon("external")}</a>
+      </aside>
+
+      <div class="path-heading reveal">
+        <span class="path-tag">Works today</span>
+        <h3>Claude Code plugin</h3>
+        <p>The plugin keeps your token in your system's secure store and adds a <code>study-plan</code> skill. It connects to the hosted service at <code>bunpro.yashkadam.com</code>, so your token reaches that service.</p>
+      </div>
+
+      <div class="setup-layout">
+        <ol class="setup-steps">
+          <li class="step reveal">
+            <span class="step-number">01</span>
+            <div><h3>Open a Claude Code session</h3><p>Start Claude Code, then run the two <code>/plugin</code> commands from the panel inside that session, not in your shell.</p><p class="step-warning">Don't run <code>claude plugin install</code> from a shell. It doesn't ask for the token, and its <code>--config</code> flag would put the token in your shell history.</p></div>
+          </li>
+          <li class="step reveal">
+            <span class="step-number">02</span>
+            <div><h3>Paste your token when asked</h3><p>Claude Code asks for your <strong>Bunpro Account API Token</strong> in a masked field. Paste it there and nowhere else.</p></div>
+          </li>
+          <li class="step reveal">
+            <span class="step-number">03</span>
+            <div><h3>Reload and check the connection</h3><p>Run <code>/reload-plugins</code>, then run <code>/mcp</code> and check that <code>plugin:bunpro-mcp:bunpro</code> shows as connected.</p></div>
+          </li>
+          <li class="step reveal">
+            <span class="step-number">04</span>
+            <div><h3>Ask about today</h3><p>Try <button class="inline-copy" type="button" data-copy="I have 20 minutes. What should I study in Bunpro today?">I have 20 minutes. What should I study in Bunpro today? ${icon("copy")}</button></p></div>
+          </li>
+        </ol>
+
+        <div class="connection-panel reveal">
+          <div class="panel-title"><span><i></i><i></i><i></i></span><b>Claude Code session</b><small>RUN IN ORDER</small></div>
+          ${copyField("Add the marketplace", "/plugin marketplace add yash-278/bunpro-mcp")}
+          ${copyField("Install the plugin", "/plugin install bunpro-mcp@bunpro-mcp")}
+          <div class="header-field">
+            <div class="header-label"><label>Token prompt</label><span>SECRET</span></div>
+            <div class="form-row nested"><label>Bunpro Account API Token</label><div class="secret-look"><span>Paste your token when Claude Code asks</span>${icon("lock")}</div></div>
+          </div>
+          ${copyField("Reload plugins", "/reload-plugins")}
+          ${copyField("Check the connection", "/mcp")}
+          <div class="panel-check">${icon("check")} plugin:bunpro-mcp:bunpro shows as connected</div>
+        </div>
+      </div>
+
+      <div class="claude-paths">
+        <article class="path-card reveal">
+          <span class="path-tag">Token stays on your computer</span>
+          <h3>Claude Desktop</h3>
+          <p>The extension runs Bunpro MCP on your computer. Your token stays there and goes only to Bunpro, never to the hosted service. Claude Desktop includes Node.js, so you don't need to install it.</p>
+          <ol>
+            <li>Download <code>bunpro-mcp.mcpb</code> from the latest GitHub release. Releases before 0.5.0 don't include it. <a class="inline-link" href="${LATEST_RELEASE_URL}" target="_blank" rel="noreferrer">Latest release ${icon("external")}</a></li>
+            <li>In Claude Desktop, open <strong>Settings &gt; Extensions</strong>. In some versions, go to <strong>Settings &gt; Desktop app</strong> and select <strong>Manage</strong> next to <strong>Extensions</strong>.</li>
+            <li>Drag the file onto the page, or double-click it, and follow the prompts.</li>
+            <li>Paste your token into the masked <strong>Bunpro Account API Token</strong> field.</li>
+            <li>Start a new chat and ask <button class="inline-copy" type="button" data-copy="Check my Bunpro connection.">Check my Bunpro connection. ${icon("copy")}</button></li>
+          </ol>
+          <p class="path-note">If <strong>Extensions</strong> doesn't appear in settings, your organization has turned extensions off. To update, install the <code>.mcpb</code> from a newer release.</p>
+        </article>
+
+        <article class="path-card reveal">
+          <span class="path-tag path-tag-warning">Untested</span>
+          <h3>claude.ai web and mobile</h3>
+          <p class="path-warning"><b>Don't use this on a Team or Enterprise plan.</b> An Owner's header value goes out on every member's requests, so every member would get the Owner's study data. Use Claude Desktop or Claude Code instead.</p>
+          <p>Request headers are a limited Anthropic beta. If the <strong>Add custom connector</strong> dialog has no <strong>Request headers</strong> section, this path isn't open to you. No account with the beta has confirmed these steps yet.</p>
+          <ol>
+            <li>On a Free, Pro, Max or Ultra plan, go to <strong>Customize &gt; Connectors</strong> and click <strong>Add custom connector</strong>.</li>
+            <li>Name it <code>Bunpro MCP</code> and set the MCP server URL to this value.
+              <div class="copy-field"><code>${MCP_ENDPOINT}</code><button type="button" data-copy="${MCP_ENDPOINT}" aria-label="Copy MCP server URL">${icon("copy")}</button></div>
+            </li>
+            <li>Under <strong>Authentication</strong>, choose <strong>No sign-in</strong>.</li>
+            <li>Under <strong>Request headers</strong>, select <code>authorization</code> and enter this value, with your token in place of <code>&lt;token&gt;</code>. The server rejects a value without the <code>Bearer </code> prefix.
+              <div class="copy-field"><code>Bearer &lt;token&gt;</code><button type="button" data-copy="Bearer &lt;token&gt;" aria-label="Copy authorization header value">${icon("copy")}</button></div>
+            </li>
+            <li>Click <strong>Add</strong>, start a new chat and ask <button class="inline-copy" type="button" data-copy="Check my Bunpro connection.">Check my Bunpro connection. ${icon("copy")}</button></li>
+          </ol>
+        </article>
+      </div>
 
       <aside class="auth-fallback reveal">
-        <span>${icon("message")}</span><div><b>Using Claude?</b><p>Claude Desktop, Claude Code and claude.ai each connect differently. Follow the steps for your app in the Claude setup guide.</p><a class="inline-link" href="${CLAUDE_SETUP_GUIDE_URL}" target="_blank" rel="noreferrer">Claude setup guide ${icon("external")}</a></div>
+        <span>${icon("book")}</span><div><b>Running your own server?</b><p>The plugin always connects to the hosted service. To point Claude Code at your own server, update the plugin, or replace your token, follow the Claude setup guide.</p><a class="inline-link" href="${CLAUDE_SETUP_GUIDE_URL}" target="_blank" rel="noreferrer">Claude setup guide ${icon("external")}</a></div>
       </aside>
     </div>
   </section>`;
@@ -510,7 +604,7 @@ function footer(): string {
   return `<footer class="site-footer">
     <div class="shell footer-grid">
       <div class="footer-brand"><a class="brand" href="#top"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span class="brand-copy"><strong>Bunpro MCP</strong><small>UNOFFICIAL COMMUNITY TOOL</small></span></a><p>Ask better questions about your Bunpro studies, with a connection that can read your data but never change it.</p></div>
-      <div><b>Explore</b><a href="#possibilities">What it does</a><a href="#tools">Tools</a><a href="#setup">Setup guide</a><a href="#self-host">Self-host</a><a href="#help">Troubleshooting</a></div>
+      <div><b>Explore</b><a href="#possibilities">What it does</a><a href="#tools">Tools</a><a href="#setup">ChatGPT setup</a><a href="#claude">Claude setup</a><a href="#self-host">Self-host</a><a href="#help">Troubleshooting</a></div>
       <div><b>Open source</b><a href="${SOURCE_REPOSITORY_URL}" target="_blank" rel="noreferrer">GitHub repository ${icon("external")}</a><a href="${SELF_HOSTING_GUIDE_URL}" target="_blank" rel="noreferrer">Self-hosting guide ${icon("external")}</a><a href="#privacy">Privacy and trust</a><a href="${OPENAI_MCP_GUIDE_URL}" target="_blank" rel="noreferrer">OpenAI MCP guide ${icon("external")}</a></div>
     </div>
     <div class="shell footer-bottom"><span>© ${new Date().getUTCFullYear()} Bunpro MCP community project</span><span>Not affiliated with Bunpro, OpenAI or Anthropic.</span><a href="#top">Back to top ↑</a></div>
@@ -771,6 +865,32 @@ function styles(): string {
     .auth-fallback p { margin: 7px 0 0; color: rgba(255,255,255,.62); font-size: 12px; line-height: 1.65; }
     .auth-fallback code { color: white; font-size: 11px; }
 
+    .claude-setup { border-top: 1px solid rgba(255,255,255,.12); }
+    .claude-setup::before { content: '接続'; top: auto; bottom: 120px; }
+    .claude-setup .step code, .path-heading code, .path-card p code, .path-card li > code { color: white; font-size: 11px; overflow-wrap: anywhere; }
+    .availability-note strong { color: white; }
+    .path-heading { max-width: 760px; margin: 0 0 40px; }
+    .path-heading h3 { margin: 14px 0 10px; font: 400 30px/1.15 var(--serif); }
+    .path-heading p { margin: 0; color: rgba(255,255,255,.61); font-size: 13px; line-height: 1.65; }
+    .path-tag { display: inline-block; padding: 5px 8px; color: #dac09a; border: 1px solid rgba(218,192,154,.45); font: 800 8px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .path-tag-warning { color: #f0b3a6; border-color: rgba(240,179,166,.55); }
+    .step p + p { margin-top: 10px; }
+    .step .step-warning, .path-card .path-warning { padding: 10px 12px; border-left: 2px solid #e08b78; background: rgba(224,139,120,.08); color: rgba(255,255,255,.78); }
+    .path-warning b { color: white; font-weight: 750; }
+    .claude-paths { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 70px; align-items: start; }
+    .path-card { padding: 30px; background: rgba(255,255,255,.055); border: 1px solid rgba(255,255,255,.14); }
+    .path-card h3 { margin: 16px 0 12px; font: 400 26px/1.15 var(--serif); }
+    .path-card p { margin: 0 0 14px; color: rgba(255,255,255,.61); font-size: 13px; line-height: 1.65; }
+    .path-card strong { color: white; }
+    .path-card ol { margin: 6px 0 14px; padding-left: 20px; color: rgba(255,255,255,.72); font-size: 13px; line-height: 1.65; }
+    .path-card li { padding: 6px 0; }
+    .path-card li::marker { color: #dac09a; font: 700 11px var(--mono); }
+    .path-card .inline-link { display: flex; width: fit-content; }
+    .claude-setup .inline-copy { text-align: left; }
+    .path-card .copy-field { margin-top: 10px; color: var(--ink); }
+    .path-card .copy-field code { color: var(--ink); }
+    .path-card .path-note { margin: 0; font-size: 12px; }
+
     .open-source { background: var(--paper-light); border-bottom: 1px solid var(--line); }
     .source-grid { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); }
     .source-card { min-height: 350px; padding: 32px; display: flex; flex-direction: column; border-right: 1px solid var(--line); background: rgba(255,255,255,.18); }
@@ -938,6 +1058,7 @@ function styles(): string {
       .connection-panel { position: relative; top: auto; max-width: 620px; justify-self: center; width: 100%; }
       .availability-note { grid-template-columns: 44px 1fr; }
       .availability-note a { grid-column: 2; }
+      .claude-paths { grid-template-columns: 1fr; margin-top: 56px; }
       .prompt-intro, .limitations-title, .faq-intro { position: relative; top: auto; }
       .request-flow { grid-template-columns: 1fr; gap: 10px; }
       .request-flow > div { min-height: 120px; }
@@ -987,6 +1108,8 @@ function styles(): string {
       .header-field { margin: 8px; }
       .copy-field code { font-size: 10px; }
       .auth-fallback { grid-template-columns: 1fr; margin-top: 52px; }
+      .path-card { padding: 22px 18px; }
+      .path-heading h3 { font-size: 26px; }
       .tool-grid { grid-template-columns: 1fr; }
       .tool-card, .tool-card:nth-child(2n), .tool-card:nth-child(3n), .tool-card:nth-child(n+7), .tool-card:nth-child(n+9) { border-right: 0; border-bottom: 1px solid var(--line); }
       .tool-card:last-child { border-bottom: 0; }

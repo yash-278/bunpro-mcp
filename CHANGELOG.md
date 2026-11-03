@@ -4,6 +4,7 @@ Notable changes to Bunpro MCP are recorded here. The project follows semantic ve
 
 ## Unreleased
 
+- Added a "Connect it to Claude" section to the homepage, after the ChatGPT one. It gives copyable steps for the Claude Code plugin, the Claude Desktop extension and the untested claude.ai connector, and replaces the "Using Claude?" note. The page navigation links to it.
 - Added the `bunpro-mcp` Claude plugin in `plugins/bunpro-mcp`, listed in this repository's marketplace. It connects to the hosted server with `Authorization: Bearer` from a sensitive `bunpro_token` option, and its `study-plan` skill suggests a plan for today from due reviews and weak spots. `npm run check` now fails if the plugin version differs from `package.json`, the connector holds anything but the token placeholder, or the skill names an unregistered tool.
 - Added an "Every release" section to `docs/release-checklist.md`, with the 0.4.0 checklist kept below it as a record.
 - Added `list_weak_spots`, which lists the items Bunpro currently marks as Troubled Content with Bunpro's reported accuracy and streak. It costs one Bunpro request per call, takes `period` and `limit`, and sorts lowest accuracy first. An empty list means Bunpro lists nothing right now, not that the learner has no weak spots.
