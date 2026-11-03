@@ -53,7 +53,7 @@
     "@modelcontextprotocol/client": "^2.3.0",
     "@types/node": "^24.0.0",
     "esbuild": "^0.28.2",
-    "tsx": "^4.23.12",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }
 }
