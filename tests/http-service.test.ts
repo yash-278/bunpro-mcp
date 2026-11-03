@@ -76,7 +76,8 @@ test("the homepage walks a learner through each Claude path", () => {
   assert.match(claude, /Releases before 0\.5\.0 don't include it/);
   assert.match(claude, /Settings &gt; Extensions/);
   assert.match(claude, /Your token stays there and goes only to Bunpro/);
-  assert.match(claude, />Untested</);
+  assert.match(claude, />Needs the request-headers beta</);
+  assert.doesNotMatch(claude, /untested/i);
   assert.match(claude, /Don't use this on a Team or Enterprise plan/);
   assert.match(claude, /Request headers are a limited Anthropic beta/);
   assert.match(claude, /data-copy="Bearer &lt;token&gt;"/);
