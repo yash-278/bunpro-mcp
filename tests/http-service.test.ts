@@ -51,7 +51,7 @@ async function request(
 test("the homepage labels the range tool as a Study Period", () => {
   const homepage = renderHomepage(new URL("https://mcp.example"));
 
-  assert.match(homepage, /<span>Study Period<\/span><code>get_study_range_summary<\/code>/);
+  assert.match(homepage, /<h3>Study Period<\/h3>\s*<code class="tool-key">get_study_range_summary<\/code>/);
   assert.doesNotMatch(homepage, /Study range/);
 });
 

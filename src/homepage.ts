@@ -214,20 +214,21 @@ function askButton(prompt: string): string {
   return `<button class="ask" type="button" data-copy="${prompt}" aria-label="Copy prompt: ${prompt}">${prompt}</button>`;
 }
 
-function band(label: string, body: string): string {
-  return `<li><span class="band-label">${label}</span><div class="band-body">${body}</div></li>`;
+function step(body: string): string {
+  return `<li><div class="step-body">${body}</div></li>`;
 }
 
 function claudeSetup(): string {
   return `<section class="section claude" id="claude" aria-labelledby="claude-title">
-    <div class="frame">
-      <div class="claude-head">
+    <div class="frame claude-grid">
+      <div class="claude-intro">
         <h2 id="claude-title">Connect it to Claude</h2>
         <p>Pick the Claude app you use. Each one keeps your Bunpro token in a different place.</p>
+        <p class="token-note">Before you start, copy your Account API Token from <strong>Bunpro &gt; Settings &gt; API</strong> and treat it like a password. Paste it only into the masked field your Claude app shows. Never put it in a chat, prompt, URL or screenshot.</p>
+        <a class="text-link" href="${CLAUDE_SETUP_GUIDE_URL}" target="_blank" rel="noreferrer">Full Claude setup guide</a>
       </div>
-      <p class="token-note">Before you start, copy your Account API Token from <strong>Bunpro &gt; Settings &gt; API</strong> and treat it like a password. Paste it only into the masked field your Claude app shows. Never put it in a chat, prompt, URL or screenshot. <a class="text-link" href="${CLAUDE_SETUP_GUIDE_URL}" target="_blank" rel="noreferrer">Full Claude setup guide</a></p>
 
-      <div class="paths">
+      <div class="paths" data-ui>
         <div class="path-tabs" role="tablist" aria-label="Claude apps">
           <button type="button" role="tab" id="tab-code" aria-controls="path-code" aria-selected="true"><span class="tab-name">Claude Code plugin</span><span class="tab-note">Adds a study-plan skill</span></button>
           <button type="button" role="tab" id="tab-desktop" aria-controls="path-desktop" aria-selected="false" tabindex="-1"><span class="tab-name">Claude Desktop</span><span class="tab-note">Token stays on your computer</span></button>
@@ -237,11 +238,11 @@ function claudeSetup(): string {
         <div class="path" role="tabpanel" id="path-code" aria-labelledby="tab-code">
           <h3>Claude Code plugin</h3>
           <p class="path-lead">The plugin keeps your token in your system's secure store and adds a <code>study-plan</code> skill. It connects to the hosted service at <code>bunpro.yashkadam.com</code>, so your token reaches that service.</p>
-          <ol class="bands">
-            ${band("Add", `<p>Start a Claude Code session, then run these two commands inside that session, not in your shell.</p>${copyField("the marketplace command", "/plugin marketplace add yash-278/bunpro-mcp")}${copyField("the install command", "/plugin install bunpro-mcp@bunpro-mcp")}<p class="caution">Don't run <code>claude plugin install</code> from a shell. It doesn't ask for the token, and its <code>--config</code> flag would put the token in your shell history.</p>`)}
-            ${band("Paste", `<p>Claude Code asks for your <strong>Bunpro Account API Token</strong> in a masked field. Paste it there and nowhere else.</p>`)}
-            ${band("Check", `<p>Run <code>/reload-plugins</code>, then run <code>/mcp</code>. You're done when plugin:bunpro-mcp:bunpro shows as connected.</p>${copyField("the reload command", "/reload-plugins")}${copyField("the MCP status command", "/mcp")}`)}
-            ${band("Ask", `<p>Try this question.</p>${askButton(CLAUDE_CODE_PROMPT)}`)}
+          <ol class="numbered">
+            ${step(`<p>Start a Claude Code session, then run these two commands inside that session, not in your shell.</p>${copyField("the marketplace command", "/plugin marketplace add yash-278/bunpro-mcp")}${copyField("the install command", "/plugin install bunpro-mcp@bunpro-mcp")}<p class="caution">Don't run <code>claude plugin install</code> from a shell. It doesn't ask for the token, and its <code>--config</code> flag would put the token in your shell history.</p>`)}
+            ${step(`<p>Claude Code asks for your <strong>Bunpro Account API Token</strong> in a masked field. Paste it there and nowhere else.</p>`)}
+            ${step(`<p>Run <code>/reload-plugins</code>, then run <code>/mcp</code>. You're done when plugin:bunpro-mcp:bunpro shows as connected.</p>${copyField("the reload command", "/reload-plugins")}${copyField("the MCP status command", "/mcp")}`)}
+            ${step(`<p>Try this question.</p>${askButton(CLAUDE_CODE_PROMPT)}`)}
           </ol>
           <p class="path-note">The <code>study-plan</code> skill reads your due reviews and weak spots, then suggests a plan. It saves nothing between chats and can't change anything in Bunpro. The plugin always connects to the hosted service. To point Claude Code at your own server, update the plugin or replace your token, follow the <a class="text-link" href="${CLAUDE_SETUP_GUIDE_URL}" target="_blank" rel="noreferrer">Claude setup guide</a>.</p>
         </div>
@@ -249,12 +250,12 @@ function claudeSetup(): string {
         <div class="path" role="tabpanel" id="path-desktop" aria-labelledby="tab-desktop">
           <h3>Claude Desktop</h3>
           <p class="path-lead">The extension runs Bunpro MCP on your computer. Your token stays there and goes only to Bunpro, never to the hosted service. Claude Desktop includes Node.js, so you don't need to install it.</p>
-          <ol class="bands">
-            ${band("Download", `<p>Download <code>bunpro-mcp.mcpb</code> from the latest GitHub release. Releases before 0.5.0 don't include it.</p><a class="button button-quiet" href="${LATEST_RELEASE_URL}" target="_blank" rel="noreferrer">Latest release on GitHub</a>`)}
-            ${band("Open", `<p>In Claude Desktop, open <strong>Settings &gt; Extensions</strong>. In some versions, go to <strong>Settings &gt; Desktop app</strong> and select <strong>Manage</strong> next to <strong>Extensions</strong>.</p>`)}
-            ${band("Install", `<p>Drag the file onto the page, or double-click it, and follow the prompts.</p>`)}
-            ${band("Paste", `<p>Paste your token into the masked <strong>Bunpro Account API Token</strong> field.</p>`)}
-            ${band("Ask", `<p>Start a new chat and ask this.</p>${askButton(CONNECTION_PROMPT)}`)}
+          <ol class="numbered">
+            ${step(`<p>Download <code>bunpro-mcp.mcpb</code> from the latest GitHub release. Releases before 0.5.0 don't include it.</p><a class="button button-quiet" href="${LATEST_RELEASE_URL}" target="_blank" rel="noreferrer">Latest release on GitHub</a>`)}
+            ${step(`<p>In Claude Desktop, open <strong>Settings &gt; Extensions</strong>. In some versions, go to <strong>Settings &gt; Desktop app</strong> and select <strong>Manage</strong> next to <strong>Extensions</strong>.</p>`)}
+            ${step(`<p>Drag the file onto the page, or double-click it, and follow the prompts.</p>`)}
+            ${step(`<p>Paste your token into the masked <strong>Bunpro Account API Token</strong> field.</p>`)}
+            ${step(`<p>Start a new chat and ask this.</p>${askButton(CONNECTION_PROMPT)}`)}
           </ol>
           <p class="path-note">If <strong>Extensions</strong> doesn't appear in settings, your organization has turned extensions off. To update, install the <code>.mcpb</code> from a newer release.</p>
         </div>
@@ -263,12 +264,12 @@ function claudeSetup(): string {
           <h3>claude.ai web and mobile</h3>
           <p class="warning"><strong>Don't use this on a Team or Enterprise plan.</strong> An Owner's header value goes out on every member's requests, so every member would get the Owner's study data. The server can't detect this. Use Claude Desktop or Claude Code instead.</p>
           <p class="path-lead">Request headers are a limited Anthropic beta. If the <strong>Add custom connector</strong> dialog has no <strong>Request headers</strong> section, this path isn't open to you. Use Claude Desktop or Claude Code instead.</p>
-          <ol class="bands">
-            ${band("Open", `<p>On a Free, Pro, Max or Ultra plan, go to <strong>Customize &gt; Connectors</strong> and click <strong>Add custom connector</strong>.</p>`)}
-            ${band("Name", `<p>Name it <code>Bunpro MCP</code> and set the MCP server URL to this value.</p>${copyField("MCP server URL", MCP_ENDPOINT)}`)}
-            ${band("Sign-in", `<p>Under <strong>Authentication</strong>, choose <strong>No sign-in</strong>.</p>`)}
-            ${band("Header", `<p>Under <strong>Request headers</strong>, select <code>authorization</code> and enter this value, with your token in place of <code>&lt;token&gt;</code>. The server rejects a value without the <code>Bearer </code> prefix.</p>${copyField("authorization header value", "Bearer &lt;token&gt;")}`)}
-            ${band("Ask", `<p>Click <strong>Add</strong>, start a new chat and ask this.</p>${askButton(CONNECTION_PROMPT)}`)}
+          <ol class="numbered">
+            ${step(`<p>On a Free, Pro, Max or Ultra plan, go to <strong>Customize &gt; Connectors</strong> and click <strong>Add custom connector</strong>.</p>`)}
+            ${step(`<p>Name it <code>Bunpro MCP</code> and set the MCP server URL to this value.</p>${copyField("MCP server URL", MCP_ENDPOINT)}`)}
+            ${step(`<p>Under <strong>Authentication</strong>, choose <strong>No sign-in</strong>.</p>`)}
+            ${step(`<p>Under <strong>Request headers</strong>, select <code>authorization</code> and enter this value, with your token in place of <code>&lt;token&gt;</code>. The server rejects a value without the <code>Bearer </code> prefix.</p>${copyField("authorization header value", "Bearer &lt;token&gt;")}`)}
+            ${step(`<p>Click <strong>Add</strong>, start a new chat and ask this.</p>${askButton(CONNECTION_PROMPT)}`)}
           </ol>
           <p class="path-note">The mobile apps use the connectors you add on claude.ai in a browser. To use a new token, remove the connector and add it again with the new value. Claude doesn't let you change authentication settings after you add a connector.</p>
         </div>
@@ -282,19 +283,16 @@ function toolCatalog(): string {
     <div class="frame" id="possibilities">
       <div class="tools-head">
         <h2 id="tools-title">Nine tools, all read only</h2>
-        <p>Claude picks the tool it needs for your question. Select one to see an example question you can copy.</p>
+        <p>Claude picks the tool it needs for your question. Each one comes with an example you can copy.</p>
       </div>
-      <div class="cmd" data-ui>
-        <label class="filter-label" for="tool-filter">Filter the tools</label>
-        <input class="filter" id="tool-filter" type="search" placeholder="Try reviews, JLPT or weak" autocomplete="off" spellcheck="false">
-        <ul class="cmd-list">
-          ${tools.map((tool, index) => `<li class="cmd-row" data-terms="${`${tool.name} ${tool.key} ${tool.description}`.toLowerCase()}">
-            <button type="button" class="cmd-name" aria-expanded="${index === 0}" aria-controls="tool-${tool.key}"><span>${tool.name}</span><code>${tool.key}</code></button>
-            <div class="cmd-detail" id="tool-${tool.key}"><p>${tool.description}</p>${askButton(tool.prompt)}</div>
-          </li>`).join("")}
-        </ul>
-        <p class="cmd-empty" hidden>No tool matches that word. Clear the filter to see all nine.</p>
-      </div>
+      <ul class="tool-grid">
+        ${tools.map(tool => `<li class="tool">
+          <h3>${tool.name}</h3>
+          <code class="tool-key">${tool.key}</code>
+          <p>${tool.description}</p>
+          ${askButton(tool.prompt)}
+        </li>`).join("")}
+      </ul>
       <p class="tools-note">None of the tools can submit answers, start lessons, change your review level, edit decks, or update account settings.</p>
     </div>
   </section>`;
@@ -489,13 +487,10 @@ function faq(): string {
   ];
   return `<section class="section faq" aria-labelledby="faq-title">
     <div class="frame faq-grid">
-      <div class="faq-index">
-        <h2 id="faq-title">Questions</h2>
-        <ul class="faq-list">
-          ${items.map(([question, answer], index) => `<li><button type="button" class="faq-q" aria-expanded="${index === 0}" aria-controls="faq-a-${index}">${question}</button><div class="faq-a" id="faq-a-${index}"><p>${answer}</p></div></li>`).join("")}
-        </ul>
+      <h2 id="faq-title">Questions people ask</h2>
+      <div class="faq-list">
+        ${items.map(([question, answer], index) => `<details${index === 0 ? " open" : ""}><summary>${question}</summary><div class="faq-a"><p>${answer}</p></div></details>`).join("")}
       </div>
-      <div class="faq-pane" aria-hidden="true"></div>
     </div>
   </section>`;
 }
@@ -582,22 +577,6 @@ function pageScript(): string {
       select(tabs.find(tab => tab.getAttribute('aria-selected') === 'true') || tabs[0], false);
     });
 
-    const rows = Array.from(document.querySelectorAll('.cmd-row'));
-    const openRow = row => rows.forEach(other => other.querySelector('.cmd-name').setAttribute('aria-expanded', String(other === row)));
-    rows.forEach(row => row.querySelector('.cmd-name').addEventListener('click', () => openRow(row)));
-    const filter = document.getElementById('tool-filter');
-    const empty = document.querySelector('.cmd-empty');
-    filter.addEventListener('input', () => {
-      const words = filter.value.toLowerCase().split(/\\s+/).filter(Boolean);
-      const shown = rows.filter(row => {
-        const match = words.every(word => row.dataset.terms.includes(word));
-        row.hidden = !match;
-        return match;
-      });
-      empty.hidden = shown.length > 0;
-      if (shown.length && !shown.some(row => row.querySelector('.cmd-name').getAttribute('aria-expanded') === 'true')) openRow(shown[0]);
-    });
-
     const range = document.getElementById('flow-range');
     const stages = Array.from(document.querySelectorAll('.flow-stage'));
     const goto = Array.from(document.querySelectorAll('[data-goto]'));
@@ -613,15 +592,6 @@ function pageScript(): string {
     goto.forEach(button => button.addEventListener('click', () => setStage(button.dataset.goto)));
     setStage(0);
 
-    const pane = document.querySelector('.faq-pane');
-    const questions = Array.from(document.querySelectorAll('.faq-q'));
-    const openQuestion = question => {
-      questions.forEach(other => other.setAttribute('aria-expanded', String(other === question)));
-      pane.innerHTML = document.getElementById(question.getAttribute('aria-controls')).innerHTML;
-    };
-    questions.forEach(question => question.addEventListener('click', () => openQuestion(question)));
-    openQuestion(questions[0]);
-
     if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
       root.classList.add('has-motion');
       const observer = new IntersectionObserver(entries => {
@@ -631,7 +601,7 @@ function pageScript(): string {
           observer.unobserve(entry.target);
         });
       }, { rootMargin: '0px 0px -5% 0px', threshold: 0 });
-      document.querySelectorAll('.section > .frame > *:not(.paths):not(.cmd), .paths, .cmd-row, .flow, .closing-inner > *').forEach(element => {
+      document.querySelectorAll('.section > .frame > *:not(.tool-grid), .tool-grid > li, .flow, .closing-inner > *').forEach(element => {
         element.classList.add('rise');
         observer.observe(element);
       });
@@ -748,57 +718,46 @@ function styles(): string {
     .bar i { display: block; height: 100%; background: var(--accent); border-radius: 5px; }
     .chat-foot { padding: 10px 22px 14px; font-size: 14px; color: var(--ui-soft); }
 
-    .claude-head { display: grid; grid-template-columns: 5fr 7fr; gap: 24px 48px; align-items: end; }
-    .claude-head p { font-size: var(--s-lead); line-height: 1.4; max-width: 30ch; }
-    .token-note { margin-top: 40px; padding: 20px 24px; background: var(--surface); max-width: 74ch; }
-    .paths { display: grid; grid-template-columns: 240px 1fr; gap: 0 40px; margin-top: 56px; align-items: start; }
-    .path-tabs { display: grid; gap: 6px; position: sticky; top: 24px; }
-    .path-tabs [role="tab"] { display: grid; gap: 2px; text-align: left; padding: 14px 16px; min-height: 72px; border: 0; background: var(--surface); transition: background-color .18s ease, color .18s ease; }
-    .path-tabs [role="tab"]:hover { background: var(--field); }
-    .path-tabs [role="tab"][aria-selected="true"] { background: var(--deep); color: var(--deep-ink); }
-    .tab-name { font-size: 18px; font-weight: 600; }
-    .tab-note { font-size: var(--s-small); color: var(--soft); }
-    [aria-selected="true"] .tab-note { color: var(--deep-soft); }
-    .path + .path { margin-top: 64px; }
+    .claude-grid { display: grid; grid-template-columns: 4fr 8fr; gap: 48px 64px; align-items: start; }
+    .claude-intro { display: grid; gap: 20px; justify-items: start; position: sticky; top: 32px; }
+    .claude-intro > p:first-of-type { font-size: var(--s-lead); line-height: 1.4; }
+    .token-note { padding: 20px 22px; background: var(--surface); }
+    .paths { background: var(--ui); border-radius: 12px; padding: 12px 12px 32px; }
+    .path-tabs { display: flex; gap: 4px; padding: 4px; background: #e9ece4; border-radius: 8px; }
+    .path-tabs [role="tab"] { flex: 1; display: grid; gap: 2px; text-align: left; padding: 10px 14px; border: 0; border-radius: 6px; background: transparent; color: var(--ui-soft); transition: background-color .18s ease, color .18s ease; }
+    .path-tabs [role="tab"]:hover { color: var(--ink); }
+    .path-tabs [role="tab"][aria-selected="true"] { background: #ffffff; color: var(--ink); }
+    .tab-name { font-size: 16px; font-weight: 600; }
+    .tab-note { font-size: var(--s-small); }
+    .path { padding: 28px 20px 0; }
+    .path + .path { margin-top: 40px; }
     .js .path + .path { margin-top: 0; }
     .path h3 { font-size: var(--s-lead); }
-    .path-lead { margin-top: 12px; max-width: 64ch; }
-    .warning { margin-top: 16px; padding: 18px 22px; background: var(--warn); max-width: 64ch; }
-    .bands { display: grid; gap: 4px; margin-top: 28px; }
-    .bands li { display: grid; grid-template-columns: 120px 1fr; gap: 20px; padding: 20px 24px; background: var(--surface); border-radius: 8px; }
-    .bands li:nth-child(even) { background: #e5e7e1; }
-    .band-label { font-size: var(--s-lead); font-weight: 600; letter-spacing: -.01em; }
-    .band-body { display: grid; gap: 12px; justify-items: start; min-width: 0; }
+    .path-lead { margin-top: 10px; max-width: 64ch; }
+    .warning { margin-top: 14px; padding: 16px 20px; background: var(--warn); border-radius: 8px; max-width: 64ch; }
+    .numbered { counter-reset: step; display: grid; gap: 22px; margin-top: 28px; }
+    .numbered li { counter-increment: step; display: grid; grid-template-columns: 28px 1fr; gap: 16px; }
+    .numbered li::before { content: counter(step); width: 28px; height: 28px; border-radius: 50%; background: var(--deep); color: var(--deep-ink); font-size: 14px; font-weight: 600; display: grid; place-items: center; }
+    .step-body { display: grid; gap: 12px; justify-items: start; min-width: 0; padding-top: 2px; }
     .caution { font-size: 16px; color: var(--soft); }
-    .path-note { margin-top: 20px; max-width: 70ch; color: var(--soft); }
-    .copy { display: flex; align-items: stretch; max-width: 100%; background: var(--ui); border-radius: 6px; }
+    .path-note { margin-top: 28px; padding-top: 20px; max-width: 70ch; color: var(--soft); box-shadow: inset 0 1px 0 #e3e5df; }
+    .copy { display: flex; align-items: stretch; max-width: 100%; background: #eef0ea; border-radius: 6px; }
     .copy code { flex: 1; padding: 10px 14px; font-size: 14px; overflow-wrap: anywhere; align-self: center; }
     .copy button { flex: none; min-width: 64px; min-height: 44px; border: 0; background: #e6e9e1; font-size: 14px; font-weight: 600; border-radius: 0 6px 6px 0; transition: background-color .18s ease; }
     .copy button:hover { background: #d6dad0; }
-    .ask { text-align: left; padding: 10px 16px; min-height: 44px; border: 0; background: var(--ui); border-radius: 6px; font-size: 16px; transition: background-color .18s ease, color .18s ease; }
+    .ask { text-align: left; padding: 10px 16px; min-height: 44px; border: 0; background: #eef0ea; border-radius: 6px; font-size: 16px; transition: background-color .18s ease, color .18s ease; }
     .ask::after { content: "Copy"; margin-left: 12px; font-size: 14px; font-weight: 600; color: var(--accent); }
     .ask:hover { background: #ffffff; }
     .ask:hover::after { color: var(--accent-press); text-decoration: underline; }
 
     .tools-head { display: grid; grid-template-columns: 5fr 7fr; gap: 24px 48px; align-items: end; }
     .tools-head p { max-width: 44ch; }
-    .cmd { margin-top: 48px; font-size: inherit; }
-    .filter-label { display: none; font-size: var(--s-small); font-weight: 600; margin-bottom: 8px; }
-    .filter { display: none; width: min(100%, 860px); height: 72px; padding: 0 24px; border: 0; background: var(--surface); font-size: clamp(20px, 1.6vw, 26px); border-radius: 0; }
-    .js .filter-label, .js .filter { display: block; }
-    .filter::placeholder { color: var(--soft); }
-    .filter:focus-visible { outline-offset: 0; }
-    .cmd-list { margin-top: 20px; }
-    .cmd-name { display: flex; width: 100%; align-items: baseline; justify-content: space-between; gap: 24px; padding: 6px 16px; border: 0; background: transparent; text-align: left; font-size: var(--s-head); font-weight: 600; line-height: 1.1; letter-spacing: -.035em; transition: background-color .15s ease, color .15s ease; }
-    .cmd-name code { font-size: 16px; font-weight: 400; letter-spacing: 0; color: var(--soft); white-space: nowrap; }
-    .cmd-name:hover { background: var(--surface); }
-    .cmd-name[aria-expanded="true"] { background: var(--accent); color: var(--accent-ink); }
-    .cmd-name[aria-expanded="true"] code { color: #dfe6da; }
-    .cmd-detail { display: grid; gap: 14px; justify-items: start; padding: 16px 16px 28px; background: var(--accent); color: var(--accent-ink); }
-    .js .cmd-name[aria-expanded="false"] + .cmd-detail { display: none; }
-    .cmd-detail p { max-width: 60ch; }
-    .cmd-detail .ask { background: #ffffff; color: var(--ink); }
-    .cmd-empty { padding: 24px 16px; font-size: var(--s-lead); }
+    .tool-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 48px; }
+    .tool { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 28px 28px 24px; background: var(--surface); }
+    .tool h3 { font-size: 22px; }
+    .tool-key { font-size: 14px; color: var(--soft); }
+    .tool p { margin-bottom: 12px; }
+    .tool .ask { margin-top: auto; background: var(--ui); font-size: 15px; }
     .tools-note { margin-top: 32px; max-width: 64ch; color: var(--soft); }
 
     .chatgpt-grid { display: grid; grid-template-columns: 5fr 7fr; gap: 64px; align-items: start; }
@@ -879,19 +838,15 @@ function styles(): string {
     .help-item { padding: 18px 0; }
     .help-item p { margin-top: 6px; color: var(--soft); }
 
-    .faq-grid { display: grid; grid-template-columns: 5fr 1fr 6fr; }
-    .faq-index { grid-column: 1; }
-    .faq-index h2 { font-size: var(--s-head); }
-    .faq-list { margin-top: 32px; display: grid; gap: 4px; }
-    .faq-q { display: flex; gap: 14px; align-items: baseline; width: 100%; padding: 10px 0; border: 0; background: transparent; text-align: left; font-size: var(--s-body); color: var(--soft); transition: color .15s ease; }
-    .faq-q::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--soft); transform: translateY(-2px); }
-    .faq-q:hover, .faq-q[aria-expanded="true"] { color: var(--ink); }
-    .faq-q[aria-expanded="true"]::before { background: var(--accent); }
-    .faq-a { padding: 0 0 16px 22px; }
-    .faq-pane { display: none; grid-column: 3; position: sticky; top: 120px; align-self: start; padding-top: 104px; font-size: clamp(22px, 1.9vw, 28px); line-height: 1.3; max-width: 30ch; }
-    .js .faq-pane { display: block; }
-    .js .faq-a { display: none; }
-
+    .faq-grid { display: grid; grid-template-columns: 4fr 8fr; gap: 32px 64px; align-items: start; }
+    .faq-list details { box-shadow: inset 0 -1px 0 var(--ui-line); }
+    .faq-list details:first-child { box-shadow: inset 0 1px 0 var(--ui-line), inset 0 -1px 0 var(--ui-line); }
+    .faq-list summary { display: flex; justify-content: space-between; align-items: center; gap: 24px; min-height: 64px; padding: 14px 0; cursor: pointer; list-style: none; font-weight: 500; }
+    .faq-list summary::-webkit-details-marker { display: none; }
+    .faq-list summary::after { content: "+"; flex: none; width: 28px; height: 28px; display: grid; place-items: center; font-size: 22px; font-weight: 400; color: var(--soft); transition: transform .2s ease; }
+    .faq-list details[open] summary::after { transform: rotate(45deg); }
+    .faq-list summary:hover { color: var(--accent-press); }
+    .faq-a { padding: 0 52px 22px 0; color: var(--soft); max-width: 68ch; }
     .closing { margin-top: var(--gap); background: var(--field); }
     .closing-inner { padding-block: clamp(72px, 10vw, 140px); display: grid; grid-template-columns: 7fr 5fr; gap: 24px 48px; align-items: end; }
     .closing h2 { font-size: var(--s-display); letter-spacing: -.04em; line-height: 1; max-width: 13ch; }
@@ -928,8 +883,9 @@ function styles(): string {
       .menu-button { display: inline-flex; align-items: center; margin-left: 0; }
       .js .mobile-nav { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 16px; padding: 12px 0 8px; }
       .stage { margin-left: calc(var(--margin) + (100vw - 2 * var(--margin)) / 3); margin-top: 56px; padding-right: var(--margin); }
-      .paths { grid-template-columns: 1fr; gap: 24px; }
-      .path-tabs { position: static; grid-template-columns: repeat(3, 1fr); }
+      .claude-grid, .faq-grid { grid-template-columns: 1fr; }
+      .claude-intro { position: static; }
+      .tool-grid { grid-template-columns: 1fr 1fr; }
       .chatgpt-grid, .self-host-grid { grid-template-columns: 1fr; gap: 48px; }
       .form-stage { position: static; }
       .privacy-lists { grid-template-columns: 1fr 1fr; }
@@ -952,19 +908,16 @@ function styles(): string {
       .chat-panel { padding: 18px 14px 6px; min-height: 0; }
       .plan li { grid-template-columns: 52px 1fr; gap: 10px; }
       .days { grid-template-columns: repeat(10, 1fr); }
-      .claude-head, .tools-head, .privacy-head { grid-template-columns: 1fr; }
-      .claude-head p { font-size: 20px; }
+      .tools-head, .privacy-head { grid-template-columns: 1fr; }
+      .tool-grid { grid-template-columns: 1fr; }
+      .tool { padding: 22px 18px; }
       .token-note { padding: 18px; }
-      .path-tabs { grid-template-columns: 1fr; position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 8px 0; grid-auto-flow: column; grid-auto-columns: 1fr; grid-template-columns: none; gap: 4px; }
-      .path-tabs [role="tab"] { min-height: 56px; padding: 10px; }
-      .tab-name { font-size: 16px; }
+      .paths { margin-inline: calc(-1 * var(--margin)); border-radius: 0; padding: 8px 8px 24px; }
+      .path-tabs [role="tab"] { min-height: 48px; padding: 8px; }
+      .tab-name { font-size: 15px; }
+      .path { padding: 22px 8px 0; }
       .tab-note { display: none; }
-      .bands li { grid-template-columns: 1fr; gap: 10px; padding: 18px 16px; }
       .copy code { padding: 10px 12px; }
-      .filter { height: 56px; font-size: 18px; padding: 0 16px; }
-      .cmd-name { flex-direction: column; gap: 2px; font-size: 8.5vw; padding: 8px 12px; }
-      .cmd-name code { font-size: 14px; white-space: normal; overflow-wrap: anywhere; }
-      .cmd-detail { padding: 8px 12px 22px; }
       .flow-stage, .js .flow-stage.is-current { grid-template-columns: 1fr; }
       .flow-ui { order: -1; min-height: 0; padding: 32px 16px; }
       .flow-text { padding: 28px 16px 32px; }
@@ -974,9 +927,7 @@ function styles(): string {
       .flow-names { grid-template-columns: 1fr 1fr; gap: 0 12px; }
       .flow-names button, .flow-names button:nth-child(n) { text-align: left; padding: 0; font-size: 16px; }
       .privacy-lists, .limits-grid, .help-grid { grid-template-columns: 1fr; gap: 32px; }
-      .faq-grid { grid-template-columns: 1fr; }
-      .js .faq-pane { display: none; }
-      .js .faq-q[aria-expanded="true"] + .faq-a { display: block; font-size: 17px; }
+      .faq-a { padding-right: 0; }
       .closing-inner { grid-template-columns: 1fr; }
       .closing h2 { font-size: 10vw; }
       .closing .hero-actions { justify-content: flex-start; }
