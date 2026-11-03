@@ -4,6 +4,7 @@ Notable changes to Bunpro MCP are recorded here. The project follows semantic ve
 
 ## Unreleased
 
+- Redesigned the homepage around Claude. The first screen now shows an example study-plan chat with made-up data, and its main button leads to the Claude setup: the Claude Code plugin, then the Claude Desktop `.mcpb`, then claude.ai. The nine tools are a filterable list, the token path is a four-step slider, and ChatGPT setup follows with the same values. The page keeps every existing anchor and uses a new stone and green palette with system fonts.
 - Moved the hosted Railway settings from `railway.json`, which Railway stops reading on 2026-12-01, to `.railway/railway.ts`, applied with `railway config apply`. A Railway self-host now sets the start command and `/healthz` healthcheck in its service settings, as `docs/self-hosting.md` describes.
 
 ## 0.5.0 — 2026-11-03

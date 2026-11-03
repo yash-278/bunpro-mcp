@@ -51,18 +51,35 @@ async function request(
 test("the homepage labels the range tool as a Study Period", () => {
   const homepage = renderHomepage(new URL("https://mcp.example"));
 
-  assert.match(homepage, /<h3>Study Period<\/h3>/);
+  assert.match(homepage, /<span>Study Period<\/span><code>get_study_range_summary<\/code>/);
   assert.doesNotMatch(homepage, /Study range/);
 });
 
-test("the homepage walks a learner through each Claude path", () => {
+test("the homepage leads with Claude and keeps ChatGPT as the second path", () => {
   const homepage = renderHomepage(new URL("https://mcp.example"));
-  const claude = homepage.slice(homepage.indexOf('id="claude"'), homepage.indexOf('id="self-host"'));
+  const hero = homepage.slice(homepage.indexOf('id="top"'), homepage.indexOf('id="claude"'));
 
-  assert.ok(homepage.indexOf('id="setup"') < homepage.indexOf('id="claude"'));
-  assert.match(homepage, /class="desktop-nav"[\s\S]*?href="#claude"/);
-  assert.match(homepage, /class="mobile-nav"[\s\S]*?href="#claude"/);
-  assert.match(claude, /<h2>Connect it to Claude<\/h2>/);
+  assert.match(hero, /<h1 id="hero-title">Ask Claude about your Bunpro study<\/h1>/);
+  assert.match(hero, /unofficial, experimental MCP server/);
+  assert.match(hero, /<a class="button" href="#claude">Add it to Claude<\/a>/);
+  assert.match(hero, /href="#setup">Using ChatGPT\? Set it up here/);
+  assert.match(hero, /Example chat with made-up study data/);
+  assert.ok(homepage.indexOf('id="claude"') < homepage.indexOf('id="tools"'));
+  assert.ok(homepage.indexOf('id="tools"') < homepage.indexOf('id="setup"'));
+  assert.match(homepage, /class="desktop-nav"[\s\S]*?href="#claude"[\s\S]*?href="#setup"/);
+  assert.match(homepage, /class="mobile-nav[^"]*"[\s\S]*?href="#claude"/);
+  for (const anchor of ["top", "main", "claude", "possibilities", "tools", "setup", "privacy", "self-host", "help"]) {
+    assert.match(homepage, new RegExp(`id="${anchor}"`), anchor);
+  }
+});
+
+test("the homepage walks a learner through each Claude path in order", () => {
+  const homepage = renderHomepage(new URL("https://mcp.example"));
+  const claude = homepage.slice(homepage.indexOf('id="claude"'), homepage.indexOf('id="tools"'));
+
+  assert.match(claude, /<h2 id="claude-title">Connect it to Claude<\/h2>/);
+  assert.ok(claude.indexOf('id="path-code"') < claude.indexOf('id="path-desktop"'));
+  assert.ok(claude.indexOf('id="path-desktop"') < claude.indexOf('id="path-web"'));
   assert.match(claude, /data-copy="\/plugin marketplace add yash-278\/bunpro-mcp"/);
   assert.match(claude, /data-copy="\/plugin install bunpro-mcp@bunpro-mcp"/);
   assert.match(claude, /inside that session, not in your shell/);
@@ -84,7 +101,14 @@ test("the homepage walks a learner through each Claude path", () => {
   assert.match(claude, /blob\/main\/docs\/claude-setup\.md/);
   assert.doesNotMatch(homepage, /Using Claude\?/);
   assert.doesNotMatch(homepage, /Study View/);
-  assert.doesNotMatch(claude, /Bearer (?!&lt;token&gt;)[A-Za-z0-9]/);
+});
+
+test("the homepage never shows a real-looking token", () => {
+  const homepage = renderHomepage(new URL("https://mcp.example"));
+
+  assert.doesNotMatch(homepage, /Bearer (?!&lt;token&gt;|token env var|env var|authentication)[A-Za-z0-9]/);
+  assert.doesNotMatch(homepage, /X-Bunpro-Token:\s*[A-Za-z0-9]/);
+  assert.doesNotMatch(homepage, /[A-Za-z0-9_-]{32,}/);
 });
 
 test("the homepage names every declared tool", () => {
@@ -108,9 +132,8 @@ test("the public HTTP service enforces its canonical host and bounded MCP reques
     assert.equal(homepage.status, 200);
     assert.match(String(homepage.headers["content-type"]), /^text\/html/);
     assert.match(String(homepage.headers["content-security-policy"]), /frame-ancestors 'none'/);
-    assert.match(homepage.body, /Your Japanese study data/);
-    assert.match(homepage.body, /data-site="shibui"/);
-    assert.match(homepage.body, /Unofficial community tool/);
+    assert.match(homepage.body, /Ask Claude about your Bunpro study/);
+    assert.match(homepage.body, /an unofficial community project/);
     assert.match(homepage.body, /not available in ChatGPT's official directory/);
     assert.match(homepage.body, /Streamable HTTP/);
     assert.match(homepage.body, /https:\/\/bunpro\.yashkadam\.com\/mcp/);
@@ -133,7 +156,7 @@ test("the public HTTP service enforces its canonical host and bounded MCP reques
 
     const legacyConceptQuery = await request(service.port, "/?concept=orbit");
     assert.equal(legacyConceptQuery.status, 200);
-    assert.match(legacyConceptQuery.body, /data-site="shibui"/);
+    assert.match(legacyConceptQuery.body, /data-site="bunpro-mcp"/);
     assert.doesNotMatch(legacyConceptQuery.body, /data-concept=|BUNPRO \/ LIVE CONTEXT|STUDY RECEIPT/);
 
     const homepageHead = await request(service.port, "/?concept=mochi", { method: "HEAD" });

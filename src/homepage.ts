@@ -5,7 +5,10 @@ const BUNPRO_TOKEN_HEADER = "X-Bunpro-Token";
 const SOURCE_REPOSITORY_URL = "https://github.com/yash-278/bunpro-mcp";
 const SELF_HOSTING_GUIDE_URL = `${SOURCE_REPOSITORY_URL}/blob/main/docs/self-hosting.md`;
 const CLAUDE_SETUP_GUIDE_URL = `${SOURCE_REPOSITORY_URL}/blob/main/docs/claude-setup.md`;
+const PRIVACY_URL = `${SOURCE_REPOSITORY_URL}/blob/main/PRIVACY.md`;
 const LATEST_RELEASE_URL = `${SOURCE_REPOSITORY_URL}/releases/latest`;
+const CLAUDE_CODE_PROMPT = "I have 20 minutes. What should I study in Bunpro today?";
+const CONNECTION_PROMPT = "Check my Bunpro connection.";
 
 export const HOMEPAGE_ROBOTS = `User-agent: *
 Allow: /
@@ -20,161 +23,100 @@ export const HOMEPAGE_SITEMAP = `<?xml version="1.0" encoding="UTF-8"?>
 </urlset>`;
 
 export const HOMEPAGE_FAVICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="16" fill="#1f2923"/>
-  <path d="M14 39c0-15 9-25 24-25 7 0 12 2 15 5-17-1-27 7-27 20 0 5 2 9 5 12-10-1-17-5-17-12Z" fill="none" stroke="#f3ede0" stroke-width="5" stroke-linecap="round"/>
-  <circle cx="45" cy="40" r="6" fill="#b74632"/>
+  <rect width="64" height="64" rx="16" fill="#22251f"/>
+  <path d="M14 39c0-15 9-25 24-25 7 0 12 2 15 5-17-1-27 7-27 20 0 5 2 9 5 12-10-1-17-5-17-12Z" fill="none" stroke="#ebece8" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="45" cy="40" r="6" fill="#9fb391"/>
 </svg>`;
-
-type IconName =
-  | "arrow"
-  | "book"
-  | "calendar"
-  | "chart"
-  | "check"
-  | "clock"
-  | "copy"
-  | "external"
-  | "layers"
-  | "lock"
-  | "menu"
-  | "message"
-  | "plug"
-  | "shield"
-  | "spark"
-  | "target"
-  | "terminal"
-  | "trend"
-  | "x";
-
-const iconPaths: Record<IconName, string> = {
-  arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
-  book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/>',
-  calendar: '<path d="M8 2v4M16 2v4M3 10h18"/><rect x="3" y="4" width="18" height="18" rx="2"/>',
-  chart: '<path d="M3 3v18h18"/><path d="m7 16 4-5 4 3 5-7"/>',
-  check: '<path d="m5 12 4 4L19 6"/>',
-  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-  copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"/>',
-  external: '<path d="M15 3h6v6M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
-  layers: '<path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 17l9 5 9-5"/>',
-  lock: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
-  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
-  message: '<path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z"/>',
-  plug: '<path d="M8 2v5M16 2v5M5 7h14v2a7 7 0 0 1-14 0V7ZM12 16v6"/>',
-  shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>',
-  spark: '<path d="m12 3-1.5 4.5L6 9l4.5 1.5L12 15l1.5-4.5L18 9l-4.5-1.5L12 3Z"/><path d="m5 15-.75 2.25L2 18l2.25.75L5 21l.75-2.25L8 18l-2.25-.75L5 15Z"/>',
-  target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
-  terminal: '<path d="m4 17 6-5-6-5M12 19h8"/>',
-  trend: '<path d="m3 17 6-6 4 4 8-9"/><path d="M15 6h6v6"/>',
-  x: '<path d="M6 6l12 12M18 6 6 18"/>'
-};
-
-function icon(name: IconName, className = "icon"): string {
-  return `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${iconPaths[name]}</svg>`;
-}
 
 const tools = [
   {
     name: "Connection check",
     key: "get_connection_status",
-    icon: "plug" as const,
-    description: "Make sure ChatGPT can connect to your Bunpro account.",
+    description: "Checks that your app can reach your Bunpro account with the token you gave it.",
     prompt: "Check my Bunpro connection."
   },
   {
     name: "Study day",
     key: "get_study_day_summary",
-    icon: "calendar" as const,
-    description: "See what you studied on a particular day.",
+    description: "Shows what you studied on one day.",
     prompt: "What did I study on 2026-08-11?"
   },
   {
     name: "Study Period",
     key: "get_study_range_summary",
-    icon: "layers" as const,
-    description: "Look back across a week, month, or any period up to 93 days.",
+    description: "Looks back across a week, a month or any period up to 93 days.",
     prompt: "Summarize my Bunpro study from August 1 to 11."
   },
   {
     name: "Review schedule",
     key: "get_review_schedule",
-    icon: "clock" as const,
-    description: "See what is due now and how busy the next few days look.",
+    description: "Shows what is due now and how busy the next few days look.",
     prompt: "How many reviews are due, and what is coming this week?"
   },
   {
     name: "Study decks",
     key: "list_study_decks",
-    icon: "book" as const,
-    description: "Check your active decks, daily goals, and progress.",
+    description: "Lists your active decks with their daily goals and progress.",
     prompt: "Which study decks are active and how are they progressing?"
   },
   {
     name: "Recent activity",
     key: "get_recent_activity",
-    icon: "spark" as const,
-    description: "Catch up on what you have reviewed recently.",
+    description: "Lists what you have reviewed recently.",
     prompt: "What have I reviewed recently?"
   },
   {
     name: "Learning progress",
     key: "get_learning_progress",
-    icon: "target" as const,
-    description: "See your overall progress from JLPT N5 through N1.",
+    description: "Shows your overall progress from JLPT N5 through N1.",
     prompt: "How far along am I at each JLPT level?"
   },
   {
     name: "Activity trend",
     key: "get_activity_trend",
-    icon: "trend" as const,
-    description: "See how your reviews, new lessons, and accuracy change over time.",
+    description: "Shows how your reviews, new lessons and accuracy change over time.",
     prompt: "How has my consistency changed over the last 30 days?"
   },
   {
     name: "Weak spots",
     key: "list_weak_spots",
-    icon: "chart" as const,
-    description: "See what Bunpro currently lists as troubled, with the accuracy and streak it reports.",
+    description: "Lists what Bunpro currently marks as troubled, with the accuracy and streak Bunpro reports.",
     prompt: "What does Bunpro currently list as troubled for me?"
   }
 ];
 
 export function renderHomepage(_url: URL): string {
   return `<!doctype html>
-<html lang="en" data-site="shibui">
+<html lang="en" data-site="bunpro-mcp">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f4f0e7">
-  <meta name="description" content="Ask ChatGPT about your Bunpro reviews, study schedule, JLPT progress, and learning habits with an unofficial read-only connection.">
-  <meta property="og:title" content="Bunpro MCP — Your Japanese study data, ready to talk">
-  <meta property="og:description" content="Ask ChatGPT about your Bunpro study data with an unofficial read-only connection.">
+  <meta name="theme-color" content="#ebece8">
+  <meta name="description" content="Ask Claude, or ChatGPT, about your Bunpro reviews, weak spots, decks and JLPT progress. An unofficial, experimental, read-only MCP server.">
+  <meta property="og:title" content="Bunpro MCP: ask Claude about your Bunpro study">
+  <meta property="og:description" content="An unofficial, read-only MCP server for asking Claude or ChatGPT about your Bunpro study data.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://bunpro.yashkadam.com/">
   <meta name="twitter:card" content="summary">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="canonical" href="https://bunpro.yashkadam.com/">
-  <title>Bunpro MCP — Talk to ChatGPT about your Bunpro progress</title>
+  <title>Bunpro MCP: ask Claude about your Bunpro study</title>
   <style>${styles()}</style>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to main content</a>
-  <div class="grain" aria-hidden="true"></div>
   ${header()}
   <main id="main">
     ${hero()}
-    ${trustStrip()}
-    ${useCases()}
-    ${explanation()}
-    ${setupGuide()}
     ${claudeSetup()}
-    ${openSource()}
     ${toolCatalog()}
-    ${promptGallery()}
+    ${chatgptSetup()}
     ${privacy()}
+    ${selfHost()}
     ${limitations()}
     ${troubleshooting()}
     ${faq()}
-    ${closingCta()}
+    ${closing()}
   </main>
   ${footer()}
   <div class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
@@ -184,461 +126,417 @@ export function renderHomepage(_url: URL): string {
 }
 
 function header(): string {
+  const links = `<a href="#claude">Claude</a><a href="#tools">Tools</a><a href="#setup">ChatGPT</a><a href="#privacy">Privacy</a><a href="#self-host">Self-host</a>`;
   return `<header class="site-header">
-    <div class="shell header-inner">
-      <a class="brand" href="#top" aria-label="Bunpro MCP home">
-        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
-        <span class="brand-copy"><strong>Bunpro MCP</strong><small>UNOFFICIAL COMMUNITY TOOL</small></span>
-      </a>
-      <nav class="desktop-nav" aria-label="Primary navigation">
-        <a href="#possibilities">What it does</a>
-        <a href="#setup">ChatGPT</a>
-        <a href="#claude">Claude</a>
-        <a href="#self-host">Self-host</a>
-        <a href="#tools">Tools</a>
-        <a href="#privacy">Privacy</a>
-        <a href="#help">Help</a>
-      </nav>
-      <a class="button button-small header-cta" href="#setup">Connect to ChatGPT ${icon("arrow")}</a>
-      <button class="menu-button" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="Open navigation">
-        <span class="menu-open">${icon("menu")}</span><span class="menu-close">${icon("x")}</span>
-      </button>
+    <div class="frame header-inner">
+      <a class="wordmark" href="#top">Bunpro MCP <span>unofficial</span></a>
+      <nav class="desktop-nav" aria-label="Primary navigation">${links}</nav>
+      <a class="button header-cta" href="#claude">Add it to Claude</a>
+      <button class="menu-button" type="button" aria-expanded="false" aria-controls="mobile-menu">Menu</button>
     </div>
-    <nav class="mobile-nav" id="mobile-menu" aria-label="Mobile navigation" hidden>
-      <a href="#possibilities">What it does</a><a href="#setup">ChatGPT</a><a href="#claude">Claude</a><a href="#self-host">Self-host</a><a href="#tools">Tools</a><a href="#privacy">Privacy</a><a href="#help">Help</a>
-      <a class="button button-primary" href="#setup">Connect to ChatGPT ${icon("arrow")}</a>
+    <nav class="mobile-nav frame" id="mobile-menu" aria-label="Mobile navigation" hidden>
+      ${links}<a href="#help">Help</a>
     </nav>
   </header>`;
 }
 
 function hero(): string {
-  return `<section class="hero" id="top">
-    <div class="shell hero-grid">
-      <div class="hero-copy reveal">
-        <div class="eyebrow"><span class="status-dot"></span> Unofficial community tool · read only</div>
-        <h1>Your Japanese study data, <em>ready to talk.</em></h1>
-        <p class="hero-lede">Ask ChatGPT about your Bunpro reviews, schedule, JLPT progress, and study habits. It can read your study data, but it can never change your account.</p>
-        <div class="hero-actions">
-          <a class="button button-primary" href="#setup">Set up in ChatGPT ${icon("arrow")}</a>
-          <a class="button button-ghost" href="#possibilities">See what you can ask</a>
+  const days = Array.from({ length: 30 }, (_, index) => {
+    const day = index + 1;
+    const missed = [6, 7, 10, 13, 20, 23, 27, 28].includes(day);
+    const weekend = day % 7 === 6 || day % 7 === 0;
+    return `<i class="${missed ? "miss" : "hit"}${weekend ? " wkd" : ""}" title="Day ${day}: ${missed ? "no reviews" : "studied"}"></i>`;
+  }).join("");
+  const levels: Array<[string, number]> = [["N5", 94], ["N4", 63], ["N3", 21], ["N2", 4], ["N1", 0]];
+  return `<section class="hero" id="top" aria-labelledby="hero-title">
+    <div class="frame hero-copy">
+      <h1 id="hero-title">Ask Claude about your Bunpro study</h1>
+      <p class="lede">Bunpro MCP is an unofficial, experimental MCP server. Claude reads your due reviews, weak spots, decks and JLPT progress, then answers in plain language. It can't change anything in your Bunpro account.</p>
+      <div class="hero-actions">
+        <a class="button" href="#claude">Add it to Claude</a>
+        <a class="text-link" href="#setup">Using ChatGPT? Set it up here</a>
+      </div>
+      <p class="hero-paths">Works with the Claude Code plugin, the Claude Desktop extension and a claude.ai connector.</p>
+    </div>
+    <div class="stage">
+      <div class="chat" data-ui>
+        <div class="chat-tabs" role="tablist" aria-label="Example questions">
+          <button type="button" role="tab" id="ex-tab-plan" aria-controls="ex-plan" aria-selected="true">Today's plan</button>
+          <button type="button" role="tab" id="ex-tab-trend" aria-controls="ex-trend" aria-selected="false" tabindex="-1">Last 30 days</button>
+          <button type="button" role="tab" id="ex-tab-jlpt" aria-controls="ex-jlpt" aria-selected="false" tabindex="-1">JLPT progress</button>
         </div>
-        <p class="micro-trust">${icon("shield")} No extra account. Nothing saved. Nothing changed.</p>
-      </div>
-      <div class="hero-visual reveal" aria-label="Example Bunpro study conversation">
-        <div class="enso" aria-hidden="true"></div>
-        <span class="jp-type" aria-hidden="true">文法</span>
-        <article class="study-card">
-          <div class="study-card-head"><span>今日の学習</span><small>THIS WEEK</small></div>
-          <div class="question-row"><span>YOU</span><p>How is my study rhythm this week?</p></div>
-          <div class="answer-row">
-            <div class="answer-label">${icon("spark")} BUNPRO MCP</div>
-            <p>You studied on <strong>5 of the past 7 days</strong> and completed <strong>184 reviews</strong>.</p>
-            <div class="rhythm" aria-hidden="true">${[40, 75, 28, 88, 64, 18, 72].map((height, index) => `<i style="--h:${height}%"><span>${"MTWTFSS"[index]}</span></i>`).join("")}</div>
+        <div class="chat-panel" role="tabpanel" id="ex-plan" aria-labelledby="ex-tab-plan">
+          <p class="who">You</p>
+          <p class="you">${CLAUDE_CODE_PROMPT}</p>
+          <ul class="calls" aria-label="Tools Claude called"><li>Called <code>get_review_schedule</code></li><li>Called <code>list_weak_spots</code></li></ul>
+          <p class="who">Claude</p>
+          <div class="reply">
+            <p>You have 38 reviews due now. Here is a 20-minute plan.</p>
+            <ol class="plan">
+              <li><b>12 min</b><span>Clear the 38 due reviews first.</span></li>
+              <li><b>6 min</b><span>Go back over two weak spots: <span lang="ja">わけではない</span> at 54% accuracy and <span lang="ja">ばかりに</span> at 61%.</span></li>
+              <li><b>2 min</b><span>Skip new lessons today. Tomorrow already has 64 reviews due.</span></li>
+            </ol>
           </div>
-          <footer><span>${icon("check")} From your Bunpro data</span><span>Read only</span></footer>
-        </article>
-        <div class="floating-note"><span>今</span><small>YOUR DATA<br>IN CONTEXT</small></div>
-      </div>
-    </div>
-  </section>`;
-}
-
-function trustStrip(): string {
-  return `<section class="trust-strip" aria-label="Product characteristics">
-    <div class="shell trust-grid">
-      <div>${icon("lock")}<span><b>Your token stays protected</b><small>It is handled like a password.</small></span></div>
-      <div>${icon("shield")}<span><b>Completely read only</b><small>It cannot change anything in Bunpro.</small></span></div>
-      <div>${icon("layers")}<span><b>Nothing is stored</b><small>No extra account or saved study history.</small></span></div>
-      <div>${icon("spark")}<span><b>Made for useful questions</b><small>Reviews, progress, plans, and trends.</small></span></div>
-    </div>
-  </section>`;
-}
-
-function useCases(): string {
-  const cases = [
-    { number: "01", icon: "clock" as const, title: "Plan what is next", copy: "See reviews due now, scan the current forecast, and decide when to make time for Bunpro.", prompt: "What is due today, and how heavy does this week look?" },
-    { number: "02", icon: "chart" as const, title: "Understand your rhythm", copy: "Compare study days, review volume, new content and accuracy without manually reading charts.", prompt: "Compare my last 30 days with the 30 days before that." },
-    { number: "03", icon: "target" as const, title: "See the bigger picture", copy: "Ask about JLPT progress, deck goals and account totals in plain language.", prompt: "Where am I making the strongest progress toward N3?" }
-  ];
-  return `<section class="section possibilities" id="possibilities">
-    <div class="shell">
-      <div class="section-heading reveal">
-        <div><span class="kicker">What it is for</span><h2>Less dashboard reading.<br><em>More useful reflection.</em></h2></div>
-        <p>Connect Bunpro once, then ask about your studies in everyday language. ChatGPT works out which information it needs and explains the answer clearly.</p>
-      </div>
-      <div class="use-case-grid">
-        ${cases.map(item => `<article class="use-case reveal">
-          <div class="case-top"><span class="case-icon">${icon(item.icon)}</span><small>${item.number}</small></div>
-          <h3>${item.title}</h3><p>${item.copy}</p>
-          <button class="prompt-copy" type="button" data-copy="${item.prompt}" aria-label="Copy prompt: ${item.prompt}"><span>“${item.prompt}”</span>${icon("copy")}</button>
-        </article>`).join("")}
-      </div>
-    </div>
-  </section>`;
-}
-
-function explanation(): string {
-  return `<section class="section explainer">
-    <div class="shell explainer-grid">
-      <div class="explainer-copy reveal">
-        <span class="kicker">The simple version</span>
-        <h2>How does it work?</h2>
-        <p>MCP is simply the connection that lets ChatGPT ask Bunpro for the study information needed to answer your question.</p>
-        <p>You set up the connection once in ChatGPT. After that, you can ask questions naturally—there is nothing new to install inside Bunpro.</p>
-      </div>
-      <div class="flow-card reveal" aria-label="How a Bunpro question is answered">
-        <div><span>1</span>${icon("message")}<b>You ask</b><small>“How consistent was I?”</small></div>
-        <i>${icon("arrow")}</i>
-        <div><span>2</span>${icon("plug")}<b>ChatGPT checks</b><small>The Bunpro data it needs</small></div>
-        <i>${icon("arrow")}</i>
-        <div><span>3</span>${icon("book")}<b>You get an answer</b><small>Grounded in your study data</small></div>
-      </div>
-    </div>
-  </section>`;
-}
-
-function setupGuide(): string {
-  return `<section class="section setup" id="setup">
-    <div class="shell">
-      <div class="setup-heading reveal">
-        <div><span class="kicker kicker-light">Manual setup · about 3 minutes</span><h2>Connect it to ChatGPT</h2></div>
-        <p>This is a community-made connection, so it is not available in ChatGPT's official directory. Follow the steps below and enter the provided details yourself.</p>
-      </div>
-
-      <aside class="availability-note reveal">
-        <span class="note-icon">${icon("terminal")}</span>
-        <div><b>Before you start</b><p>Your ChatGPT account needs access to Developer mode and custom MCPs. Work accounts may require an administrator to enable them.</p></div>
-        <a href="${OPENAI_MCP_GUIDE_URL}" target="_blank" rel="noreferrer">Official OpenAI guide ${icon("external")}</a>
-      </aside>
-
-      <div class="setup-layout">
-        <ol class="setup-steps">
-          <li class="step reveal">
-            <span class="step-number">01</span>
-            <div><h3>Copy your Bunpro Account API Token</h3><p>Open <strong>Bunpro → Settings → API</strong> and copy your Account API Token. Treat it like a password: do not paste it into a chat message, prompt, screenshot, URL, or support post.</p></div>
-          </li>
-          <li class="step reveal">
-            <span class="step-number">02</span>
-            <div><h3>Enable Developer mode in ChatGPT</h3><p>Open ChatGPT Settings and turn on <strong>Developer mode</strong>. It is usually under <strong>Security and login</strong>, although its location may vary by app or workspace.</p></div>
-          </li>
-          <li class="step reveal">
-            <span class="step-number">03</span>
-            <div><h3>Open the custom MCP screen</h3><p>Go to the ChatGPT Plugins page, select the <strong>+</strong> button, then choose the option to create a custom MCP connection.</p><a class="inline-link" href="${CHATGPT_PLUGINS_URL}" target="_blank" rel="noreferrer">Open ChatGPT Plugins ${icon("external")}</a></div>
-          </li>
-          <li class="step reveal">
-            <span class="step-number">04</span>
-            <div><h3>Enter the connection details</h3><p>Copy the exact values shown in the form preview. Leave the <strong>Bearer token env var</strong> field empty.</p></div>
-          </li>
-          <li class="step reveal">
-            <span class="step-number">05</span>
-            <div><h3>Save and test it</h3><p>Save the connection, start a new chat with Bunpro MCP enabled, and ask <button class="inline-copy" type="button" data-copy="Check my Bunpro connection.">“Check my Bunpro connection.” ${icon("copy")}</button></p></div>
-          </li>
-        </ol>
-
-        <div class="connection-panel reveal">
-          <div class="panel-title"><span><i></i><i></i><i></i></span><b>Custom MCP connection</b><small>EXACT VALUES</small></div>
-          ${copyField("Name", "Bunpro MCP")}
-          ${copyField("Description", "Read-only Bunpro study activity, reviews, schedule, decks, progress, and trends.")}
-          <div class="form-row"><label>Connection type</label><div class="select-look">Streamable HTTP <span>⌄</span></div></div>
-          ${copyField("MCP server URL", MCP_ENDPOINT)}
-          <div class="form-row"><label>Bearer token env var</label><div class="empty-field">Leave blank</div></div>
-          <div class="header-field">
-            <div class="header-label"><label>Protected custom header</label><span>SECRET</span></div>
-            ${copyField("Header name", BUNPRO_TOKEN_HEADER, true)}
-            <div class="form-row nested"><label>Header value</label><div class="secret-look"><span>Paste your Bunpro Account API Token</span>${icon("lock")}</div></div>
-          </div>
-          <div class="panel-check">${icon("check")} Your token is entered only once</div>
         </div>
+        <div class="chat-panel" role="tabpanel" id="ex-trend" aria-labelledby="ex-tab-trend">
+          <p class="who">You</p>
+          <p class="you">How consistent was I over the last 30 days?</p>
+          <ul class="calls" aria-label="Tools Claude called"><li>Called <code>get_activity_trend</code></li></ul>
+          <p class="who">Claude</p>
+          <div class="reply">
+            <p>You studied on 22 of the last 30 days and finished 1,184 reviews at 86% accuracy. Six of your eight missed days fell on a weekend.</p>
+            <div class="days" role="img" aria-label="30 days, 22 studied and 8 missed, 6 of the missed days on weekends">${days}</div>
+            <p class="key"><i class="hit"></i> Studied <i class="miss"></i> No reviews</p>
+          </div>
+        </div>
+        <div class="chat-panel" role="tabpanel" id="ex-jlpt" aria-labelledby="ex-tab-jlpt">
+          <p class="who">You</p>
+          <p class="you">How far along am I at each JLPT level?</p>
+          <ul class="calls" aria-label="Tools Claude called"><li>Called <code>get_learning_progress</code></li></ul>
+          <p class="who">Claude</p>
+          <div class="reply">
+            <p>N5 is nearly done and N4 is past halfway. N3 has just started.</p>
+            <dl class="levels">${levels.map(([level, percent]) => `<div><dt>${level}</dt><dd><span class="bar"><i style="width:${percent}%"></i></span><span>${percent}%</span></dd></div>`).join("")}</dl>
+          </div>
+        </div>
+        <p class="chat-foot">Example chat with made-up study data.</p>
       </div>
-
-      <aside class="auth-fallback reveal">
-        <span>${icon("plug")}</span><div><b>Using another MCP app?</b><p>Use the same server URL and add your token as a protected <code>${BUNPRO_TOKEN_HEADER}</code> header. If your app only offers Bearer authentication, use your token there instead. Choose one method, never both.</p></div>
-      </aside>
     </div>
   </section>`;
+}
+
+function copyField(label: string, value: string): string {
+  return `<div class="copy"><code>${value}</code><button type="button" data-copy="${value}" aria-label="Copy ${label}">Copy</button></div>`;
+}
+
+function askButton(prompt: string): string {
+  return `<button class="ask" type="button" data-copy="${prompt}" aria-label="Copy prompt: ${prompt}">${prompt}</button>`;
+}
+
+function band(label: string, body: string): string {
+  return `<li><span class="band-label">${label}</span><div class="band-body">${body}</div></li>`;
 }
 
 function claudeSetup(): string {
-  return `<section class="section setup claude-setup" id="claude">
-    <div class="shell">
-      <div class="setup-heading reveal">
-        <div><span class="kicker kicker-light">Claude Code · Claude Desktop · claude.ai</span><h2>Connect it to Claude</h2></div>
-        <p>Each Claude app connects in its own way. Follow the steps for the app you use.</p>
+  return `<section class="section claude" id="claude" aria-labelledby="claude-title">
+    <div class="frame">
+      <div class="claude-head">
+        <h2 id="claude-title">Connect it to Claude</h2>
+        <p>Pick the Claude app you use. Each one keeps your Bunpro token in a different place.</p>
       </div>
+      <p class="token-note">Before you start, copy your Account API Token from <strong>Bunpro &gt; Settings &gt; API</strong> and treat it like a password. Paste it only into the masked field your Claude app shows. Never put it in a chat, prompt, URL or screenshot. <a class="text-link" href="${CLAUDE_SETUP_GUIDE_URL}" target="_blank" rel="noreferrer">Full Claude setup guide</a></p>
 
-      <aside class="availability-note reveal">
-        <span class="note-icon">${icon("lock")}</span>
-        <div><b>Before you start</b><p>Copy your Account API Token from <strong>Bunpro &gt; Settings &gt; API</strong> and treat it like a password. Paste it only into the masked field your Claude app shows. Never put it in a chat, prompt, URL or screenshot.</p></div>
-        <a href="${CLAUDE_SETUP_GUIDE_URL}" target="_blank" rel="noreferrer">Full Claude setup guide ${icon("external")}</a>
-      </aside>
-
-      <div class="path-heading reveal">
-        <span class="path-tag">Works today</span>
-        <h3>Claude Code plugin</h3>
-        <p>The plugin keeps your token in your system's secure store and adds a <code>study-plan</code> skill. It connects to the hosted service at <code>bunpro.yashkadam.com</code>, so your token reaches that service.</p>
-      </div>
-
-      <div class="setup-layout">
-        <ol class="setup-steps">
-          <li class="step reveal">
-            <span class="step-number">01</span>
-            <div><h3>Open a Claude Code session</h3><p>Start Claude Code, then run the two <code>/plugin</code> commands from the panel inside that session, not in your shell.</p><p class="step-warning">Don't run <code>claude plugin install</code> from a shell. It doesn't ask for the token, and its <code>--config</code> flag would put the token in your shell history.</p></div>
-          </li>
-          <li class="step reveal">
-            <span class="step-number">02</span>
-            <div><h3>Paste your token when asked</h3><p>Claude Code asks for your <strong>Bunpro Account API Token</strong> in a masked field. Paste it there and nowhere else.</p></div>
-          </li>
-          <li class="step reveal">
-            <span class="step-number">03</span>
-            <div><h3>Reload and check the connection</h3><p>Run <code>/reload-plugins</code>, then run <code>/mcp</code> and check that <code>plugin:bunpro-mcp:bunpro</code> shows as connected.</p></div>
-          </li>
-          <li class="step reveal">
-            <span class="step-number">04</span>
-            <div><h3>Ask about today</h3><p>Try <button class="inline-copy" type="button" data-copy="I have 20 minutes. What should I study in Bunpro today?">I have 20 minutes. What should I study in Bunpro today? ${icon("copy")}</button></p></div>
-          </li>
-        </ol>
-
-        <div class="connection-panel reveal">
-          <div class="panel-title"><span><i></i><i></i><i></i></span><b>Claude Code session</b><small>RUN IN ORDER</small></div>
-          ${copyField("Add the marketplace", "/plugin marketplace add yash-278/bunpro-mcp")}
-          ${copyField("Install the plugin", "/plugin install bunpro-mcp@bunpro-mcp")}
-          <div class="header-field">
-            <div class="header-label"><label>Token prompt</label><span>SECRET</span></div>
-            <div class="form-row nested"><label>Bunpro Account API Token</label><div class="secret-look"><span>Paste your token when Claude Code asks</span>${icon("lock")}</div></div>
-          </div>
-          ${copyField("Reload plugins", "/reload-plugins")}
-          ${copyField("Check the connection", "/mcp")}
-          <div class="panel-check">${icon("check")} plugin:bunpro-mcp:bunpro shows as connected</div>
+      <div class="paths">
+        <div class="path-tabs" role="tablist" aria-label="Claude apps">
+          <button type="button" role="tab" id="tab-code" aria-controls="path-code" aria-selected="true"><span class="tab-name">Claude Code plugin</span><span class="tab-note">Adds a study-plan skill</span></button>
+          <button type="button" role="tab" id="tab-desktop" aria-controls="path-desktop" aria-selected="false" tabindex="-1"><span class="tab-name">Claude Desktop</span><span class="tab-note">Token stays on your computer</span></button>
+          <button type="button" role="tab" id="tab-web" aria-controls="path-web" aria-selected="false" tabindex="-1"><span class="tab-name">claude.ai</span><span class="tab-note">Needs the request-headers beta</span></button>
         </div>
-      </div>
 
-      <div class="claude-paths">
-        <article class="path-card reveal">
-          <span class="path-tag">Token stays on your computer</span>
+        <div class="path" role="tabpanel" id="path-code" aria-labelledby="tab-code">
+          <h3>Claude Code plugin</h3>
+          <p class="path-lead">The plugin keeps your token in your system's secure store and adds a <code>study-plan</code> skill. It connects to the hosted service at <code>bunpro.yashkadam.com</code>, so your token reaches that service.</p>
+          <ol class="bands">
+            ${band("Add", `<p>Start a Claude Code session, then run these two commands inside that session, not in your shell.</p>${copyField("the marketplace command", "/plugin marketplace add yash-278/bunpro-mcp")}${copyField("the install command", "/plugin install bunpro-mcp@bunpro-mcp")}<p class="caution">Don't run <code>claude plugin install</code> from a shell. It doesn't ask for the token, and its <code>--config</code> flag would put the token in your shell history.</p>`)}
+            ${band("Paste", `<p>Claude Code asks for your <strong>Bunpro Account API Token</strong> in a masked field. Paste it there and nowhere else.</p>`)}
+            ${band("Check", `<p>Run <code>/reload-plugins</code>, then run <code>/mcp</code>. You're done when plugin:bunpro-mcp:bunpro shows as connected.</p>${copyField("the reload command", "/reload-plugins")}${copyField("the MCP status command", "/mcp")}`)}
+            ${band("Ask", `<p>Try this question.</p>${askButton(CLAUDE_CODE_PROMPT)}`)}
+          </ol>
+          <p class="path-note">The <code>study-plan</code> skill reads your due reviews and weak spots, then suggests a plan. It saves nothing between chats and can't change anything in Bunpro. The plugin always connects to the hosted service. To point Claude Code at your own server, update the plugin or replace your token, follow the <a class="text-link" href="${CLAUDE_SETUP_GUIDE_URL}" target="_blank" rel="noreferrer">Claude setup guide</a>.</p>
+        </div>
+
+        <div class="path" role="tabpanel" id="path-desktop" aria-labelledby="tab-desktop">
           <h3>Claude Desktop</h3>
-          <p>The extension runs Bunpro MCP on your computer. Your token stays there and goes only to Bunpro, never to the hosted service. Claude Desktop includes Node.js, so you don't need to install it.</p>
-          <ol>
-            <li>Download <code>bunpro-mcp.mcpb</code> from the latest GitHub release. Releases before 0.5.0 don't include it. <a class="inline-link" href="${LATEST_RELEASE_URL}" target="_blank" rel="noreferrer">Latest release ${icon("external")}</a></li>
-            <li>In Claude Desktop, open <strong>Settings &gt; Extensions</strong>. In some versions, go to <strong>Settings &gt; Desktop app</strong> and select <strong>Manage</strong> next to <strong>Extensions</strong>.</li>
-            <li>Drag the file onto the page, or double-click it, and follow the prompts.</li>
-            <li>Paste your token into the masked <strong>Bunpro Account API Token</strong> field.</li>
-            <li>Start a new chat and ask <button class="inline-copy" type="button" data-copy="Check my Bunpro connection.">Check my Bunpro connection. ${icon("copy")}</button></li>
+          <p class="path-lead">The extension runs Bunpro MCP on your computer. Your token stays there and goes only to Bunpro, never to the hosted service. Claude Desktop includes Node.js, so you don't need to install it.</p>
+          <ol class="bands">
+            ${band("Download", `<p>Download <code>bunpro-mcp.mcpb</code> from the latest GitHub release. Releases before 0.5.0 don't include it.</p><a class="button button-quiet" href="${LATEST_RELEASE_URL}" target="_blank" rel="noreferrer">Latest release on GitHub</a>`)}
+            ${band("Open", `<p>In Claude Desktop, open <strong>Settings &gt; Extensions</strong>. In some versions, go to <strong>Settings &gt; Desktop app</strong> and select <strong>Manage</strong> next to <strong>Extensions</strong>.</p>`)}
+            ${band("Install", `<p>Drag the file onto the page, or double-click it, and follow the prompts.</p>`)}
+            ${band("Paste", `<p>Paste your token into the masked <strong>Bunpro Account API Token</strong> field.</p>`)}
+            ${band("Ask", `<p>Start a new chat and ask this.</p>${askButton(CONNECTION_PROMPT)}`)}
           </ol>
           <p class="path-note">If <strong>Extensions</strong> doesn't appear in settings, your organization has turned extensions off. To update, install the <code>.mcpb</code> from a newer release.</p>
-        </article>
+        </div>
 
-        <article class="path-card reveal">
-          <span class="path-tag">Needs the request-headers beta</span>
+        <div class="path" role="tabpanel" id="path-web" aria-labelledby="tab-web">
           <h3>claude.ai web and mobile</h3>
-          <p class="path-warning"><b>Don't use this on a Team or Enterprise plan.</b> An Owner's header value goes out on every member's requests, so every member would get the Owner's study data. Use Claude Desktop or Claude Code instead.</p>
-          <p>Request headers are a limited Anthropic beta. If the <strong>Add custom connector</strong> dialog has no <strong>Request headers</strong> section, this path isn't open to you.</p>
-          <ol>
-            <li>On a Free, Pro, Max or Ultra plan, go to <strong>Customize &gt; Connectors</strong> and click <strong>Add custom connector</strong>.</li>
-            <li>Name it <code>Bunpro MCP</code> and set the MCP server URL to this value.
-              <div class="copy-field"><code>${MCP_ENDPOINT}</code><button type="button" data-copy="${MCP_ENDPOINT}" aria-label="Copy MCP server URL">${icon("copy")}</button></div>
-            </li>
-            <li>Under <strong>Authentication</strong>, choose <strong>No sign-in</strong>.</li>
-            <li>Under <strong>Request headers</strong>, select <code>authorization</code> and enter this value, with your token in place of <code>&lt;token&gt;</code>. The server rejects a value without the <code>Bearer </code> prefix.
-              <div class="copy-field"><code>Bearer &lt;token&gt;</code><button type="button" data-copy="Bearer &lt;token&gt;" aria-label="Copy authorization header value">${icon("copy")}</button></div>
-            </li>
-            <li>Click <strong>Add</strong>, start a new chat and ask <button class="inline-copy" type="button" data-copy="Check my Bunpro connection.">Check my Bunpro connection. ${icon("copy")}</button></li>
+          <p class="warning"><strong>Don't use this on a Team or Enterprise plan.</strong> An Owner's header value goes out on every member's requests, so every member would get the Owner's study data. The server can't detect this. Use Claude Desktop or Claude Code instead.</p>
+          <p class="path-lead">Request headers are a limited Anthropic beta. If the <strong>Add custom connector</strong> dialog has no <strong>Request headers</strong> section, this path isn't open to you. Use Claude Desktop or Claude Code instead.</p>
+          <ol class="bands">
+            ${band("Open", `<p>On a Free, Pro, Max or Ultra plan, go to <strong>Customize &gt; Connectors</strong> and click <strong>Add custom connector</strong>.</p>`)}
+            ${band("Name", `<p>Name it <code>Bunpro MCP</code> and set the MCP server URL to this value.</p>${copyField("MCP server URL", MCP_ENDPOINT)}`)}
+            ${band("Sign-in", `<p>Under <strong>Authentication</strong>, choose <strong>No sign-in</strong>.</p>`)}
+            ${band("Header", `<p>Under <strong>Request headers</strong>, select <code>authorization</code> and enter this value, with your token in place of <code>&lt;token&gt;</code>. The server rejects a value without the <code>Bearer </code> prefix.</p>${copyField("authorization header value", "Bearer &lt;token&gt;")}`)}
+            ${band("Ask", `<p>Click <strong>Add</strong>, start a new chat and ask this.</p>${askButton(CONNECTION_PROMPT)}`)}
           </ol>
-        </article>
-      </div>
-
-      <aside class="auth-fallback reveal">
-        <span>${icon("book")}</span><div><b>Running your own server?</b><p>The plugin always connects to the hosted service. To point Claude Code at your own server, update the plugin, or replace your token, follow the Claude setup guide.</p><a class="inline-link" href="${CLAUDE_SETUP_GUIDE_URL}" target="_blank" rel="noreferrer">Claude setup guide ${icon("external")}</a></div>
-      </aside>
-    </div>
-  </section>`;
-}
-
-function copyField(label: string, value: string, nested = false): string {
-  return `<div class="form-row${nested ? " nested" : ""}"><label>${label}</label><div class="copy-field"><code>${value}</code><button type="button" data-copy="${value}" aria-label="Copy ${label}">${icon("copy")}</button></div></div>`;
-}
-
-function openSource(): string {
-  return `<section class="section open-source" id="self-host">
-    <div class="shell">
-      <div class="section-heading reveal">
-        <div><span class="kicker">Open source</span><h2>Use the hosted service—<br><em>or run your own.</em></h2></div>
-        <p>Bunpro MCP is available under the MIT license. You can inspect the implementation, run it locally over stdio, or deploy your own stateless Streamable HTTP server.</p>
-      </div>
-      <div class="source-grid">
-        <article class="source-card reveal"><span>${icon("terminal")}</span><small>LOCAL</small><h3>Run with stdio</h3><p>Clone the repository, build it with Node.js 20 or newer, and keep the Account API Token in your MCP client's secret environment configuration.</p></article>
-        <article class="source-card reveal"><span>${icon("layers")}</span><small>REMOTE</small><h3>Deploy with Docker</h3><p>Use the included Dockerfile on Railway or another HTTPS host. Every caller supplies their own token; the deployment needs no database or shared Bunpro credential.</p></article>
-        <article class="source-card source-actions reveal"><span>${icon("shield")}</span><small>TRANSPARENT</small><h3>Review before you trust</h3><p>Read the source, privacy boundary, and operational limits before connecting an account or operating a public instance.</p><div><a class="button button-primary" href="${SOURCE_REPOSITORY_URL}" target="_blank" rel="noreferrer">View source ${icon("external")}</a><a class="inline-link" href="${SELF_HOSTING_GUIDE_URL}" target="_blank" rel="noreferrer">Self-hosting guide ${icon("external")}</a></div></article>
+          <p class="path-note">The mobile apps use the connectors you add on claude.ai in a browser. To use a new token, remove the connector and add it again with the new value. Claude doesn't let you change authentication settings after you add a connector.</p>
+        </div>
       </div>
     </div>
   </section>`;
 }
 
 function toolCatalog(): string {
-  return `<section class="section tools" id="tools">
-    <div class="shell">
-      <div class="section-heading reveal">
-        <div><span class="kicker">What you can ask</span><h2>Nine ways to understand<br><em>your learning.</em></h2></div>
-        <p>From today's workload to long-term JLPT progress, each tool answers a familiar study question without changing your Bunpro account.</p>
+  return `<section class="section tools" id="tools" aria-labelledby="tools-title">
+    <div class="frame" id="possibilities">
+      <div class="tools-head">
+        <h2 id="tools-title">Nine tools, all read only</h2>
+        <p>Claude picks the tool it needs for your question. Select one to see an example question you can copy.</p>
       </div>
-      <div class="tool-grid">
-        ${tools.map((tool, index) => `<article class="tool-card reveal">
-          <div class="tool-top"><span class="tool-icon">${icon(tool.icon)}</span><span class="read-badge">READ ONLY</span></div>
-          <small>0${index + 1} · ${tool.key}</small><h3>${tool.name}</h3><p>${tool.description}</p>
-          <button type="button" class="tool-prompt" data-copy="${tool.prompt}" aria-label="Copy example prompt for ${tool.name}"><span>${tool.prompt}</span>${icon("copy")}</button>
-        </article>`).join("")}
+      <div class="cmd" data-ui>
+        <label class="filter-label" for="tool-filter">Filter the tools</label>
+        <input class="filter" id="tool-filter" type="search" placeholder="Try reviews, JLPT or weak" autocomplete="off" spellcheck="false">
+        <ul class="cmd-list">
+          ${tools.map((tool, index) => `<li class="cmd-row" data-terms="${`${tool.name} ${tool.key} ${tool.description}`.toLowerCase()}">
+            <button type="button" class="cmd-name" aria-expanded="${index === 0}" aria-controls="tool-${tool.key}"><span>${tool.name}</span><code>${tool.key}</code></button>
+            <div class="cmd-detail" id="tool-${tool.key}"><p>${tool.description}</p>${askButton(tool.prompt)}</div>
+          </li>`).join("")}
+        </ul>
+        <p class="cmd-empty" hidden>No tool matches that word. Clear the filter to see all nine.</p>
       </div>
-      <p class="catalog-note reveal">It cannot submit answers, start lessons, change your review level, edit decks, or update account settings.</p>
+      <p class="tools-note">None of the tools can submit answers, start lessons, change your review level, edit decks, or update account settings.</p>
     </div>
   </section>`;
 }
 
-function promptGallery(): string {
-  const prompts = [
-    ["TODAY", "What Bunpro activity is supported for today? Separate missing source data from zero activity."],
-    ["PLAN", "Show my reviews due now and the forecast. What is projected rather than already completed?"],
-    ["REFLECT", "Summarize the last 14 days. Which days had activity, and where is source coverage incomplete?"],
-    ["PROGRESS", "Explain my JLPT progress in plain language and tell me which level has the most material in progress."],
-    ["DECKS", "List my active study decks, daily goals, and completion counts."],
-    ["TREND", "How did my review volume and accuracy change over the last 30 days? Show the underlying evidence."],
-  ];
-  return `<section class="section prompts">
-    <div class="shell prompt-layout">
-      <div class="prompt-intro reveal"><span class="kicker">Try asking</span><h2>Good questions make the data useful.</h2><p>Start with one of these after your connection test passes. Every card is copyable.</p></div>
-      <div class="prompt-list">
-        ${prompts.map(([label, prompt]) => `<button class="prompt-row reveal" type="button" data-copy="${prompt}"><small>${label}</small><span>“${prompt}”</span>${icon("copy")}</button>`).join("")}
+function chatgptSetup(): string {
+  return `<section class="section chatgpt" id="setup" aria-labelledby="setup-title">
+    <div class="frame chatgpt-grid">
+      <div class="chatgpt-copy">
+        <h2 id="setup-title">Use it with ChatGPT</h2>
+        <p>This is a community-made connection, so it is not available in ChatGPT's official directory. It takes about three minutes to enter the values yourself.</p>
+        <p class="soft">Your ChatGPT account needs access to Developer mode and custom MCPs. Work accounts may require an administrator to enable them. <a class="text-link" href="${OPENAI_MCP_GUIDE_URL}" target="_blank" rel="noreferrer">Official OpenAI guide</a></p>
+        <ol class="steps">
+          <li><h3>Copy your Bunpro Account API Token</h3><p>Open <strong>Bunpro &gt; Settings &gt; API</strong> and copy your Account API Token. Treat it like a password. Don't paste it into a chat message, prompt, screenshot, URL or support post.</p></li>
+          <li><h3>Turn on Developer mode</h3><p>Open ChatGPT Settings and turn on <strong>Developer mode</strong>. It is usually under <strong>Security and login</strong>, though its place can vary by app or workspace.</p></li>
+          <li><h3>Open the custom MCP screen</h3><p>Go to the ChatGPT Plugins page, select the <strong>+</strong> button, then choose the option to create a custom MCP connection. <a class="text-link" href="${CHATGPT_PLUGINS_URL}" target="_blank" rel="noreferrer">Open ChatGPT Plugins</a></p></li>
+          <li><h3>Enter the connection details</h3><p>Copy the exact values from the form shown here. Leave the <strong>Bearer token env var</strong> field empty.</p></li>
+          <li><h3>Save and test it</h3><p>Save the connection, start a new chat with Bunpro MCP turned on, and ask this.</p>${askButton(CONNECTION_PROMPT)}</li>
+        </ol>
+      </div>
+      <div class="form-stage">
+        <div class="form" data-ui>
+          <p class="form-title">Custom MCP connection</p>
+          <div class="field"><span class="field-label">Name</span>${copyField("Name", "Bunpro MCP")}</div>
+          <div class="field"><span class="field-label">Description</span>${copyField("Description", "Read-only Bunpro study activity, reviews, schedule, decks, progress, and trends.")}</div>
+          <div class="field"><span class="field-label">Connection type</span><div class="select">Streamable HTTP</div></div>
+          <div class="field"><span class="field-label">MCP server URL</span>${copyField("MCP server URL", MCP_ENDPOINT)}</div>
+          <div class="field"><span class="field-label">Bearer token env var</span><div class="empty">Leave blank</div></div>
+          <div class="field-group">
+            <p class="group-title">Protected custom header</p>
+            <div class="field"><span class="field-label">Header name</span>${copyField("Header name", BUNPRO_TOKEN_HEADER)}</div>
+            <div class="field"><span class="field-label">Header value</span><div class="secret">Paste your Bunpro Account API Token</div></div>
+          </div>
+        </div>
+        <p class="form-note"><strong>Using another MCP app?</strong> Use the same server URL and add your token as a protected <code>${BUNPRO_TOKEN_HEADER}</code> header. If your app only offers Bearer authentication, use your token there instead. Choose one method, never both.</p>
       </div>
     </div>
   </section>`;
 }
 
 function privacy(): string {
-  return `<section class="section privacy" id="privacy">
-    <div class="shell">
-      <div class="privacy-heading reveal"><span class="kicker kicker-light">Privacy and trust</span><h2>Your token is used to answer—<em>then forgotten.</em></h2><p>There is no extra account and your token or study history is not saved by this service. ChatGPT sends the protected token only when it asks Bunpro a question for you.</p></div>
-      <div class="request-flow reveal" aria-label="Request privacy flow">
-        <div><span>${icon("message")}</span><b>ChatGPT</b><small>Keeps your token protected</small></div><i>${icon("arrow")}</i>
-        <div><span>${icon("lock")}</span><b>Secure request</b><small>Sends it with your question</small></div><i>${icon("arrow")}</i>
-        <div><span>${icon("plug")}</span><b>Bunpro MCP</b><small>Passes the request along</small></div><i>${icon("arrow")}</i>
-        <div><span>${icon("book")}</span><b>Bunpro</b><small>Returns your study data</small></div>
+  const stages = [
+    {
+      name: "Saved in your app",
+      clause: "Your app keeps the token",
+      detail: "You paste the token once. Each app stores it in its own protected place, and this website never sees it.",
+      fragment: `<p class="ui-title">Where the token is held</p>
+        <dl class="ui-rows">
+          <div><dt>Claude Code plugin</dt><dd>System secure store</dd></div>
+          <div><dt>Claude Desktop</dt><dd>Your computer's secure storage</dd></div>
+          <div><dt>claude.ai</dt><dd>Claude, as the connector's credential</dd></div>
+          <div><dt>ChatGPT</dt><dd>A protected custom header</dd></div>
+        </dl>`
+    },
+    {
+      name: "Sent with a request",
+      clause: "It travels in a request header",
+      detail: "When Claude calls a tool, your app sends the token over HTTPS in a header. It never goes into the chat, so the language model doesn't receive it.",
+      fragment: `<p class="ui-title">One tool call</p>
+        <pre class="ui-code"><code>POST /mcp
+Authorization: Bearer &lt;token&gt;
+
+tool: get_review_schedule</code></pre>
+        <p class="ui-foot">With Claude Desktop the server runs on your computer, so this request never leaves it.</p>`
+    },
+    {
+      name: "Read from Bunpro",
+      clause: "The server reads Bunpro, nothing more",
+      detail: "The server makes only the Bunpro requests needed for that answer. If Bunpro asks it to slow down, it stops instead of retrying.",
+      fragment: `<p class="ui-title">What the call does</p>
+        <dl class="ui-rows">
+          <div><dt>Reads</dt><dd>Due reviews and forecast</dd></div>
+          <div><dt>Writes</dt><dd>Nothing</dd></div>
+          <div><dt>On a rate limit</dt><dd>Stops and reports it</dd></div>
+        </dl>`
+    },
+    {
+      name: "Forgotten",
+      clause: "Nothing is kept afterwards",
+      detail: "There is no extra account and no study-history database. The service logs a request ID, the path, the status and the duration.",
+      fragment: `<p class="ui-title">After the answer</p>
+        <dl class="ui-rows">
+          <div><dt>Token</dt><dd>Not stored</dd></div>
+          <div><dt>Study history</dt><dd>Not stored</dd></div>
+          <div><dt>Account or session</dt><dd>None created</dd></div>
+          <div><dt>Logs</dt><dd>Request ID, path, status, duration</dd></div>
+        </dl>`
+    }
+  ];
+  return `<section class="section privacy" id="privacy" aria-labelledby="privacy-title">
+    <div class="frame privacy-head">
+      <h2 id="privacy-title">Where your token goes</h2>
+      <p>There is no extra account, and this service doesn't save your token or study history. Your app sends the token only when it asks Bunpro a question for you.</p>
+    </div>
+    <div class="flow">
+      <div class="flow-stages">
+        ${stages.map((stage, index) => `<div class="flow-stage" data-stage="${index}">
+          <div class="flow-text"><h3>${stage.clause}</h3><p>${stage.detail}</p></div>
+          <div class="flow-ui"><div class="ui-card" data-ui>${stage.fragment}</div></div>
+        </div>`).join("")}
       </div>
-      <div class="privacy-grid">
-        <article class="reveal"><span>${icon("check")}</span><h3>What it does</h3><ul><li>Uses an encrypted connection</li><li>Uses your token only for your request</li><li>Returns only the study data needed</li><li>Stops safely if Bunpro cannot be reached</li></ul></article>
-        <article class="reveal"><span>${icon("x")}</span><h3>What it does not do</h3><ul><li>Store tokens, sessions, or study history</li><li>Send your token to the language model</li><li>Retry aggressively after Bunpro rate limiting</li><li>Modify reviews, lessons, progress, decks, or settings</li></ul></article>
-        <article class="reveal trust-boundary"><span>${icon("shield")}</span><h3>Who you are trusting</h3><p>As with any hosted service, the service owner and hosting provider could technically see data while a request is being handled. If that trust boundary is not acceptable to you, run Bunpro MCP locally or deploy your own instance from the open-source repository.</p></article>
+      <div class="flow-control frame">
+        <label class="sr-only" for="flow-range">Step in the request</label>
+        <input id="flow-range" type="range" min="0" max="${stages.length - 1}" step="1" value="0" aria-valuetext="${stages[0]!.name}" data-names="${stages.map(stage => stage.name).join("|")}">
+        <div class="flow-names">${stages.map((stage, index) => `<button type="button" data-goto="${index}">${stage.name}</button>`).join("")}</div>
+      </div>
+    </div>
+    <div class="frame privacy-lists">
+      <div><h3>What the server does</h3><ul><li>Uses an encrypted connection</li><li>Uses your token only for your request</li><li>Returns only the study data needed</li><li>Stops safely if Bunpro can't be reached</li></ul></div>
+      <div><h3>What it doesn't do</h3><ul><li>Store tokens, sessions or study history</li><li>Send your token to the language model</li><li>Retry aggressively after Bunpro rate limiting</li><li>Change reviews, lessons, progress, decks or settings</li></ul></div>
+      <div class="trust"><h3>Who you are trusting</h3><p>As with any hosted service, the service owner and hosting provider could technically see data while a request is being handled. The study data a tool returns goes to your app and its model provider. If that trust boundary isn't acceptable to you, use Claude Desktop, run Bunpro MCP locally, or deploy your own server. <a class="text-link" href="${PRIVACY_URL}" target="_blank" rel="noreferrer">Read PRIVACY.md</a></p></div>
+    </div>
+  </section>`;
+}
+
+function selfHost(): string {
+  return `<section class="section self-host" id="self-host" aria-labelledby="self-host-title">
+    <div class="frame self-host-grid">
+      <div>
+        <h2 id="self-host-title">Run your own server</h2>
+        <p>Bunpro MCP is open source under the MIT license. You can read the implementation, run it locally over stdio, or deploy your own stateless Streamable HTTP server.</p>
+        <div class="hero-actions"><a class="button" href="${SOURCE_REPOSITORY_URL}" target="_blank" rel="noreferrer">View source on GitHub</a><a class="text-link" href="${SELF_HOSTING_GUIDE_URL}" target="_blank" rel="noreferrer">Self-hosting guide</a></div>
+      </div>
+      <div class="self-host-list">
+        <div><h3>Run with stdio</h3><p>Clone the repository, build it with Node.js 20 or newer, and keep the Account API Token in your MCP client's secret environment configuration.</p></div>
+        <div><h3>Deploy with Docker</h3><p>Use the included Dockerfile on Railway or another HTTPS host. Every caller supplies their own token, and the deployment needs no database or shared Bunpro credential.</p></div>
+        <div><h3>Read it before you trust it</h3><p>Read the source, the privacy boundary and the operational limits before you connect an account or run a public instance.</p></div>
       </div>
     </div>
   </section>`;
 }
 
 function limitations(): string {
-  return `<section class="section limitations">
-    <div class="shell limitations-grid">
-      <div class="limitations-title reveal"><span class="kicker">Know before you connect</span><h2>Useful, careful,<br><em>and experimental.</em></h2></div>
-      <div class="limits-list">
-        <article class="reveal"><span>01</span><div><h3>Unofficial community project</h3><p>This MCP is not affiliated with or endorsed by Bunpro, OpenAI or Anthropic, and it is not an official ChatGPT or Claude listing.</p></div></article>
-        <article class="reveal"><span>02</span><div><h3>Bunpro access can change</h3><p>This uses Bunpro's experimental Account API Token. Bunpro may change or limit what the connection can access.</p></div></article>
-        <article class="reveal"><span>03</span><div><h3>Missing does not always mean zero</h3><p>Bunpro does not provide the same amount of history for every feature. When information is missing, the answer will say so instead of assuming you did nothing.</p></div></article>
-        <article class="reveal"><span>04</span><div><h3>Kept deliberately lightweight</h3><p>You can look back up to 93 days at a time. If Bunpro asks the service to slow down, it waits for you to try again rather than repeatedly sending requests.</p></div></article>
+  return `<section class="section limits" aria-labelledby="limits-title">
+    <div class="frame">
+      <h2 id="limits-title">Know this before you connect</h2>
+      <div class="limits-grid">
+        <div><h3>Unofficial and experimental</h3><p>This MCP is not affiliated with or endorsed by Bunpro, OpenAI or Anthropic, and it is not an official ChatGPT or Claude listing.</p></div>
+        <div><h3>Bunpro access can change</h3><p>It uses Bunpro's experimental Account API Token. Bunpro may change or limit what the connection can read.</p></div>
+        <div><h3>Missing doesn't always mean zero</h3><p>Bunpro doesn't keep the same amount of history for every feature. When information is missing, the answer says so instead of assuming you did nothing.</p></div>
+        <div><h3>Light on purpose</h3><p>You can look back up to 93 days at a time. If Bunpro asks the service to slow down, it waits for you to try again instead of sending more requests.</p></div>
       </div>
     </div>
   </section>`;
+}
+
+function helpItem(title: string, copy: string): string {
+  return `<div class="help-item"><h4>${title}</h4><p>${copy}</p></div>`;
 }
 
 function troubleshooting(): string {
-  return `<section class="section help" id="help">
-    <div class="shell">
-      <div class="section-heading reveal">
-        <div><span class="kicker">Troubleshooting</span><h2>If setup does not work,<br><em>start here.</em></h2></div>
-        <p>Most problems are fixed by checking Developer mode, your Bunpro token, or the saved connection details.</p>
-      </div>
+  return `<section class="section help" id="help" aria-labelledby="help-title">
+    <div class="frame">
+      <h2 id="help-title">If setup doesn't work</h2>
       <div class="help-grid">
-        ${helpItem("I cannot see the + or custom MCP option", "Confirm Developer mode is enabled. Custom MCP creation can depend on your ChatGPT plan, app version, workspace policy, and administrator approval.")}
-        ${helpItem("ChatGPT says a token is required", `Check the header name is exactly ${BUNPRO_TOKEN_HEADER}. Paste the raw Account API Token as its protected value, leave the Bearer env-var field blank, and do not use both auth methods.`)}
-        ${helpItem("The connection used to work", "Confirm the Bunpro token is still current. Remove or disable stale Bunpro connections, recreate this one with the current URL and protected header, then test from a new chat.")}
-        ${helpItem("A day looks empty or incomplete", "Ask ChatGPT to show coverage. A missing source record means the source did not provide evidence for that date; it does not automatically prove zero activity.")}
-        ${helpItem("Bunpro asked me to slow down", "Wait a little before trying again. Bunpro MCP will not keep retrying in the background.")}
-        ${helpItem("I need to verify the service itself", "Open the public health check. It confirms the hosted process is reachable, but it does not test or expose your Bunpro token.", `<a class="inline-link" href="/healthz" target="_blank">Open health check ${icon("external")}</a>`)}
+        <div class="help-group">
+          <h3>Claude</h3>
+          ${helpItem("Claude Code doesn't show Bunpro as connected", "Run <code>/reload-plugins</code>, then <code>/mcp</code> again. If you set up Claude Code by hand, set <code>BUNPRO_API_TOKEN</code> before you start it. Without it, Claude Code sends the placeholder text and the server returns HTTP 401.")}
+          ${helpItem("Claude Desktop has no Extensions setting", "Your organization has turned extensions off. Use the Claude Code plugin instead.")}
+          ${helpItem("claude.ai says it couldn't reach the MCP server", "A connector added without the <code>authorization</code> request header fails this way. Remove it and add it again with <code>Bearer &lt;token&gt;</code> as the value. If the dialog has no Request headers section, use Claude Desktop or Claude Code.")}
+        </div>
+        <div class="help-group">
+          <h3>ChatGPT</h3>
+          ${helpItem("I can't see the + or custom MCP option", "Check that Developer mode is on. Custom MCP creation can depend on your ChatGPT plan, app version, workspace policy and administrator approval.")}
+          ${helpItem("ChatGPT says a token is required", `Check that the header name is exactly ${BUNPRO_TOKEN_HEADER}. Paste the raw Account API Token as its protected value, leave the Bearer env var field blank, and don't use both methods.`)}
+          ${helpItem("The connection used to work", "Check that your Bunpro token is still current. Remove or turn off old Bunpro connections, add this one again with the current URL and protected header, then test from a new chat.")}
+        </div>
+        <div class="help-group">
+          <h3>Either app</h3>
+          ${helpItem("A day looks empty or incomplete", "Ask for the coverage. A missing source record means Bunpro gave no evidence for that date. It doesn't prove you did nothing.")}
+          ${helpItem("Bunpro asked me to slow down", "Wait a little before you try again. Bunpro MCP doesn't keep retrying in the background.")}
+          ${helpItem("I want to check the service itself", `Open the public <a class="text-link" href="/healthz" target="_blank">health check</a>. It confirms the hosted server is reachable. It doesn't test or expose your Bunpro token.`)}
+        </div>
       </div>
     </div>
   </section>`;
-}
-
-function helpItem(title: string, copy: string, extra = ""): string {
-  return `<article class="help-card reveal"><span>${icon("terminal")}</span><div><h3>${title}</h3><p>${copy}</p>${extra}</div></article>`;
 }
 
 function faq(): string {
   const items = [
-    ["Is this an official Bunpro, OpenAI or Anthropic plugin?", "No. It is an unofficial community MCP, is not affiliated with or endorsed by Bunpro, OpenAI or Anthropic, and is not published as an official ChatGPT or Claude listing."],
-    ["Can a link install it or prefill the ChatGPT form?", "No supported deep link currently pre-populates the custom MCP creation form. The ChatGPT Plugins URL can take you to the area, but you must enter and review the connection values yourself."],
-    ["Can it change anything in Bunpro?", "No. All nine published tools are read only. The server does not start or submit reviews, change SRS state, add lessons, run crams, edit decks, or modify account settings."],
-    ["Does the website receive my token?", "No. This page is static and contains no token field. You paste the token only into your MCP client's protected credential configuration—not into this website or a chat message."],
-    ["Does the server store my data?", "No. This service has no account or saved study-history database. It uses your token and Bunpro data only while answering the current request."],
-    ["Is the source code public?", `Yes. Bunpro MCP is open source under the MIT license. You can inspect, fork, and contribute to it on <a class="inline-link" href="${SOURCE_REPOSITORY_URL}" target="_blank" rel="noreferrer">GitHub ${icon("external")}</a>.`],
-    ["Can I run it myself?", `Yes. Run it locally over stdio or deploy the included Docker image as a stateless Streamable HTTP service. The <a class="inline-link" href="${SELF_HOSTING_GUIDE_URL}" target="_blank" rel="noreferrer">self-hosting guide ${icon("external")}</a> covers local, Docker, Railway, and other HTTPS hosts.`],
-    ["Will it work in every ChatGPT account?", "Not necessarily. Developer mode and custom MCP creation availability can depend on your plan, app version, workspace policy, and administrator. Other Streamable HTTP MCP clients may also connect."],
-    ["Why are some dates marked as missing?", "Bunpro does not provide the same amount of history for every feature. The answer marks missing information clearly instead of pretending it means zero activity."],
-    ["What should I do if I exposed my token?", "Rotate or replace the Account API Token in Bunpro, then update or recreate the protected credential in every MCP client where you configured it."]
+    ["Is this an official Bunpro, Anthropic or OpenAI plugin?", "No. It is an unofficial community MCP. It is not affiliated with or endorsed by Bunpro, OpenAI or Anthropic, and it is not published as an official ChatGPT or Claude listing."],
+    ["Which Claude app should I use?", "Claude Desktop keeps your token on your computer and sends it only to Bunpro. The Claude Code plugin adds a study-plan skill and sends your token to the hosted service. claude.ai needs the request-headers beta and must not be used on a Team or Enterprise plan."],
+    ["Can it change anything in Bunpro?", "No. All nine tools are read only. The server doesn't start or submit reviews, change SRS state, add lessons, run crams, edit decks or change account settings."],
+    ["Does this website receive my token?", "No. This page is static and has no token field. You paste the token only into your app's protected credential field, never into this website or a chat message."],
+    ["Does the server store my data?", "No. This service has no account or study-history database. It uses your token and Bunpro data only while it answers the current request."],
+    ["Is the source code public?", `Yes. Bunpro MCP is open source under the MIT license. You can read, fork and contribute to it on <a class="text-link" href="${SOURCE_REPOSITORY_URL}" target="_blank" rel="noreferrer">GitHub</a>.`],
+    ["Can I run it myself?", `Yes. Run it locally over stdio or deploy the included Docker image as a stateless Streamable HTTP service. The <a class="text-link" href="${SELF_HOSTING_GUIDE_URL}" target="_blank" rel="noreferrer">self-hosting guide</a> covers local, Docker, Railway and other HTTPS hosts.`],
+    ["Can a link install it or fill in the ChatGPT form?", "No supported link fills in the custom MCP form. The ChatGPT Plugins URL takes you to the right area, but you enter and check the connection values yourself."],
+    ["Will it work in every ChatGPT account?", "Not always. Developer mode and custom MCP creation can depend on your plan, app version, workspace policy and administrator. Other Streamable HTTP MCP clients can also connect."],
+    ["Why are some dates marked as missing?", "Bunpro doesn't keep the same amount of history for every feature. The answer marks missing information clearly instead of treating it as zero activity."],
+    ["What should I do if I exposed my token?", "Rotate or replace the Account API Token in Bunpro, then update or recreate the protected credential in every app where you set it up."]
   ];
-  return `<section class="section faq">
-    <div class="shell faq-grid">
-      <div class="faq-intro reveal"><span class="kicker">Questions, answered</span><h2>The details that matter.</h2><p>Clear expectations make experimental tools safer to use.</p></div>
-      <div class="accordion">
-        ${items.map(([question, answer], index) => `<details class="reveal"${index === 0 ? " open" : ""}><summary><span>${question}</span><i></i></summary><p>${answer}</p></details>`).join("")}
+  return `<section class="section faq" aria-labelledby="faq-title">
+    <div class="frame faq-grid">
+      <div class="faq-index">
+        <h2 id="faq-title">Questions</h2>
+        <ul class="faq-list">
+          ${items.map(([question, answer], index) => `<li><button type="button" class="faq-q" aria-expanded="${index === 0}" aria-controls="faq-a-${index}">${question}</button><div class="faq-a" id="faq-a-${index}"><p>${answer}</p></div></li>`).join("")}
+        </ul>
       </div>
+      <div class="faq-pane" aria-hidden="true"></div>
     </div>
   </section>`;
 }
 
-function closingCta(): string {
-  return `<section class="closing">
-    <div class="shell closing-inner reveal">
-      <span class="closing-jp" aria-hidden="true">学</span>
-      <div><span class="kicker kicker-light">Ready when you are</span><h2>Turn study history into<br><em>a better next question.</em></h2></div>
-      <div class="closing-actions"><a class="button button-light" href="#setup">Follow the setup guide ${icon("arrow")}</a><p>${icon("shield")} Manual connection · protected token · read only</p></div>
+function closing(): string {
+  return `<section class="closing" aria-labelledby="closing-title">
+    <div class="frame closing-inner">
+      <h2 id="closing-title">Ask Claude what to study today</h2>
+      <div class="hero-actions"><a class="button" href="#claude">Add it to Claude</a><a class="text-link" href="#setup">Or set it up in ChatGPT</a></div>
     </div>
   </section>`;
 }
 
 function footer(): string {
   return `<footer class="site-footer">
-    <div class="shell footer-grid">
-      <div class="footer-brand"><a class="brand" href="#top"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span class="brand-copy"><strong>Bunpro MCP</strong><small>UNOFFICIAL COMMUNITY TOOL</small></span></a><p>Ask better questions about your Bunpro studies, with a connection that can read your data but never change it.</p></div>
-      <div><b>Explore</b><a href="#possibilities">What it does</a><a href="#tools">Tools</a><a href="#setup">ChatGPT setup</a><a href="#claude">Claude setup</a><a href="#self-host">Self-host</a><a href="#help">Troubleshooting</a></div>
-      <div><b>Open source</b><a href="${SOURCE_REPOSITORY_URL}" target="_blank" rel="noreferrer">GitHub repository ${icon("external")}</a><a href="${SELF_HOSTING_GUIDE_URL}" target="_blank" rel="noreferrer">Self-hosting guide ${icon("external")}</a><a href="#privacy">Privacy and trust</a><a href="${OPENAI_MCP_GUIDE_URL}" target="_blank" rel="noreferrer">OpenAI MCP guide ${icon("external")}</a></div>
+    <div class="frame footer-line">
+      <span>Bunpro MCP, an unofficial community project</span>
+      <nav aria-label="Footer"><a href="${SOURCE_REPOSITORY_URL}" target="_blank" rel="noreferrer">GitHub</a><a href="${CLAUDE_SETUP_GUIDE_URL}" target="_blank" rel="noreferrer">Claude setup guide</a><a href="${SELF_HOSTING_GUIDE_URL}" target="_blank" rel="noreferrer">Self-hosting guide</a><a href="${OPENAI_MCP_GUIDE_URL}" target="_blank" rel="noreferrer">OpenAI MCP guide</a><a href="#help">Help</a></nav>
+      <span>© ${new Date().getUTCFullYear()} · Not affiliated with Bunpro, OpenAI or Anthropic.</span>
     </div>
-    <div class="shell footer-bottom"><span>© ${new Date().getUTCFullYear()} Bunpro MCP community project</span><span>Not affiliated with Bunpro, OpenAI or Anthropic.</span><a href="#top">Back to top ↑</a></div>
   </footer>`;
 }
 
 function pageScript(): string {
   return `(() => {
-    const menuButton = document.querySelector('.menu-button');
-    const mobileMenu = document.querySelector('.mobile-nav');
-    const toast = document.querySelector('.toast');
-    const closeMenu = () => {
-      if (!menuButton || !mobileMenu) return;
-      menuButton.setAttribute('aria-expanded', 'false');
-      menuButton.setAttribute('aria-label', 'Open navigation');
-      mobileMenu.hidden = true;
-    };
-    menuButton?.addEventListener('click', () => {
-      const opening = menuButton.getAttribute('aria-expanded') !== 'true';
-      menuButton.setAttribute('aria-expanded', String(opening));
-      menuButton.setAttribute('aria-label', opening ? 'Close navigation' : 'Open navigation');
-      if (mobileMenu) mobileMenu.hidden = !opening;
-    });
-    mobileMenu?.querySelectorAll('a').forEach(link => link.addEventListener('click', closeMenu));
+    const root = document.documentElement;
+    root.classList.add('js');
 
-    let toastTimer;
-    const showToast = (message) => {
-      if (!toast) return;
-      toast.textContent = message;
-      toast.classList.add('visible');
-      window.clearTimeout(toastTimer);
-      toastTimer = window.setTimeout(() => toast.classList.remove('visible'), 1800);
+    const menuButton = document.querySelector('.menu-button');
+    const mobileMenu = document.getElementById('mobile-menu');
+    const setMenu = open => {
+      menuButton.setAttribute('aria-expanded', String(open));
+      menuButton.textContent = open ? 'Close' : 'Menu';
+      mobileMenu.hidden = !open;
     };
-    const copyText = async (value) => {
+    menuButton.addEventListener('click', () => setMenu(menuButton.getAttribute('aria-expanded') !== 'true'));
+    mobileMenu.querySelectorAll('a').forEach(link => link.addEventListener('click', () => setMenu(false)));
+
+    const toast = document.querySelector('.toast');
+    let toastTimer;
+    const copyText = async value => {
       try {
         await navigator.clipboard.writeText(value);
       } catch {
@@ -651,23 +549,92 @@ function pageScript(): string {
         document.execCommand('copy');
         input.remove();
       }
-      showToast('Copied to clipboard');
+      toast.textContent = 'Copied to clipboard';
+      toast.classList.add('visible');
+      window.clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(() => toast.classList.remove('visible'), 1800);
     };
     document.querySelectorAll('[data-copy]').forEach(button => button.addEventListener('click', () => {
       const value = button.getAttribute('data-copy');
       if (value) void copyText(value);
     }));
 
+    document.querySelectorAll('[role="tablist"]').forEach(list => {
+      const tabs = Array.from(list.querySelectorAll('[role="tab"]'));
+      const select = (tab, focus) => {
+        tabs.forEach(other => {
+          const selected = other === tab;
+          other.setAttribute('aria-selected', String(selected));
+          other.tabIndex = selected ? 0 : -1;
+          document.getElementById(other.getAttribute('aria-controls')).hidden = !selected;
+        });
+        if (focus) tab.focus();
+      };
+      tabs.forEach((tab, index) => {
+        tab.addEventListener('click', () => select(tab, false));
+        tab.addEventListener('keydown', event => {
+          const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+          if (event.key === 'Home') { event.preventDefault(); select(tabs[0], true); }
+          else if (event.key === 'End') { event.preventDefault(); select(tabs[tabs.length - 1], true); }
+          else if (step) { event.preventDefault(); select(tabs[(index + step + tabs.length) % tabs.length], true); }
+        });
+      });
+      select(tabs.find(tab => tab.getAttribute('aria-selected') === 'true') || tabs[0], false);
+    });
+
+    const rows = Array.from(document.querySelectorAll('.cmd-row'));
+    const openRow = row => rows.forEach(other => other.querySelector('.cmd-name').setAttribute('aria-expanded', String(other === row)));
+    rows.forEach(row => row.querySelector('.cmd-name').addEventListener('click', () => openRow(row)));
+    const filter = document.getElementById('tool-filter');
+    const empty = document.querySelector('.cmd-empty');
+    filter.addEventListener('input', () => {
+      const words = filter.value.toLowerCase().split(/\\s+/).filter(Boolean);
+      const shown = rows.filter(row => {
+        const match = words.every(word => row.dataset.terms.includes(word));
+        row.hidden = !match;
+        return match;
+      });
+      empty.hidden = shown.length > 0;
+      if (shown.length && !shown.some(row => row.querySelector('.cmd-name').getAttribute('aria-expanded') === 'true')) openRow(shown[0]);
+    });
+
+    const range = document.getElementById('flow-range');
+    const stages = Array.from(document.querySelectorAll('.flow-stage'));
+    const goto = Array.from(document.querySelectorAll('[data-goto]'));
+    const names = range.dataset.names.split('|');
+    const setStage = value => {
+      const current = Number(value);
+      range.value = String(current);
+      range.setAttribute('aria-valuetext', names[current]);
+      stages.forEach((stage, index) => stage.classList.toggle('is-current', index === current));
+      goto.forEach((button, index) => button.classList.toggle('is-current', index === current));
+    };
+    range.addEventListener('input', () => setStage(range.value));
+    goto.forEach(button => button.addEventListener('click', () => setStage(button.dataset.goto)));
+    setStage(0);
+
+    const pane = document.querySelector('.faq-pane');
+    const questions = Array.from(document.querySelectorAll('.faq-q'));
+    const openQuestion = question => {
+      questions.forEach(other => other.setAttribute('aria-expanded', String(other === question)));
+      pane.innerHTML = document.getElementById(question.getAttribute('aria-controls')).innerHTML;
+    };
+    questions.forEach(question => question.addEventListener('click', () => openQuestion(question)));
+    openQuestion(questions[0]);
+
     if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {
-      document.documentElement.classList.add('has-motion');
+      root.classList.add('has-motion');
       const observer = new IntersectionObserver(entries => {
         entries.forEach(entry => {
           if (!entry.isIntersecting) return;
           entry.target.classList.add('is-visible');
           observer.unobserve(entry.target);
         });
-      }, { rootMargin: '0px 0px -7% 0px', threshold: 0.08 });
-      document.querySelectorAll('.reveal').forEach(element => observer.observe(element));
+      }, { rootMargin: '0px 0px -5% 0px', threshold: 0 });
+      document.querySelectorAll('.section > .frame > *:not(.paths):not(.cmd), .paths, .cmd-row, .flow, .closing-inner > *').forEach(element => {
+        element.classList.add('rise');
+        observer.observe(element);
+      });
     }
   })();`;
 }
@@ -675,467 +642,351 @@ function pageScript(): string {
 function styles(): string {
   return `
     :root {
-      --paper: #f4f0e7;
-      --paper-deep: #e8e0d1;
-      --paper-light: #fbf8f1;
-      --ink: #20231f;
-      --muted: #64675f;
-      --line: #d4cbbb;
-      --forest: #1f2923;
-      --forest-2: #2d3a32;
-      --red: #a93f2d;
-      --red-dark: #8a3022;
-      --moss: #65715f;
-      --gold: #b49054;
-      --serif: Georgia, 'Times New Roman', serif;
-      --sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
-      --shadow: 0 24px 70px rgba(41, 36, 28, .13);
-      --radius: 2px;
-      --shell: min(1180px, calc(100% - 40px));
+      --bg: #ebece8;
+      --surface: #dfe1db;
+      --field: #cdd1c6;
+      --ink: #1f211d;
+      --soft: #52574e;
+      --accent: #4b5b44;
+      --accent-press: #3a4834;
+      --accent-ink: #ffffff;
+      --deep: #22251f;
+      --deep-ink: #eef0ea;
+      --deep-soft: #b8bdb1;
+      --ui: #f8f9f9;
+      --ui-line: #cfd2ca;
+      --ui-soft: #5f645a;
+      --warn: #efe3c2;
+      --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Hiragino Sans", "Noto Sans JP", sans-serif;
+      --code: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; /* taste-skill-ignore: literal code only */
+      --s-small: 14px;
+      --s-body: clamp(1.0625rem, 1rem + .25vw, 1.1875rem);
+      --s-lead: clamp(1.25rem, 1.1rem + .7vw, 1.625rem);
+      --s-head: clamp(2rem, 1.3rem + 3.2vw, 4rem);
+      --s-display: clamp(2.75rem, 5.2vw, 5rem);
+      --margin: clamp(16px, 3vw, 40px);
+      --frame: 1360px;
+      --gap: clamp(96px, 12vw, 176px);
     }
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; scroll-padding-top: 88px; }
-    body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
-    body, button, a { font-size: 16px; }
-    button, a { -webkit-tap-highlight-color: transparent; }
-    button { font-family: inherit; }
-    a { color: inherit; text-decoration: none; }
-    p { line-height: 1.72; }
-    code { font-family: var(--mono); }
-    .shell { width: var(--shell); margin-inline: auto; }
-    .icon { width: 20px; height: 20px; flex: 0 0 auto; }
-    .skip-link { position: fixed; left: 16px; top: -70px; z-index: 1000; padding: 12px 18px; background: var(--ink); color: white; transition: top .2s; }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 400 var(--s-body)/1.55 var(--font); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+    h1, h2, h3, h4, p, ul, ol, dl, dd { margin: 0; }
+    ul, ol { padding: 0; list-style: none; }
+    a { color: inherit; }
+    button, input { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    code, pre { font-family: var(--code); font-size: .88em; }
+    strong { font-weight: 600; }
+    [hidden] { display: none !important; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .frame { width: min(100% - 2 * var(--margin), var(--frame)); margin-inline: auto; }
+    :focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+    .skip-link { position: absolute; left: 16px; top: -80px; z-index: 100; padding: 12px 18px; background: var(--ink); color: var(--bg); }
     .skip-link:focus { top: 16px; }
-    :focus-visible { outline: 3px solid var(--red); outline-offset: 4px; }
-    .grain { position: fixed; inset: 0; pointer-events: none; z-index: 100; opacity: .17; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.09'/%3E%3C/svg%3E"); }
-    .site-header { position: sticky; top: 0; z-index: 50; background: rgba(244, 240, 231, .9); border-bottom: 1px solid rgba(164, 153, 135, .42); backdrop-filter: blur(15px); }
-    .header-inner { height: 76px; display: flex; align-items: center; gap: 30px; }
-    .brand { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; }
-    .brand-mark { width: 34px; height: 34px; position: relative; display: inline-block; }
-    .brand-mark i { width: 9px; height: 9px; border: 2px solid var(--red); border-radius: 50%; position: absolute; }
-    .brand-mark i:nth-child(1) { left: 1px; top: 12px; }
-    .brand-mark i:nth-child(2) { right: 2px; top: 2px; }
-    .brand-mark i:nth-child(3) { right: 2px; bottom: 2px; }
-    .brand-mark::before, .brand-mark::after { content: ''; width: 12px; height: 1.5px; background: var(--red); position: absolute; left: 10px; transform-origin: left center; }
-    .brand-mark::before { top: 14px; transform: rotate(-34deg); }
-    .brand-mark::after { top: 20px; transform: rotate(34deg); }
-    .brand-copy { display: grid; gap: 2px; }
-    .brand-copy strong { font-family: var(--serif); font-size: 19px; letter-spacing: -.01em; }
-    .brand-copy small { font-size: 8px; font-weight: 800; letter-spacing: .14em; color: var(--muted); }
-    .desktop-nav { margin-left: auto; display: flex; align-items: center; gap: 28px; }
-    .desktop-nav a { min-width: 44px; min-height: 44px; padding-inline: 4px; display: grid; place-items: center; font-size: 13px; font-weight: 650; color: #4f534c; }
-    .desktop-nav a:hover { color: var(--red); }
-    .button { min-height: 48px; display: inline-flex; justify-content: center; align-items: center; gap: 10px; padding: 0 22px; border: 1px solid transparent; font-weight: 750; font-size: 14px; letter-spacing: .01em; cursor: pointer; transition: transform .2s ease, background .2s ease, border-color .2s ease, color .2s ease; }
-    .button:hover { transform: translateY(-2px); }
-    .button-small { min-height: 44px; padding-inline: 17px; background: var(--forest); color: white; }
-    .button .icon { width: 17px; }
-    .button-primary { background: var(--red); color: white; }
-    .button-primary:hover { background: var(--red-dark); }
-    .button-ghost { border-color: var(--ink); background: rgba(255,255,255,.2); }
-    .button-light { background: var(--paper-light); color: var(--forest); }
-    .menu-button, .mobile-nav { display: none; }
 
-    .hero { min-height: 720px; display: grid; align-items: center; position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
-    .hero::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(255,255,255,.25), transparent 45%), repeating-linear-gradient(90deg, transparent 0, transparent calc(8.333% - 1px), rgba(94,87,75,.045) calc(8.333% - 1px), rgba(94,87,75,.045) 8.333%); pointer-events: none; }
-    .hero-grid { display: grid; grid-template-columns: 1.02fr .98fr; gap: clamp(48px, 7vw, 100px); align-items: center; padding-block: 92px 104px; position: relative; }
-    .hero-copy { position: relative; z-index: 2; }
-    .eyebrow, .kicker { display: inline-flex; align-items: center; gap: 9px; color: var(--red); font-size: 11px; font-weight: 850; letter-spacing: .16em; text-transform: uppercase; }
-    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 5px rgba(169,63,45,.1); }
-    h1, h2, h3, p { margin-top: 0; }
-    h1 { margin: 24px 0 26px; font: 400 clamp(58px, 6.3vw, 92px)/.94 var(--serif); letter-spacing: -.055em; max-width: 760px; }
-    h1 em, h2 em { font-weight: 400; color: var(--red); }
-    .hero-lede { color: #50534d; font-size: clamp(17px, 1.6vw, 20px); line-height: 1.72; max-width: 620px; }
-    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 34px; }
-    .micro-trust { display: flex; align-items: center; gap: 8px; margin: 20px 0 0; color: var(--muted); font-size: 12px; }
-    .micro-trust .icon { width: 16px; }
-    .hero-visual { min-height: 570px; position: relative; display: grid; place-items: center; }
-    .enso { width: 420px; aspect-ratio: 1; position: absolute; border: 22px solid rgba(73, 83, 72, .15); border-right-color: transparent; border-radius: 50%; transform: rotate(-22deg); }
-    .jp-type { position: absolute; right: -18px; top: 8px; font: 400 138px/1 var(--serif); color: rgba(169,63,45,.085); writing-mode: vertical-rl; }
-    .study-card { width: min(430px, 88%); padding: 28px; background: var(--paper-light); border: 1px solid #cfc5b5; box-shadow: var(--shadow); position: relative; transform: rotate(1.4deg); z-index: 2; }
-    .study-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--red); }
-    .study-card-head, .study-card footer { display: flex; align-items: center; justify-content: space-between; }
-    .study-card-head span { font-family: var(--serif); font-size: 18px; }
-    .study-card-head small { font: 700 9px/1 var(--mono); color: var(--muted); letter-spacing: .1em; }
-    .question-row { margin: 28px 0 18px; border-bottom: 1px solid var(--line); padding-bottom: 18px; }
-    .question-row span, .answer-label { display: block; margin-bottom: 8px; color: var(--red); font: 800 9px/1 var(--mono); letter-spacing: .13em; }
-    .question-row p { font: 400 22px/1.35 var(--serif); margin: 0; }
-    .answer-label { display: flex; align-items: center; gap: 7px; color: var(--moss); }
-    .answer-label .icon { width: 14px; }
-    .answer-row > p { line-height: 1.55; font-size: 14px; color: #424740; }
-    .rhythm { height: 88px; display: flex; gap: 8px; align-items: end; border-bottom: 1px solid var(--line); margin: 22px 0 30px; }
-    .rhythm i { height: var(--h); flex: 1; background: var(--moss); position: relative; min-height: 6px; }
-    .rhythm i:nth-child(5), .rhythm i:nth-child(7) { background: var(--red); }
-    .rhythm span { position: absolute; top: calc(100% + 8px); width: 100%; text-align: center; font: 700 8px/1 var(--mono); color: var(--muted); }
-    .study-card footer { font-size: 10px; font-weight: 750; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
-    .study-card footer span { display: flex; gap: 6px; align-items: center; }
-    .study-card footer .icon { width: 14px; color: var(--red); }
-    .floating-note { position: absolute; right: 8px; bottom: 55px; z-index: 3; width: 122px; height: 110px; padding: 17px; background: var(--red); color: white; box-shadow: 0 16px 40px rgba(104,43,32,.2); transform: rotate(-4deg); }
-    .floating-note span { display: block; font: 40px/.9 var(--serif); }
-    .floating-note small { display: block; margin-top: 13px; font: 700 8px/1.45 var(--mono); letter-spacing: .12em; }
+    h2 { font-size: var(--s-head); font-weight: 600; line-height: 1.02; letter-spacing: -.035em; max-width: 16ch; text-wrap: balance; }
+    h3 { font-size: var(--s-lead); font-weight: 600; line-height: 1.2; letter-spacing: -.015em; }
+    h4 { font-size: var(--s-body); font-weight: 600; line-height: 1.35; }
+    .section { padding-top: var(--gap); }
+    .soft { color: var(--soft); }
 
-    .trust-strip { background: var(--forest); color: white; }
-    .trust-grid { min-height: 108px; display: grid; grid-template-columns: repeat(4, 1fr); align-items: stretch; }
-    .trust-grid > div { display: flex; gap: 14px; align-items: center; padding: 24px 22px; border-right: 1px solid rgba(255,255,255,.12); }
-    .trust-grid > div:first-child { border-left: 1px solid rgba(255,255,255,.12); }
-    .trust-grid .icon { color: #dac09a; }
-    .trust-grid span { display: grid; gap: 5px; }
-    .trust-grid b { font: 400 15px/1.2 var(--serif); }
-    .trust-grid small { color: rgba(255,255,255,.58); font-size: 10px; line-height: 1.45; }
+    .button { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 22px; background: var(--accent); color: var(--accent-ink); font-size: 16px; font-weight: 600; text-decoration: none; border: 0; transition: background-color .18s ease, transform .18s ease; }
+    .button:hover { background: var(--accent-press); }
+    .button:active { transform: translateY(1px); }
+    .button-quiet { background: var(--ink); color: var(--bg); min-height: 44px; }
+    .button-quiet:hover { background: #3a3d36; }
+    .text-link { font-weight: 600; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; text-decoration-color: var(--accent); transition: text-decoration-color .18s ease, color .18s ease; }
+    .text-link:hover { text-decoration-color: currentColor; color: var(--accent-press); }
+    .hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 28px; margin-top: 32px; }
 
-    .section { padding-block: 118px; }
-    .section-heading { display: grid; grid-template-columns: 1.25fr .75fr; gap: 80px; align-items: end; margin-bottom: 58px; }
-    h2 { margin: 14px 0 0; font: 400 clamp(42px, 5vw, 68px)/1.02 var(--serif); letter-spacing: -.04em; }
-    .section-heading > p { margin: 0; color: var(--muted); max-width: 430px; }
-    .use-case-grid { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); }
-    .use-case { min-height: 420px; display: flex; flex-direction: column; padding: 34px; background: rgba(255,255,255,.17); border-right: 1px solid var(--line); }
-    .use-case:last-child { border-right: 0; }
-    .case-top { display: flex; align-items: center; justify-content: space-between; }
-    .case-icon { width: 52px; height: 52px; display: grid; place-items: center; border: 1px solid var(--line); color: var(--red); }
-    .case-top small { color: var(--muted); font: 700 10px/1 var(--mono); }
-    .use-case h3, .tool-card h3, .help-card h3 { margin: 34px 0 13px; font: 400 29px/1.1 var(--serif); }
-    .use-case > p, .tool-card > p { color: var(--muted); font-size: 14px; }
-    .prompt-copy { width: 100%; min-height: 76px; margin-top: auto; padding: 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; text-align: left; background: var(--paper-light); border: 1px solid var(--line); color: var(--ink); cursor: pointer; }
-    .prompt-copy span { font: italic 14px/1.5 var(--serif); }
-    .prompt-copy:hover, .tool-prompt:hover, .prompt-row:hover { border-color: var(--red); color: var(--red); }
-    .prompt-copy .icon, .tool-prompt .icon { width: 17px; }
+    .site-header { padding-top: 20px; }
+    .header-inner { display: flex; align-items: center; gap: 32px; min-height: 56px; }
+    .wordmark { font-size: 20px; font-weight: 700; letter-spacing: -.02em; text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; gap: 10px; }
+    .wordmark span { font-size: var(--s-small); font-weight: 500; letter-spacing: 0; color: var(--soft); }
+    .desktop-nav { margin-left: auto; display: flex; gap: 28px; }
+    .desktop-nav a, .mobile-nav a { font-size: 16px; font-weight: 500; text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; }
+    .desktop-nav a:hover { text-decoration: underline; text-underline-offset: 6px; text-decoration-thickness: 2px; }
+    .header-cta { min-height: 44px; padding: 0 18px; }
+    .menu-button { display: none; margin-left: auto; min-height: 44px; padding: 0 16px; background: var(--surface); border: 0; font-weight: 600; }
+    .mobile-nav { display: none; }
 
-    .explainer { background: var(--paper-light); border-block: 1px solid var(--line); }
-    .explainer-grid { display: grid; grid-template-columns: .75fr 1.25fr; gap: 100px; align-items: center; }
-    .explainer-copy h2 { margin-bottom: 24px; }
-    .explainer-copy p { color: var(--muted); }
-    .flow-card { display: grid; grid-template-columns: 1fr 36px 1fr 36px 1fr; align-items: center; padding: 36px; background: var(--paper); border: 1px solid var(--line); box-shadow: 12px 12px 0 var(--paper-deep); }
-    .flow-card > div { min-height: 170px; position: relative; padding: 26px 18px; background: var(--paper-light); border: 1px solid var(--line); display: flex; flex-direction: column; align-items: flex-start; }
-    .flow-card > div > span { position: absolute; right: 12px; top: 10px; color: var(--red); font: 700 9px/1 var(--mono); }
-    .flow-card > div .icon { color: var(--red); margin-bottom: 28px; }
-    .flow-card b { font: 400 17px/1.2 var(--serif); }
-    .flow-card small { margin-top: 9px; color: var(--muted); line-height: 1.45; }
-    .flow-card > i { display: grid; place-items: center; color: var(--red); }
+    .hero { position: relative; padding-top: clamp(56px, 9vw, 120px); }
+    .hero h1 { font-size: var(--s-display); font-weight: 600; line-height: 1; letter-spacing: -.04em; max-width: 9.2em; }
+    .lede { margin-top: 32px; max-width: 40ch; font-size: var(--s-body); }
+    .hero-paths { margin-top: 24px; max-width: 40ch; font-size: var(--s-small); color: var(--soft); }
+    .stage { position: relative; margin-top: clamp(-260px, -18vw, -160px); margin-left: calc(var(--margin) + max(0px, (100vw - 2 * var(--margin) - var(--frame)) / 2) + min(100vw - 2 * var(--margin), var(--frame)) * 5 / 12); background: var(--accent); padding: 56px 0 72px 56px; clip-path: polygon(120px 0, 100% 0, 100% 100%, 0 100%, 0 120px); }
 
-    .setup { background: var(--forest); color: white; position: relative; overflow: hidden; }
-    .setup::before { content: '接続'; position: absolute; right: -15px; top: 120px; font: 220px/1 var(--serif); color: rgba(255,255,255,.025); writing-mode: vertical-rl; }
-    .setup-heading { display: grid; grid-template-columns: 1fr 1fr; gap: 90px; align-items: end; position: relative; }
-    .setup-heading h2 { color: white; }
-    .setup-heading > p { margin: 0; color: rgba(255,255,255,.65); max-width: 560px; }
-    .kicker-light { color: #dac09a; }
-    .availability-note { margin: 50px 0 68px; padding: 22px 24px; display: grid; grid-template-columns: 44px 1fr auto; gap: 18px; align-items: center; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.055); }
-    .note-icon { width: 42px; height: 42px; display: grid; place-items: center; color: #dac09a; border: 1px solid rgba(255,255,255,.18); }
-    .availability-note b { font-family: var(--serif); font-weight: 400; }
-    .availability-note p { margin: 5px 0 0; color: rgba(255,255,255,.61); font-size: 13px; line-height: 1.55; }
-    .availability-note a, .inline-link { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; color: #e0c9a7; font-size: 12px; font-weight: 750; text-decoration: underline; text-underline-offset: 4px; }
-    .availability-note a .icon, .inline-link .icon { width: 14px; }
-    .setup-layout { display: grid; grid-template-columns: .9fr 1.1fr; gap: clamp(54px, 8vw, 110px); align-items: start; }
-    .setup-steps { list-style: none; padding: 0; margin: 0; }
-    .step { display: grid; grid-template-columns: 50px 1fr; gap: 22px; padding: 0 0 34px; position: relative; }
-    .step:not(:last-child)::before { content: ''; position: absolute; top: 38px; left: 17px; bottom: 0; width: 1px; background: rgba(255,255,255,.16); }
-    .step-number { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.3); background: var(--forest); color: #dac09a; font: 700 9px/1 var(--mono); position: relative; z-index: 1; }
-    .step h3 { margin: 5px 0 9px; font: 400 21px/1.25 var(--serif); }
-    .step p { color: rgba(255,255,255,.61); margin: 0; font-size: 13px; line-height: 1.65; }
-    .step strong { color: white; }
-    .inline-copy { display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 0 6px; background: none; border: 0; border-bottom: 1px solid rgba(224,201,167,.5); color: #e0c9a7; cursor: pointer; }
-    .inline-copy .icon { width: 13px; }
-    .connection-panel { position: sticky; top: 106px; background: var(--paper-light); color: var(--ink); border: 1px solid #c9bfaf; box-shadow: 18px 18px 0 rgba(0,0,0,.13); }
-    .panel-title { height: 58px; display: flex; align-items: center; gap: 13px; padding: 0 20px; border-bottom: 1px solid var(--line); }
-    .panel-title > span { display: flex; gap: 5px; }
-    .panel-title i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
-    .panel-title i:first-child { background: var(--red); }
-    .panel-title b { font: 400 15px/1 var(--serif); }
-    .panel-title small { margin-left: auto; font: 700 8px/1 var(--mono); letter-spacing: .12em; color: var(--muted); }
-    .form-row { padding: 14px 20px; border-bottom: 1px solid #e5ded2; }
-    .form-row label, .header-label label { display: block; margin-bottom: 7px; font-size: 9px; color: var(--muted); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
-    .copy-field, .select-look, .empty-field, .secret-look { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 12px; background: var(--paper); border: 1px solid var(--line); }
-    .copy-field code { overflow-wrap: anywhere; font-size: 11px; line-height: 1.4; }
-    .copy-field button { width: 44px; height: 44px; flex: 0 0 44px; margin-right: -12px; display: grid; place-items: center; background: transparent; border: 0; border-left: 1px solid var(--line); color: var(--muted); cursor: pointer; }
-    .copy-field button:hover { color: var(--red); background: rgba(169,63,45,.05); }
-    .copy-field .icon { width: 16px; }
-    .select-look, .empty-field, .secret-look { font-size: 12px; }
-    .empty-field { color: var(--muted); font-style: italic; }
-    .header-field { margin: 12px; border: 1px solid var(--red); background: rgba(169,63,45,.03); }
-    .header-label { height: 43px; padding: 10px 10px 0; display: flex; justify-content: space-between; }
-    .header-label span { height: 18px; padding: 4px 7px; color: var(--red); background: rgba(169,63,45,.09); font: 800 8px/1 var(--mono); }
-    .form-row.nested { margin: 0; border-top: 1px solid #e5ded2; border-bottom: 0; }
-    .secret-look { color: var(--muted); }
-    .secret-look .icon { width: 16px; color: var(--red); }
-    .panel-check { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 20px 4px; color: var(--moss); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
-    .panel-check .icon { width: 15px; }
-    .auth-fallback { display: grid; grid-template-columns: 44px 1fr; gap: 16px; max-width: 900px; padding: 24px; margin: 70px auto 0; background: rgba(255,255,255,.055); border: 1px solid rgba(255,255,255,.14); }
-    .auth-fallback + .auth-fallback { margin-top: 16px; }
-    .auth-fallback > span { width: 42px; height: 42px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.16); color: #dac09a; }
-    .auth-fallback b { font: 400 17px/1.2 var(--serif); }
-    .auth-fallback p { margin: 7px 0 0; color: rgba(255,255,255,.62); font-size: 12px; line-height: 1.65; }
-    .auth-fallback code { color: white; font-size: 11px; }
+    [data-ui] { font-size: 16px; line-height: 1.5; color: var(--ink); }
+    .chat { width: min(640px, 100%); background: var(--ui); border-radius: 10px; padding: 8px 8px 0; }
+    .chat-tabs { display: flex; gap: 4px; padding: 4px; background: #eceee8; border-radius: 8px; }
+    .chat-tabs [role="tab"] { flex: 1; min-height: 40px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; font-size: 14px; font-weight: 500; color: var(--ui-soft); transition: background-color .18s ease, color .18s ease; }
+    .chat-tabs [role="tab"]:hover { color: var(--ink); }
+    .chat-tabs [role="tab"][aria-selected="true"] { background: #ffffff; color: var(--ink); }
+    .chat-panel { padding: 22px 22px 8px; min-height: 360px; }
+    .who { font-size: 14px; font-weight: 600; color: var(--ui-soft); margin-bottom: 4px; }
+    .you { font-size: 18px; margin-bottom: 14px; }
+    .calls { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+    .calls li { font-size: 14px; padding: 4px 10px; border-radius: 6px; background: #e9ece4; color: var(--ui-soft); }
+    .calls code { color: var(--ink); font-size: 14px; }
+    .reply > p { margin-bottom: 12px; }
+    .plan { display: grid; gap: 6px; }
+    .plan li { display: grid; grid-template-columns: 64px 1fr; gap: 12px; padding: 10px 12px; background: #eef0ea; border-radius: 6px; }
+    [lang="ja"] { white-space: nowrap; }
+    .plan b { font-weight: 600; font-variant-numeric: tabular-nums; }
+    .days { display: grid; grid-template-columns: repeat(15, 1fr); gap: 4px; max-width: 420px; }
+    .days i { aspect-ratio: 1; border-radius: 3px; background: var(--accent); }
+    .days i.miss { background: #dcdfd6; }
+    .key { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 14px; color: var(--ui-soft); }
+    .key i { width: 12px; height: 12px; border-radius: 3px; background: var(--accent); display: inline-block; }
+    .key i.miss { background: #dcdfd6; margin-left: 10px; }
+    .levels { display: grid; gap: 8px; }
+    .levels div { display: grid; grid-template-columns: 36px 1fr; align-items: center; gap: 10px; }
+    .levels dt { font-weight: 600; }
+    .levels dd { display: grid; grid-template-columns: 1fr 44px; align-items: center; gap: 10px; font-variant-numeric: tabular-nums; text-align: right; }
+    .bar { height: 10px; background: #e2e4dd; border-radius: 5px; overflow: hidden; }
+    .bar i { display: block; height: 100%; background: var(--accent); border-radius: 5px; }
+    .chat-foot { padding: 10px 22px 14px; font-size: 14px; color: var(--ui-soft); }
 
-    .claude-setup { border-top: 1px solid rgba(255,255,255,.12); }
-    .claude-setup::before { content: '接続'; top: auto; bottom: 120px; }
-    .claude-setup .step code, .path-heading code, .path-card p code, .path-card li > code { color: white; font-size: 11px; overflow-wrap: anywhere; }
-    .availability-note strong { color: white; }
-    .path-heading { max-width: 760px; margin: 0 0 40px; }
-    .path-heading h3 { margin: 14px 0 10px; font: 400 30px/1.15 var(--serif); }
-    .path-heading p { margin: 0; color: rgba(255,255,255,.61); font-size: 13px; line-height: 1.65; }
-    .path-tag { display: inline-block; padding: 5px 8px; color: #dac09a; border: 1px solid rgba(218,192,154,.45); font: 800 8px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
-    .step p + p { margin-top: 10px; }
-    .step .step-warning, .path-card .path-warning { padding: 10px 12px; border-left: 2px solid #e08b78; background: rgba(224,139,120,.08); color: rgba(255,255,255,.78); }
-    .path-warning b { color: white; font-weight: 750; }
-    .claude-paths { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 70px; align-items: start; }
-    .path-card { padding: 30px; background: rgba(255,255,255,.055); border: 1px solid rgba(255,255,255,.14); }
-    .path-card h3 { margin: 16px 0 12px; font: 400 26px/1.15 var(--serif); }
-    .path-card p { margin: 0 0 14px; color: rgba(255,255,255,.61); font-size: 13px; line-height: 1.65; }
-    .path-card strong { color: white; }
-    .path-card ol { margin: 6px 0 14px; padding-left: 20px; color: rgba(255,255,255,.72); font-size: 13px; line-height: 1.65; }
-    .path-card li { padding: 6px 0; }
-    .path-card li::marker { color: #dac09a; font: 700 11px var(--mono); }
-    .path-card .inline-link { display: flex; width: fit-content; }
-    .claude-setup .inline-copy { text-align: left; }
-    .path-card .copy-field { margin-top: 10px; color: var(--ink); }
-    .path-card .copy-field code { color: var(--ink); }
-    .path-card .path-note { margin: 0; font-size: 12px; }
+    .claude-head { display: grid; grid-template-columns: 5fr 7fr; gap: 24px 48px; align-items: end; }
+    .claude-head p { font-size: var(--s-lead); line-height: 1.4; max-width: 30ch; }
+    .token-note { margin-top: 40px; padding: 20px 24px; background: var(--surface); max-width: 74ch; }
+    .paths { display: grid; grid-template-columns: 240px 1fr; gap: 0 40px; margin-top: 56px; align-items: start; }
+    .path-tabs { display: grid; gap: 6px; position: sticky; top: 24px; }
+    .path-tabs [role="tab"] { display: grid; gap: 2px; text-align: left; padding: 14px 16px; min-height: 72px; border: 0; background: var(--surface); transition: background-color .18s ease, color .18s ease; }
+    .path-tabs [role="tab"]:hover { background: var(--field); }
+    .path-tabs [role="tab"][aria-selected="true"] { background: var(--deep); color: var(--deep-ink); }
+    .tab-name { font-size: 18px; font-weight: 600; }
+    .tab-note { font-size: var(--s-small); color: var(--soft); }
+    [aria-selected="true"] .tab-note { color: var(--deep-soft); }
+    .path + .path { margin-top: 64px; }
+    .js .path + .path { margin-top: 0; }
+    .path h3 { font-size: var(--s-lead); }
+    .path-lead { margin-top: 12px; max-width: 64ch; }
+    .warning { margin-top: 16px; padding: 18px 22px; background: var(--warn); max-width: 64ch; }
+    .bands { display: grid; gap: 4px; margin-top: 28px; }
+    .bands li { display: grid; grid-template-columns: 120px 1fr; gap: 20px; padding: 20px 24px; background: var(--surface); border-radius: 8px; }
+    .bands li:nth-child(even) { background: #e5e7e1; }
+    .band-label { font-size: var(--s-lead); font-weight: 600; letter-spacing: -.01em; }
+    .band-body { display: grid; gap: 12px; justify-items: start; min-width: 0; }
+    .caution { font-size: 16px; color: var(--soft); }
+    .path-note { margin-top: 20px; max-width: 70ch; color: var(--soft); }
+    .copy { display: flex; align-items: stretch; max-width: 100%; background: var(--ui); border-radius: 6px; }
+    .copy code { flex: 1; padding: 10px 14px; font-size: 14px; overflow-wrap: anywhere; align-self: center; }
+    .copy button { flex: none; min-width: 64px; min-height: 44px; border: 0; background: #e6e9e1; font-size: 14px; font-weight: 600; border-radius: 0 6px 6px 0; transition: background-color .18s ease; }
+    .copy button:hover { background: #d6dad0; }
+    .ask { text-align: left; padding: 10px 16px; min-height: 44px; border: 0; background: var(--ui); border-radius: 6px; font-size: 16px; transition: background-color .18s ease, color .18s ease; }
+    .ask::after { content: "Copy"; margin-left: 12px; font-size: 14px; font-weight: 600; color: var(--accent); }
+    .ask:hover { background: #ffffff; }
+    .ask:hover::after { color: var(--accent-press); text-decoration: underline; }
 
-    .open-source { background: var(--paper-light); border-bottom: 1px solid var(--line); }
-    .source-grid { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); }
-    .source-card { min-height: 350px; padding: 32px; display: flex; flex-direction: column; border-right: 1px solid var(--line); background: rgba(255,255,255,.18); }
-    .source-card:last-child { border-right: 0; }
-    .source-card > span { width: 46px; height: 46px; display: grid; place-items: center; color: var(--red); border: 1px solid var(--line); }
-    .source-card > small { margin-top: 28px; color: var(--red); font: 800 8px/1 var(--mono); letter-spacing: .12em; }
-    .source-card h3 { margin: 14px 0 12px; font: 400 29px/1.1 var(--serif); }
-    .source-card p { color: var(--muted); font-size: 13px; }
-    .source-actions { background: var(--paper-deep); }
-    .source-actions > div { margin-top: auto; display: flex; align-items: center; flex-wrap: wrap; gap: 14px; }
-    .source-actions .inline-link { color: var(--red); }
+    .tools-head { display: grid; grid-template-columns: 5fr 7fr; gap: 24px 48px; align-items: end; }
+    .tools-head p { max-width: 44ch; }
+    .cmd { margin-top: 48px; font-size: inherit; }
+    .filter-label { display: none; font-size: var(--s-small); font-weight: 600; margin-bottom: 8px; }
+    .filter { display: none; width: min(100%, 860px); height: 72px; padding: 0 24px; border: 0; background: var(--surface); font-size: clamp(20px, 1.6vw, 26px); border-radius: 0; }
+    .js .filter-label, .js .filter { display: block; }
+    .filter::placeholder { color: var(--soft); }
+    .filter:focus-visible { outline-offset: 0; }
+    .cmd-list { margin-top: 20px; }
+    .cmd-name { display: flex; width: 100%; align-items: baseline; justify-content: space-between; gap: 24px; padding: 6px 16px; border: 0; background: transparent; text-align: left; font-size: var(--s-head); font-weight: 600; line-height: 1.1; letter-spacing: -.035em; transition: background-color .15s ease, color .15s ease; }
+    .cmd-name code { font-size: 16px; font-weight: 400; letter-spacing: 0; color: var(--soft); white-space: nowrap; }
+    .cmd-name:hover { background: var(--surface); }
+    .cmd-name[aria-expanded="true"] { background: var(--accent); color: var(--accent-ink); }
+    .cmd-name[aria-expanded="true"] code { color: #dfe6da; }
+    .cmd-detail { display: grid; gap: 14px; justify-items: start; padding: 16px 16px 28px; background: var(--accent); color: var(--accent-ink); }
+    .js .cmd-name[aria-expanded="false"] + .cmd-detail { display: none; }
+    .cmd-detail p { max-width: 60ch; }
+    .cmd-detail .ask { background: #ffffff; color: var(--ink); }
+    .cmd-empty { padding: 24px 16px; font-size: var(--s-lead); }
+    .tools-note { margin-top: 32px; max-width: 64ch; color: var(--soft); }
 
-    .tools { background: var(--paper); }
-    .tool-grid { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); }
-    .tool-card { min-height: 360px; padding: 27px; display: flex; flex-direction: column; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: rgba(255,255,255,.17); }
-    .tool-card:nth-child(3n) { border-right: 0; }
-    .tool-card:nth-child(n+7) { border-bottom: 0; }
-    .tool-top { display: flex; align-items: center; justify-content: space-between; }
-    .tool-icon { width: 46px; height: 46px; display: grid; place-items: center; color: var(--red); border: 1px solid var(--line); }
-    .read-badge { padding: 5px 7px; color: var(--moss); border: 1px solid #adb6a8; font: 800 7px/1 var(--mono); letter-spacing: .08em; }
-    .tool-card > small { margin-top: 24px; color: var(--muted); font: 700 8px/1.5 var(--mono); overflow-wrap: anywhere; }
-    .tool-card h3 { margin: 10px 0; font-size: 24px; }
-    .tool-prompt { width: 100%; min-height: 58px; margin-top: auto; padding: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; background: transparent; border: 1px solid var(--line); color: var(--ink); cursor: pointer; }
-    .tool-prompt span { font: italic 12px/1.4 var(--serif); }
-    .catalog-note { margin: 24px 0 0; color: var(--muted); font-size: 12px; text-align: center; }
+    .chatgpt-grid { display: grid; grid-template-columns: 5fr 7fr; gap: 64px; align-items: start; }
+    .chatgpt-copy > p { margin-top: 20px; max-width: 48ch; }
+    .steps { counter-reset: step; display: grid; gap: 28px; margin-top: 40px; }
+    .steps li { display: grid; gap: 8px; justify-items: start; }
+    .steps h3 { font-size: var(--s-body); }
+    .steps p { max-width: 52ch; }
+    .form-stage { background: var(--field); padding: clamp(24px, 4vw, 56px); position: sticky; top: 24px; }
+    .form { background: var(--ui); border-radius: 10px; padding: 24px; display: grid; gap: 16px; }
+    .form-title { font-size: 18px; font-weight: 600; }
+    .field { display: grid; gap: 6px; }
+    .field-label { font-size: 14px; font-weight: 600; color: var(--ui-soft); }
+    .select, .empty, .secret { min-height: 44px; display: flex; align-items: center; padding: 0 14px; border-radius: 6px; font-size: 14px; }
+    .select { border: 1px solid var(--ui-line); justify-content: space-between; }
+    .select::after { content: ""; width: 8px; height: 8px; border-right: 2px solid var(--ui-soft); border-bottom: 2px solid var(--ui-soft); transform: rotate(45deg) translateY(-3px); }
+    .empty { border: 1px solid var(--ui-line); color: var(--ui-soft); font-style: italic; }
+    .secret { background: #eef0ea; color: var(--ui-soft); }
+    .field-group { display: grid; gap: 12px; padding: 16px; border-radius: 8px; background: #eef0ea; }
+    .field-group .copy { background: #ffffff; }
+    .field-group .secret { background: #ffffff; border: 1px solid var(--ui-line); }
+    .group-title { font-size: 14px; font-weight: 600; }
+    .form-note { margin-top: 24px; }
 
-    .prompts { background: var(--paper-light); border-block: 1px solid var(--line); }
-    .prompt-layout { display: grid; grid-template-columns: .6fr 1.4fr; gap: 100px; }
-    .prompt-intro { position: sticky; top: 110px; align-self: start; }
-    .prompt-intro h2 { font-size: clamp(40px, 4vw, 58px); margin-bottom: 20px; }
-    .prompt-intro p { color: var(--muted); }
-    .prompt-list { border-top: 1px solid var(--line); }
-    .prompt-row { width: 100%; min-height: 100px; padding: 20px 8px; display: grid; grid-template-columns: 72px 1fr 44px; gap: 16px; align-items: center; text-align: left; background: transparent; border: 0; border-bottom: 1px solid var(--line); color: var(--ink); cursor: pointer; }
-    .prompt-row small { color: var(--red); font: 800 9px/1 var(--mono); letter-spacing: .1em; }
-    .prompt-row span { font: italic 20px/1.4 var(--serif); }
-    .prompt-row .icon { justify-self: end; color: var(--muted); }
+    .privacy-head { display: grid; grid-template-columns: 5fr 7fr; gap: 24px 48px; align-items: end; }
+    .privacy-head p { max-width: 46ch; }
+    .flow { margin-top: 56px; background: var(--deep); color: var(--deep-ink); }
+    .flow-stage { display: grid; grid-template-columns: 1fr 1fr; }
+    .js .flow-stage { display: none; }
+    .js .flow-stage.is-current { display: grid; animation: fade .2s ease; }
+    .flow-text { padding: clamp(40px, 6vw, 88px) var(--margin) 40px max(var(--margin), (100vw - var(--frame)) / 2); }
+    .flow-text h3 { font-size: var(--s-head); line-height: 1.04; letter-spacing: -.035em; max-width: 13ch; text-wrap: balance; }
+    .flow-text p { margin-top: 24px; max-width: 40ch; color: var(--deep-soft); }
+    .flow-ui { background: var(--surface); display: grid; place-items: center; padding: 48px var(--margin); min-height: 420px; }
+    .ui-card { width: min(100%, 460px); background: var(--ui); border-radius: 10px; padding: 20px 22px; }
+    .ui-title { font-size: 14px; font-weight: 600; color: var(--ui-soft); margin-bottom: 12px; }
+    .ui-rows { display: grid; gap: 4px; }
+    .ui-rows div { display: grid; grid-template-columns: 1fr 1.2fr; gap: 12px; padding: 10px 12px; background: #eef0ea; border-radius: 6px; }
+    .ui-rows dt { font-weight: 600; }
+    .ui-code { margin: 0; padding: 16px; background: #eef0ea; border-radius: 6px; font-size: 14px; line-height: 1.6; overflow-x: auto; white-space: pre-wrap; }
+    .ui-code code { font-size: inherit; }
+    .ui-foot { margin-top: 12px; font-size: 14px; color: var(--ui-soft); }
+    .flow-control { display: none; padding: 24px 0 32px; }
+    .js .flow-control { display: block; }
+    .flow-control input { width: 100%; height: 32px; margin: 0; background: transparent; -webkit-appearance: none; appearance: none; cursor: pointer; }
+    .flow-control input::-webkit-slider-runnable-track { height: 8px; background: #4a4e45; }
+    .flow-control input::-moz-range-track { height: 8px; background: #4a4e45; }
+    .flow-control input::-moz-range-progress { height: 8px; background: var(--deep-ink); }
+    .flow-control input::-webkit-slider-thumb { -webkit-appearance: none; width: 32px; height: 32px; margin-top: -12px; background: #9fb391; border: 0; border-radius: 0; }
+    .flow-control input::-moz-range-thumb { width: 32px; height: 32px; background: #9fb391; border: 0; border-radius: 0; }
+    .flow-control input:focus-visible { outline-color: var(--deep-ink); }
+    .flow-names { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 12px; }
+    .flow-names button { min-height: 44px; padding: 0; border: 0; background: transparent; text-align: left; font-size: var(--s-body); color: var(--deep-soft); transition: color .18s ease; }
+    .flow-names button:nth-child(2) { text-align: center; padding-right: 16%; }
+    .flow-names button:nth-child(3) { text-align: center; padding-left: 16%; }
+    .flow-names button:last-child { text-align: right; }
+    .flow-names button.is-current, .flow-names button:hover { color: var(--deep-ink); }
+    .flow-names button:focus-visible { outline-color: var(--deep-ink); }
+    .privacy-lists { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 48px; margin-top: 72px; }
+    .privacy-lists h3 { margin-bottom: 14px; }
+    .privacy-lists li { padding: 8px 0 8px 22px; position: relative; }
+    .privacy-lists li::before { content: ""; position: absolute; left: 0; top: 18px; width: 8px; height: 8px; background: var(--accent); }
+    .trust { background: var(--surface); padding: 28px; }
+    .trust p { margin-bottom: 0; }
 
-    .privacy { background: var(--forest); color: white; }
-    .privacy-heading { max-width: 850px; }
-    .privacy-heading h2 { margin-bottom: 26px; color: white; }
-    .privacy-heading p { max-width: 690px; color: rgba(255,255,255,.64); }
-    .request-flow { margin: 64px 0; display: grid; grid-template-columns: 1fr 46px 1fr 46px 1fr 46px 1fr; align-items: center; }
-    .request-flow > div { min-height: 145px; padding: 22px; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.04); display: flex; flex-direction: column; }
-    .request-flow > div > span { color: #dac09a; margin-bottom: 22px; }
-    .request-flow b { font: 400 17px/1.2 var(--serif); }
-    .request-flow small { margin-top: 7px; color: rgba(255,255,255,.52); line-height: 1.45; }
-    .request-flow > i { display: grid; place-items: center; color: #dac09a; }
-    .privacy-grid { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid rgba(255,255,255,.15); }
-    .privacy-grid article { min-height: 330px; padding: 32px; border-right: 1px solid rgba(255,255,255,.15); }
-    .privacy-grid article:last-child { border-right: 0; }
-    .privacy-grid article > span { width: 44px; height: 44px; display: grid; place-items: center; color: #dac09a; border: 1px solid rgba(255,255,255,.16); }
-    .privacy-grid h3 { margin: 28px 0 16px; font: 400 23px/1.2 var(--serif); }
-    .privacy-grid ul { list-style: none; padding: 0; margin: 0; }
-    .privacy-grid li { padding: 8px 0 8px 19px; position: relative; color: rgba(255,255,255,.6); font-size: 12px; line-height: 1.55; }
-    .privacy-grid li::before { content: '—'; position: absolute; left: 0; color: #dac09a; }
-    .privacy-grid p { color: rgba(255,255,255,.6); font-size: 13px; }
-    .trust-boundary { background: rgba(169,63,45,.12); }
+    .self-host-grid { display: grid; grid-template-columns: 5fr 7fr; gap: 64px; align-items: start; }
+    .self-host-grid > div > p { margin-top: 20px; max-width: 44ch; }
+    .self-host-list { display: grid; gap: 40px; padding-top: 8px; }
+    .self-host-list p { margin-top: 8px; max-width: 58ch; }
 
-    .limitations { background: var(--paper-deep); }
-    .limitations-grid { display: grid; grid-template-columns: .75fr 1.25fr; gap: 110px; }
-    .limitations-title { position: sticky; top: 110px; align-self: start; }
-    .limits-list { border-top: 1px solid #bfb5a5; }
-    .limits-list article { display: grid; grid-template-columns: 48px 1fr; gap: 18px; padding: 28px 0; border-bottom: 1px solid #bfb5a5; }
-    .limits-list article > span { color: var(--red); font: 800 9px/1.5 var(--mono); }
-    .limits-list h3 { margin: 0 0 7px; font: 400 21px/1.25 var(--serif); }
-    .limits-list p { margin: 0; color: var(--muted); font-size: 13px; }
+    .limits { padding-bottom: 0; }
+    .limits > .frame { background: var(--deep); color: var(--deep-ink); padding: clamp(40px, 6vw, 88px) clamp(24px, 5vw, 72px); width: min(100% - 2 * var(--margin), var(--frame)); }
+    .limits-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px 64px; margin-top: 48px; }
+    .limits-grid p { margin-top: 10px; color: var(--deep-soft); max-width: 52ch; }
 
-    .help-grid { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); }
-    .help-card { min-height: 220px; display: grid; grid-template-columns: 48px 1fr; gap: 22px; padding: 30px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: rgba(255,255,255,.17); }
-    .help-card:nth-child(2n) { border-right: 0; }
-    .help-card:nth-child(n+5) { border-bottom: 0; }
-    .help-card > span { width: 44px; height: 44px; display: grid; place-items: center; color: var(--red); border: 1px solid var(--line); }
-    .help-card h3 { margin: 4px 0 10px; font-size: 20px; }
-    .help-card p { margin: 0; color: var(--muted); font-size: 13px; }
-    .help-card .inline-link { color: var(--red); }
+    .help-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 48px; margin-top: 48px; }
+    .help-group h3 { padding-bottom: 12px; }
+    .help-item { padding: 18px 0; }
+    .help-item p { margin-top: 6px; color: var(--soft); }
 
-    .faq { background: var(--paper-light); border-top: 1px solid var(--line); }
-    .faq-grid { display: grid; grid-template-columns: .65fr 1.35fr; gap: 100px; }
-    .faq-intro { position: sticky; top: 110px; align-self: start; }
-    .faq-intro p { color: var(--muted); }
-    .accordion { border-top: 1px solid var(--line); }
-    details { border-bottom: 1px solid var(--line); }
-    summary { min-height: 78px; padding: 18px 2px; display: flex; align-items: center; justify-content: space-between; gap: 24px; cursor: pointer; list-style: none; font: 400 20px/1.3 var(--serif); }
-    summary::-webkit-details-marker { display: none; }
-    summary i { width: 20px; height: 20px; position: relative; flex: 0 0 auto; }
-    summary i::before, summary i::after { content: ''; position: absolute; left: 4px; right: 4px; top: 9px; height: 1px; background: var(--red); }
-    summary i::after { transform: rotate(90deg); transition: transform .2s; }
-    details[open] summary i::after { transform: rotate(0); }
-    details > p { padding: 0 44px 24px 2px; margin: 0; color: var(--muted); font-size: 14px; }
-    .faq .inline-link { color: var(--red); }
+    .faq-grid { display: grid; grid-template-columns: 5fr 1fr 6fr; }
+    .faq-index { grid-column: 1; }
+    .faq-index h2 { font-size: var(--s-head); }
+    .faq-list { margin-top: 32px; display: grid; gap: 4px; }
+    .faq-q { display: flex; gap: 14px; align-items: baseline; width: 100%; padding: 10px 0; border: 0; background: transparent; text-align: left; font-size: var(--s-body); color: var(--soft); transition: color .15s ease; }
+    .faq-q::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--soft); transform: translateY(-2px); }
+    .faq-q:hover, .faq-q[aria-expanded="true"] { color: var(--ink); }
+    .faq-q[aria-expanded="true"]::before { background: var(--accent); }
+    .faq-a { padding: 0 0 16px 22px; }
+    .faq-pane { display: none; grid-column: 3; position: sticky; top: 120px; align-self: start; padding-top: 104px; font-size: clamp(22px, 1.9vw, 28px); line-height: 1.3; max-width: 30ch; }
+    .js .faq-pane { display: block; }
+    .js .faq-a { display: none; }
 
-    .closing { padding-block: 96px; background: var(--red); color: white; overflow: hidden; }
-    .closing-inner { min-height: 280px; display: grid; grid-template-columns: 1fr auto; gap: 80px; align-items: center; position: relative; }
-    .closing-jp { position: absolute; right: 37%; top: -60px; font: 280px/1 var(--serif); color: rgba(255,255,255,.07); }
-    .closing h2 { position: relative; color: white; }
-    .closing h2 em { color: #f4d8c9; }
-    .closing-actions { position: relative; text-align: center; }
-    .closing-actions p { display: flex; align-items: center; gap: 7px; color: rgba(255,255,255,.72); font-size: 10px; }
-    .closing-actions .icon { width: 14px; }
+    .closing { margin-top: var(--gap); background: var(--field); }
+    .closing-inner { padding-block: clamp(72px, 10vw, 140px); display: grid; grid-template-columns: 7fr 5fr; gap: 24px 48px; align-items: end; }
+    .closing h2 { font-size: var(--s-display); letter-spacing: -.04em; line-height: 1; max-width: 13ch; }
+    .closing .hero-actions { margin-top: 0; justify-content: flex-end; }
 
-    .site-footer { padding-top: 72px; background: #171c18; color: white; }
-    .site-footer .brand-mark { filter: brightness(1.5); }
-    .site-footer .brand-copy small { color: rgba(255,255,255,.45); }
-    .footer-grid { display: grid; grid-template-columns: 1.7fr .65fr .8fr; gap: 90px; padding-bottom: 64px; }
-    .footer-brand p { max-width: 390px; margin: 22px 0 0; color: rgba(255,255,255,.48); font-size: 13px; }
-    .footer-grid > div:not(:first-child) { display: flex; flex-direction: column; gap: 13px; }
-    .footer-grid > div:not(:first-child) b { margin-bottom: 7px; font: 400 17px/1 var(--serif); }
-    .footer-grid > div:not(:first-child) a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: rgba(255,255,255,.52); font-size: 12px; }
-    .footer-grid a:hover { color: white; }
-    .footer-grid a .icon { width: 13px; }
-    .footer-bottom { min-height: 70px; display: flex; align-items: center; gap: 32px; border-top: 1px solid rgba(255,255,255,.1); color: rgba(255,255,255,.38); font-size: 10px; }
-    .footer-bottom a { margin-left: auto; min-height: 44px; display: grid; place-items: center; }
+    .site-footer { padding: 28px 0 32px; font-size: 16px; color: var(--soft); }
+    .footer-line { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px 32px; align-items: center; }
+    .footer-line nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 24px; }
+    .footer-line a { color: var(--ink); text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; }
+    .footer-line a:hover { text-decoration: underline; text-underline-offset: 4px; }
+    .footer-line > span:last-child { text-align: right; }
 
-    .toast { position: fixed; right: 24px; bottom: 24px; z-index: 200; padding: 13px 18px; background: var(--ink); color: white; box-shadow: var(--shadow); font-size: 12px; transform: translateY(20px); opacity: 0; pointer-events: none; transition: .2s ease; }
-    .toast.visible { transform: translateY(0); opacity: 1; }
-    .has-motion .reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
-    .has-motion .reveal.is-visible { opacity: 1; transform: translateY(0); }
+    .toast { position: fixed; left: 50%; bottom: 24px; z-index: 60; padding: 12px 18px; background: var(--deep); color: var(--deep-ink); font-size: 16px; font-weight: 500; opacity: 0; pointer-events: none; transform: translate(-50%, 12px); transition: opacity .2s ease, transform .2s ease; box-shadow: 0 8px 24px rgba(0, 0, 0, .18); } /* taste-skill-ignore: floating toast */
+    .toast.visible { opacity: 1; transform: translate(-50%, 0); }
 
-    @media (max-width: 1050px) {
-      .desktop-nav { gap: 17px; }
-      .desktop-nav a { font-size: 12px; }
-      .hero-grid { grid-template-columns: 1fr .85fr; gap: 24px; }
-      .enso { width: 350px; }
-      .trust-grid { grid-template-columns: repeat(2, 1fr); }
-      .trust-grid > div:nth-child(3) { border-left: 1px solid rgba(255,255,255,.12); border-top: 1px solid rgba(255,255,255,.12); }
-      .trust-grid > div:nth-child(4) { border-top: 1px solid rgba(255,255,255,.12); }
-      .tool-grid { grid-template-columns: repeat(2, 1fr); }
-      .tool-card:nth-child(3n) { border-right: 1px solid var(--line); }
-      .tool-card:nth-child(2n) { border-right: 0; }
-      .tool-card:nth-child(n+7) { border-bottom: 1px solid var(--line); }
-      .tool-card:nth-child(n+9) { border-bottom: 0; }
-      .explainer-grid, .limitations-grid { gap: 60px; }
-      .flow-card { padding: 22px; }
+    @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes shutter { from { clip-path: polygon(120px 0, 120px 0, 120px 100%, 0 100%, 0 120px); } to { clip-path: polygon(120px 0, 100% 0, 100% 100%, 0 100%, 0 120px); } }
+    @keyframes settle { from { transform: scale(1.06); opacity: 0; } to { transform: none; opacity: 1; } }
+    .has-motion .stage { animation: shutter 1.1s cubic-bezier(.7, 0, .2, 1) both; }
+    .has-motion .stage .chat { animation: settle 1s .35s cubic-bezier(.2, .7, .2, 1) both; }
+    .has-motion .hero-copy > * { animation: rise .7s cubic-bezier(.2, .7, .2, 1) both; }
+    .has-motion .hero-copy > :nth-child(2) { animation-delay: .08s; }
+    .has-motion .hero-copy > :nth-child(3) { animation-delay: .16s; }
+    @keyframes rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+    .has-motion .rise { opacity: 0; transform: translateY(24px); transition: opacity .6s ease, transform .6s cubic-bezier(.2, .7, .2, 1); }
+    .has-motion .rise.is-visible { opacity: 1; transform: none; }
+    .has-motion .rise:nth-child(2) { transition-delay: .07s; }
+    .has-motion .rise:nth-child(3) { transition-delay: .14s; }
+    .has-motion .rise:nth-child(4) { transition-delay: .21s; }
+
+    @media (max-width: 1080px) {
+      .desktop-nav { display: none; }
+      .header-cta { margin-left: auto; }
+      .menu-button { display: inline-flex; align-items: center; margin-left: 0; }
+      .js .mobile-nav { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 16px; padding: 12px 0 8px; }
+      .stage { margin-left: calc(var(--margin) + (100vw - 2 * var(--margin)) / 3); margin-top: 56px; padding-right: var(--margin); }
+      .paths { grid-template-columns: 1fr; gap: 24px; }
+      .path-tabs { position: static; grid-template-columns: repeat(3, 1fr); }
+      .chatgpt-grid, .self-host-grid { grid-template-columns: 1fr; gap: 48px; }
+      .form-stage { position: static; }
+      .privacy-lists { grid-template-columns: 1fr 1fr; }
+      .trust { grid-column: 1 / -1; }
+      .help-grid { grid-template-columns: 1fr 1fr; }
     }
-
-    @media (max-width: 840px) {
-      :root { --shell: min(100% - 32px, 700px); }
-      .desktop-nav, .header-cta { display: none; }
-      .menu-button { margin-left: auto; width: 48px; height: 48px; display: grid; place-items: center; background: transparent; border: 1px solid var(--line); color: var(--ink); }
-      .menu-close { display: none; }
-      .menu-button[aria-expanded='true'] .menu-open { display: none; }
-      .menu-button[aria-expanded='true'] .menu-close { display: inline; }
-      .mobile-nav { padding: 10px max(16px, calc((100% - 700px) / 2)) 20px; background: var(--paper); border-bottom: 1px solid var(--line); }
-      .mobile-nav:not([hidden]) { display: grid; }
-      .mobile-nav a { min-height: 48px; display: flex; align-items: center; border-bottom: 1px solid var(--line); font-weight: 650; font-size: 14px; }
-      .mobile-nav .button { margin-top: 12px; border-bottom: 0; }
-      .hero { min-height: auto; }
-      .hero-grid { grid-template-columns: 1fr; padding-block: 80px; }
-      .hero-copy { max-width: 680px; }
-      .hero-visual { min-height: 500px; }
-      .study-card { width: min(470px, 78%); }
-      .jp-type { right: 10%; }
-      .floating-note { right: 9%; }
-      .section { padding-block: 88px; }
-      .section-heading, .setup-heading, .explainer-grid, .setup-layout, .prompt-layout, .limitations-grid, .faq-grid { grid-template-columns: 1fr; gap: 42px; }
-      .section-heading { align-items: start; margin-bottom: 45px; }
-      .use-case-grid { grid-template-columns: 1fr; }
-      .use-case { min-height: 330px; border-right: 0; border-bottom: 1px solid var(--line); }
-      .use-case:last-child { border-bottom: 0; }
-      .source-grid { grid-template-columns: 1fr; }
-      .source-card { min-height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
-      .source-card:last-child { border-bottom: 0; }
-      .explainer-copy { max-width: 630px; }
-      .setup-heading { align-items: start; }
-      .connection-panel { position: relative; top: auto; max-width: 620px; justify-self: center; width: 100%; }
-      .availability-note { grid-template-columns: 44px 1fr; }
-      .availability-note a { grid-column: 2; }
-      .claude-paths { grid-template-columns: 1fr; margin-top: 56px; }
-      .prompt-intro, .limitations-title, .faq-intro { position: relative; top: auto; }
-      .request-flow { grid-template-columns: 1fr; gap: 10px; }
-      .request-flow > div { min-height: 120px; }
-      .request-flow > i { transform: rotate(90deg); }
-      .privacy-grid { grid-template-columns: 1fr; }
-      .privacy-grid article { min-height: auto; border-right: 0; border-bottom: 1px solid rgba(255,255,255,.15); }
-      .privacy-grid article:last-child { border-bottom: 0; }
-      .closing-inner { grid-template-columns: 1fr; gap: 34px; }
-      .closing-actions { text-align: left; justify-self: start; }
-      .footer-grid { grid-template-columns: 1.4fr .7fr .9fr; gap: 35px; }
-    }
-
-    @media (max-width: 600px) {
-      :root { --shell: calc(100% - 28px); }
-      html { scroll-padding-top: 72px; }
-      .header-inner { height: 68px; }
-      .brand-copy strong { font-size: 17px; }
-      .brand-copy small { font-size: 7px; }
-      h1 { font-size: clamp(51px, 16vw, 68px); }
-      h2 { font-size: clamp(40px, 12vw, 54px); }
-      .hero-grid { padding-block: 68px 55px; }
-      .hero-actions { display: grid; }
+    @media (max-width: 760px) {
+      :root { --gap: 96px; }
+      body { font-size: 17px; }
+      .header-cta { display: none; }
+      .menu-button { margin-left: auto; }
+      .hero h1 { font-size: clamp(2.5rem, 10.5vw, 3.5rem); max-width: none; }
+      .lede { margin-top: 24px; }
+      .hero-actions { gap: 16px; }
       .hero-actions .button { width: 100%; }
-      .hero-visual { min-height: 440px; width: calc(100% + 28px); margin-left: -14px; }
-      .enso { width: 310px; border-width: 17px; }
-      .study-card { width: calc(100% - 52px); padding: 22px; }
-      .floating-note { width: 100px; height: 92px; right: 12px; bottom: 34px; }
-      .floating-note span { font-size: 31px; }
-      .jp-type { font-size: 100px; right: 0; }
-      .trust-grid { grid-template-columns: 1fr; padding-block: 4px; }
-      .trust-grid > div, .trust-grid > div:first-child, .trust-grid > div:nth-child(3) { border: 0; border-bottom: 1px solid rgba(255,255,255,.12); }
-      .trust-grid > div:last-child { border-bottom: 0; }
-      .section { padding-block: 72px; }
-      .section-heading { gap: 24px; }
-      .use-case { padding: 26px; }
-      .flow-card { grid-template-columns: 1fr; gap: 10px; box-shadow: 8px 8px 0 var(--paper-deep); }
-      .flow-card > div { min-height: 145px; }
-      .flow-card > i { transform: rotate(90deg); }
-      .availability-note { grid-template-columns: 1fr; padding: 20px; }
-      .availability-note a { grid-column: 1; }
-      .setup-layout { gap: 38px; }
-      .step { grid-template-columns: 40px 1fr; gap: 12px; }
-      .step:not(:last-child)::before { left: 17px; }
-      .connection-panel { width: calc(100% + 4px); margin-left: -2px; box-shadow: 8px 8px 0 rgba(0,0,0,.13); }
-      .panel-title { padding-inline: 14px; }
-      .form-row { padding-inline: 13px; }
-      .header-field { margin: 8px; }
-      .copy-field code { font-size: 10px; }
-      .auth-fallback { grid-template-columns: 1fr; margin-top: 52px; }
-      .path-card { padding: 22px 18px; }
-      .path-heading h3 { font-size: 26px; }
-      .tool-grid { grid-template-columns: 1fr; }
-      .tool-card, .tool-card:nth-child(2n), .tool-card:nth-child(3n), .tool-card:nth-child(n+7), .tool-card:nth-child(n+9) { border-right: 0; border-bottom: 1px solid var(--line); }
-      .tool-card:last-child { border-bottom: 0; }
-      .tool-card { min-height: 330px; }
-      .prompt-row { grid-template-columns: 55px 1fr 28px; gap: 10px; }
-      .prompt-row span { font-size: 17px; }
-      .request-flow { margin-block: 48px; }
-      .privacy-grid article { padding: 26px; }
-      .limits-list article { grid-template-columns: 36px 1fr; }
-      .help-grid { grid-template-columns: 1fr; }
-      .help-card, .help-card:nth-child(2n), .help-card:nth-child(n+5) { border-right: 0; border-bottom: 1px solid var(--line); grid-template-columns: 42px 1fr; padding: 24px 20px; }
-      .help-card:last-child { border-bottom: 0; }
-      summary { font-size: 18px; }
-      .closing { padding-block: 72px; }
-      .closing-inner { min-height: 320px; }
-      .closing-actions { width: 100%; }
-      .closing-actions .button { width: 100%; }
-      .closing-actions p { justify-content: center; }
-      .footer-grid { grid-template-columns: 1fr 1fr; }
-      .footer-brand { grid-column: 1 / -1; }
-      .footer-bottom { min-height: 100px; flex-wrap: wrap; gap: 8px 20px; padding-block: 20px; }
-      .footer-bottom a { margin-left: 0; }
-      .toast { right: 14px; left: 14px; bottom: 14px; text-align: center; }
+      .stage { margin: 48px 0 0; padding: 72px 16px 24px; clip-path: polygon(72px 0, 100% 0, 100% 100%, 0 100%, 0 72px); }
+      @keyframes shutter { from { clip-path: polygon(72px 0, 72px 0, 72px 100%, 0 100%, 0 72px); } to { clip-path: polygon(72px 0, 100% 0, 100% 100%, 0 100%, 0 72px); } }
+      .chat { width: 100%; }
+      .chat-tabs [role="tab"] { padding: 0 6px; }
+      .chat-panel { padding: 18px 14px 6px; min-height: 0; }
+      .plan li { grid-template-columns: 52px 1fr; gap: 10px; }
+      .days { grid-template-columns: repeat(10, 1fr); }
+      .claude-head, .tools-head, .privacy-head { grid-template-columns: 1fr; }
+      .claude-head p { font-size: 20px; }
+      .token-note { padding: 18px; }
+      .path-tabs { grid-template-columns: 1fr; position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 8px 0; grid-auto-flow: column; grid-auto-columns: 1fr; grid-template-columns: none; gap: 4px; }
+      .path-tabs [role="tab"] { min-height: 56px; padding: 10px; }
+      .tab-name { font-size: 16px; }
+      .tab-note { display: none; }
+      .bands li { grid-template-columns: 1fr; gap: 10px; padding: 18px 16px; }
+      .copy code { padding: 10px 12px; }
+      .filter { height: 56px; font-size: 18px; padding: 0 16px; }
+      .cmd-name { flex-direction: column; gap: 2px; font-size: 8.5vw; padding: 8px 12px; }
+      .cmd-name code { font-size: 14px; white-space: normal; overflow-wrap: anywhere; }
+      .cmd-detail { padding: 8px 12px 22px; }
+      .flow-stage, .js .flow-stage.is-current { grid-template-columns: 1fr; }
+      .flow-ui { order: -1; min-height: 0; padding: 32px 16px; }
+      .flow-text { padding: 28px 16px 32px; }
+      .flow-text h3 { font-size: 9vw; }
+      .flow-control { padding: 20px 0 8px; }
+      .flow-control input::-webkit-slider-thumb { width: 40px; height: 40px; margin-top: -16px; }
+      .flow-names { grid-template-columns: 1fr 1fr; gap: 0 12px; }
+      .flow-names button, .flow-names button:nth-child(n) { text-align: left; padding: 0; font-size: 16px; }
+      .privacy-lists, .limits-grid, .help-grid { grid-template-columns: 1fr; gap: 32px; }
+      .faq-grid { grid-template-columns: 1fr; }
+      .js .faq-pane { display: none; }
+      .js .faq-q[aria-expanded="true"] + .faq-a { display: block; font-size: 17px; }
+      .closing-inner { grid-template-columns: 1fr; }
+      .closing h2 { font-size: 10vw; }
+      .closing .hero-actions { justify-content: flex-start; }
+      .footer-line { grid-template-columns: 1fr; gap: 8px; font-size: 14px; }
+      .footer-line nav { justify-content: flex-start; gap: 0 20px; }
+      .footer-line > span:last-child { text-align: left; }
     }
-
     @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0s !important; transition-duration: .01ms !important; }
     }
   `;
 }
