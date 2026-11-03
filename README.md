@@ -8,10 +8,10 @@ An open-source, stateless, read-only Model Context Protocol (MCP) server for ask
 - **Hosted service:** [bunpro.yashkadam.com](https://bunpro.yashkadam.com/)
 - **Hosted MCP endpoint:** `https://bunpro.yashkadam.com/mcp`
 - **Self-hosting:** [Local, Docker, and Railway guide](docs/self-hosting.md)
-- **Tools:** Eight read-only workflows for activity, reviews, decks, progress, and trends
+- **Tools:** Nine read-only workflows for activity, reviews, decks, progress, trends, and weak spots
 
 > [!IMPORTANT]
-> Bunpro MCP is an unofficial community project. It is not affiliated with or endorsed by Bunpro or OpenAI. It uses experimental, undocumented Bunpro functionality that may change, become unavailable, or be rate-limited without notice.
+> Bunpro MCP is an unofficial, experimental community project. It is not affiliated with or endorsed by Bunpro, OpenAI or Anthropic. It uses experimental, undocumented Bunpro functionality that may change, become unavailable, or be rate-limited without notice.
 
 ## What you can ask
 
@@ -21,6 +21,7 @@ An open-source, stateless, read-only Model Context Protocol (MCP) server for ask
 - “Which study decks are active?”
 - “How far along am I from JLPT N5 through N1?”
 - “How has my review volume and accuracy changed this month?”
+- "What does Bunpro currently list as troubled for me?"
 
 Every tool is read-only. Bunpro MCP cannot answer reviews, start lessons or crams, change SRS progress, edit decks, or update account settings.
 
@@ -44,7 +45,17 @@ In the ChatGPT/Codex desktop app:
 
 The hosted deployment has no shared Bunpro credential or account database. Your MCP client attaches your token to each request, and the server does not persist it.
 
-Clients already configured with `Authorization: Bearer <token>` remain compatible. Configure exactly one credential method; requests containing both headers are rejected.
+The server also supports `Authorization: Bearer <token>`, which is the form Claude uses. Configure exactly one credential method; requests containing both headers are rejected.
+
+## Use with Claude
+
+| App | Path | State |
+| --- | --- | --- |
+| Claude Desktop | Local `.mcpb` from a GitHub release, running the stdio server with your token | Available from 0.5.0 |
+| Claude Code | Plugin from this repository's marketplace, hosted or self-hosted URL with `Authorization: Bearer`, or local stdio | Plugin available from 0.5.0, the rest works today |
+| claude.ai web and mobile | Custom connector with **No sign-in** and an `Authorization` request header | Personal accounts with the request-headers beta only, untested |
+
+Follow the [Claude setup guide](docs/claude-setup.md) for the steps and warnings for each app.
 
 ## Self-host locally with stdio
 
@@ -85,7 +96,7 @@ docker run --rm -p 8080:8080 \
   bunpro-mcp
 ```
 
-Your endpoint will be `http://localhost:8080/mcp`. Each caller must still provide their own token through `X-Bunpro-Token`; do not configure a deployment-wide `BUNPRO_API_TOKEN` for HTTP mode.
+Your endpoint will be `http://localhost:8080/mcp`. Each caller must still provide their own token through `X-Bunpro-Token` or `Authorization: Bearer`; do not configure a deployment-wide `BUNPRO_API_TOKEN` for HTTP mode.
 
 For an HTTPS deployment on Railway or another host, follow [docs/self-hosting.md](docs/self-hosting.md).
 
@@ -101,6 +112,7 @@ For an HTTPS deployment on Railway or another host, follow [docs/self-hosting.md
 | `get_recent_activity` | Last-24-hours activity or Bunpro’s latest review attempts |
 | `get_learning_progress` | Account totals, JLPT progress, reviews, and cram aggregates |
 | `get_activity_trend` | Daily evidence with derived totals and averages for a date range |
+| `list_weak_spots` | Items Bunpro currently lists as troubled, with the accuracy and streak Bunpro reports |
 
 Missing source data is reported as unavailable, not silently converted to zero.
 
@@ -128,7 +140,10 @@ Optional live tests use your own Bunpro token and perform read-only, deliberatel
 BUNPRO_API_TOKEN="your token" npm run live:test:auth
 BUNPRO_API_TOKEN="your token" npm run live:test:tools
 BUNPRO_API_TOKEN="your token" BUNPRO_MCP_URL="https://your-host.example/mcp" npm run live:test:tools
+BUNPRO_API_TOKEN="your token" BUNPRO_MCP_URL="https://your-host.example/mcp" BUNPRO_SMOKE_AUTH=bearer npm run live:test:tools
 ```
+
+`live:test:tools` sends `X-Bunpro-Token` by default. Set `BUNPRO_SMOKE_AUTH=bearer` to send `Authorization: Bearer` instead.
 
 The live scripts print only bounded status information. Never attach raw Bunpro responses or credentials to an issue.
 

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { createHttpMcpHandler } from "../src/http-server.js";
+import { smokeCredentialHeaders } from "./smoke-credential.js";
 
 const apiToken = process.env.BUNPRO_API_TOKEN;
 assert.ok(apiToken, "BUNPRO_API_TOKEN must be configured for the live tool smoke test.");
@@ -8,7 +9,7 @@ assert.ok(apiToken, "BUNPRO_API_TOKEN must be configured for the live tool smoke
 const remoteUrl = process.env.BUNPRO_MCP_URL;
 const handler = remoteUrl === undefined ? createHttpMcpHandler() : undefined;
 const transport = new StreamableHTTPClientTransport(new URL(remoteUrl ?? "https://local-smoke.invalid/mcp"), {
-  requestInit: { headers: { "X-Bunpro-Token": apiToken } },
+  requestInit: { headers: smokeCredentialHeaders(apiToken, process.env.BUNPRO_SMOKE_AUTH) },
   fetch: handler === undefined
     ? fetch
     : (input, init) => handler.fetch(new Request(input, init))
@@ -45,6 +46,8 @@ try {
     end_date: yesterday,
     expected_timezone: timezone
   });
+  await pause();
+  reportAccuracyScale(await call("list_weak_spots", { limit: 100 }));
 } finally {
   await client.close();
   await handler?.close();
@@ -56,6 +59,14 @@ async function call(name: string, args: Record<string, unknown>): Promise<Record
   assert.ok(result.structuredContent, `${name} did not return structured content.`);
   process.stdout.write(`${name}: ok\n`);
   return result.structuredContent as Record<string, unknown>;
+}
+
+// Prints one yes or no and never a value. A yes rules out a 0-to-1 scale, for the
+// release check on `accuracy`.
+function reportAccuracyScale(result: Record<string, unknown>): void {
+  const items = result.weak_spots as Array<{ accuracy: number | null }>;
+  const aboveOne = items.some(item => item.accuracy !== null && item.accuracy > 1);
+  process.stdout.write(`list_weak_spots: accuracy above 1 seen: ${aboveOne ? "yes" : "no"}\n`);
 }
 
 function requiredString(value: Record<string, unknown>, key: string): string {

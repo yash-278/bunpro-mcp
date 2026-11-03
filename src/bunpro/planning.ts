@@ -2,30 +2,29 @@ import { BunproError } from "./errors.js";
 import type {
   ListStudyDecksInput,
   ListStudyDecksOutput,
+  ListWeakSpotsInput,
+  ListWeakSpotsOutput,
   RecentActivityInput,
   RecentActivityOutput,
   ReviewSchedule
 } from "./schemas.js";
-import type { FrontendSource } from "./frontend-source.js";
+import type { FrontendSource, WeakSpotFact } from "./frontend-source.js";
+import { nextDay, todayInTimeZone } from "./study-period.js";
 
 export async function getReviewSchedule(
   source: Pick<FrontendSource, "loadReviewPlanning">,
   now: Date = new Date()
 ): Promise<ReviewSchedule> {
-  const operationSignal = AbortSignal.timeout(30_000);
-  const planning = await source.loadReviewPlanning(operationSignal);
-  const today = dateInTimeZone(now, planning.accountContext.sourceTimezone);
-  const tomorrow = addDays(today, 1);
+  const planning = await source.loadReviewPlanning();
+  const today = todayInTimeZone(now, planning.accountContext.sourceTimezone);
+  const tomorrow = nextDay(today);
   const forecast = [
     { bucket: "later_today" as const, date: today, ...planning.forecast.laterToday },
     { bucket: "tomorrow" as const, date: tomorrow, ...planning.forecast.tomorrow },
     ...[...planning.forecast.dated]
       .sort((left, right) => left.date.localeCompare(right.date))
-      .map(item => ({ bucket: "date" as const, ...item, date: validForecastDate(item.date) }))
+      .map(item => ({ bucket: "date" as const, ...item }))
   ];
-  if (forecast.length > 14) {
-    throw new BunproError("BUNPRO_CONTRACT_CHANGED", "Bunpro returned an unexpected daily forecast horizon.");
-  }
 
   return {
     source_timezone: planning.accountContext.sourceTimezone,
@@ -49,8 +48,7 @@ export async function listStudyDecks(
   source: Pick<FrontendSource, "loadDeckConfiguration">,
   input: ListStudyDecksInput
 ): Promise<ListStudyDecksOutput> {
-  const operationSignal = AbortSignal.timeout(30_000);
-  const configuration = await source.loadDeckConfiguration(operationSignal);
+  const configuration = await source.loadDeckConfiguration();
   const matching = configuration.entries.filter(
     entry => !input.active_only || entry.activelyStudying
   );
@@ -87,8 +85,7 @@ export async function getRecentActivity(
   source: Pick<FrontendSource, "loadRecentActivity">,
   input: RecentActivityInput
 ): Promise<RecentActivityOutput> {
-  const operationSignal = AbortSignal.timeout(30_000);
-  const activity = await source.loadRecentActivity(input.view, operationSignal);
+  const activity = await source.loadRecentActivity(input.view);
   const isRollingWindow = activity.view === "last_24_hours";
   const normalizedAttempts = activity.attempts.slice(0, input.limit).map(attempt => ({
     attempt_id: attempt.attemptId,
@@ -122,27 +119,36 @@ export async function getRecentActivity(
   };
 }
 
-function validForecastDate(value: string): string {
-  const parsed = new Date(`${value}T00:00:00Z`);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) ||
-    Number.isNaN(parsed.valueOf()) ||
-    parsed.toISOString().slice(0, 10) !== value) {
-    throw new BunproError("BUNPRO_CONTRACT_CHANGED", "Bunpro returned an invalid forecast date.");
+export async function listWeakSpots(
+  source: Pick<FrontendSource, "loadWeakSpots">,
+  input: ListWeakSpotsInput,
+  now: Date
+): Promise<ListWeakSpotsOutput> {
+  const items = await source.loadWeakSpots(input.period);
+  const weakSpots = [...items].sort(byLowestAccuracy).slice(0, input.limit);
+  return {
+    period: input.period,
+    retrieved_at: now.toISOString(),
+    order: "lowest_accuracy_first",
+    count: weakSpots.length,
+    total_available: items.length,
+    has_more: items.length > weakSpots.length,
+    completeness: "bunpro_selection_rule_unpublished",
+    weak_spots: weakSpots.map(item => ({
+      content_id: item.contentId,
+      content_type: item.contentType,
+      label: item.label,
+      meaning: item.meaning,
+      level: item.level,
+      accuracy: item.accuracy,
+      streak: item.streak
+    }))
+  };
+}
+
+function byLowestAccuracy(left: WeakSpotFact, right: WeakSpotFact): number {
+  if (left.accuracy !== right.accuracy) {
+    return (left.accuracy ?? Infinity) - (right.accuracy ?? Infinity);
   }
-  return value;
-}
-
-function dateInTimeZone(value: Date, timeZone: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(value);
-}
-
-function addDays(value: string, days: number): string {
-  const date = new Date(`${value}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
+  return left.contentId.localeCompare(right.contentId, "en", { numeric: true });
 }

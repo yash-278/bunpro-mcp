@@ -12,8 +12,8 @@ The server needs no Auth0 tenant, OAuth provider, PostgreSQL database, encryptio
 | Option | Best for | Token location |
 | --- | --- | --- |
 | Local stdio | One desktop client and the smallest trust boundary | `BUNPRO_API_TOKEN` in the MCP client's secret environment configuration |
-| Local Docker HTTP | Testing the remote transport locally | Each caller sends `X-Bunpro-Token` |
-| Railway or another HTTPS host | Multiple users or devices | Each caller sends `X-Bunpro-Token` |
+| Local Docker HTTP | Testing the remote transport locally | Each caller sends `X-Bunpro-Token` or `Authorization: Bearer` |
+| Railway or another HTTPS host | Multiple users or devices | Each caller sends `X-Bunpro-Token` or `Authorization: Bearer` |
 
 Never configure a shared `BUNPRO_API_TOKEN` on an HTTP deployment. Every HTTP caller must supply their own credential.
 
@@ -64,7 +64,7 @@ The local endpoint is:
 http://localhost:8080/mcp
 ```
 
-Configure the MCP client with a protected `X-Bunpro-Token` header containing the raw Account API Token. Leave Bearer authentication blank.
+Configure the MCP client with one protected credential, as described in [Credential contract](#credential-contract).
 
 ## Railway
 
@@ -82,7 +82,7 @@ Configure the MCP client with a protected `X-Bunpro-Token` header containing the
 
 5. Do **not** add `BUNPRO_API_TOKEN`, Bunpro username/password values, Auth0 variables, database variables, or encryption keys.
 6. Add an HTTPS public domain and confirm `GET /healthz` returns `{"status":"ok"}`.
-7. Configure each MCP client with `https://your-domain.example/mcp` and its own protected `X-Bunpro-Token` value.
+7. Configure each MCP client with `https://your-domain.example/mcp` and its own protected credential, as described in [Credential contract](#credential-contract).
 
 ## Another HTTPS host
 
@@ -97,13 +97,14 @@ Non-local `PUBLIC_BASE_URL` values must use HTTPS. Host-header validation reject
 
 ## Credential contract
 
-Preferred HTTP configuration:
+The server supports two HTTP credential headers:
 
 ```text
 X-Bunpro-Token: <raw Bunpro Account API Token>
+Authorization: Bearer <raw Bunpro Account API Token>
 ```
 
-`Authorization: Bearer <token>` remains available for clients that cannot set a custom protected header. Configure exactly one method. Requests with missing, malformed, oversized, or ambiguous credentials receive HTTP 401.
+ChatGPT and other hosts use `X-Bunpro-Token`. Claude uses `Authorization: Bearer`, and the value must include the `Bearer ` prefix. Configure exactly one method. Requests with missing, malformed, oversized, or ambiguous credentials receive HTTP 401.
 
 Never place a token in:
 
@@ -112,6 +113,10 @@ Never place a token in:
 - a repository or `.env` file committed to Git;
 - a log, screenshot, issue, or support message; or
 - a shared deployment variable for HTTP mode.
+
+## Use with Claude
+
+The [Claude setup guide](claude-setup.md) has the steps for Claude Code and claude.ai. To use your own server, replace `https://bunpro.yashkadam.com/mcp` in those steps with `https://your-domain.example/mcp`. The Claude Desktop `.mcpb` runs the server locally, so it needs no URL. The Claude plugin's URL is fixed to the hosted service, so configure your server by hand. You can still install the plugin for its `study-plan` skill.
 
 ## Verification
 
@@ -124,7 +129,10 @@ For maintainers, the repository includes deliberately paced live smoke scripts:
 ```bash
 BUNPRO_API_TOKEN="your token" npm run live:test:auth
 BUNPRO_API_TOKEN="your token" BUNPRO_MCP_URL="https://your-domain.example/mcp" npm run live:test:tools
+BUNPRO_API_TOKEN="your token" BUNPRO_MCP_URL="https://your-domain.example/mcp" BUNPRO_SMOKE_AUTH=bearer npm run live:test:tools
 ```
+
+`live:test:tools` sends `X-Bunpro-Token` by default. Set `BUNPRO_SMOKE_AUTH=bearer` to send `Authorization: Bearer` instead.
 
 ## Operational limits
 

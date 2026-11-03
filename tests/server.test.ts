@@ -9,6 +9,8 @@ import {
   LearningProgressOutputSchema,
   ListStudyDecksInputSchema,
   ListStudyDecksOutputSchema,
+  ListWeakSpotsInputSchema,
+  ListWeakSpotsOutputSchema,
   RecentActivityInputSchema,
   RecentActivityOutputSchema,
   ReviewScheduleOutputSchema,
@@ -66,7 +68,7 @@ test("get_connection_status creates a fresh Frontend source operation for every 
   }
 });
 
-test("the MCP adapter exposes exactly eight read-only tools and preserves structured output", async () => {
+test("the MCP adapter exposes exactly nine read-only tools and preserves structured output", async () => {
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   const sourceData = {
     accountContext: {
@@ -101,7 +103,8 @@ test("the MCP adapter exposes exactly eight read-only tools and preserves struct
       list_study_decks: { input: ListStudyDecksInputSchema, output: ListStudyDecksOutputSchema },
       get_recent_activity: { input: RecentActivityInputSchema, output: RecentActivityOutputSchema },
       get_learning_progress: { input: emptyInput, output: LearningProgressOutputSchema },
-      get_activity_trend: { input: StudyRangeInputSchema, output: ActivityTrendOutputSchema }
+      get_activity_trend: { input: StudyRangeInputSchema, output: ActivityTrendOutputSchema },
+      list_weak_spots: { input: ListWeakSpotsInputSchema, output: ListWeakSpotsOutputSchema }
     };
     assert.deepEqual(listing.tools.map(tool => tool.name), Object.keys(expectedSchemas));
     for (const tool of listing.tools) {
@@ -130,6 +133,30 @@ test("the MCP adapter exposes exactly eight read-only tools and preserves struct
       arguments: { date: "not-a-date" }
     });
     assert.equal(invalid.isError, true);
+  } finally {
+    await client.close();
+    await server.close();
+  }
+});
+
+test("list_weak_spots describes only what Bunpro currently lists", async () => {
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  const server = createServer({
+    sourceOperationFactory: () => new InMemoryFrontendSource({
+      accountContext: { sourceTimezone: "Asia/Kolkata", tokenSource: "request_header" }
+    })
+  });
+  const client = new Client({ name: "server-claim-test", version: "0.1.0" });
+
+  try {
+    await server.connect(serverTransport);
+    await client.connect(clientTransport);
+    const { tools } = await client.listTools();
+    const description = tools.find(tool => tool.name === "list_weak_spots")?.description;
+
+    assert.match(description ?? "", /currently lists as troubled/);
+    assert.match(description ?? "", /not that the learner has no weak spots/);
+    assert.doesNotMatch(description ?? "", /all[- ]time|complete|recent|threshold|below \d|\d+%/i);
   } finally {
     await client.close();
     await server.close();

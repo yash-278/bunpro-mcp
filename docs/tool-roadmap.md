@@ -112,6 +112,23 @@ Answers: "How has my study consistency and accuracy changed over the last 30 day
 - Output: preserved daily review, new-content, and accuracy evidence; source-record-day counts; supported totals and averages; and independent coverage windows
 - Important boundary: this tool may derive trends but must preserve the underlying daily values and label every derived measure
 
+## Priority 3: Weak Spots
+
+### `list_weak_spots` — implemented
+
+Answers: "What does Bunpro currently list as troubled for me?"
+
+- Source: `/api/frontend/user_stats/troubled_content`, with `?period=last_month` for the `last_month` period
+- Input: `period` (`overall` or `last_month`, default `overall`) and `limit` (1 to 100, default 20)
+- Output: `period`, `retrieved_at`, a fixed `order` of `lowest_accuracy_first`, `count`, `total_available`, `has_more`, a fixed `completeness` of `bunpro_selection_rule_unpublished`, and `weak_spots` items holding `content_id`, `content_type`, `label`, `meaning`, `level`, a nullable `accuracy`, and `streak`
+- Request cost: 1 Bunpro request
+- Order: the MCP derives it. Items sort by lowest accuracy first, with null accuracy last and ties broken by item ID, before `limit` applies
+- Important boundary: the tool may say only that these are items Bunpro currently lists as troubled, with Bunpro's reported accuracy and streak. It may not call the list all-time or complete, say when an item was missed, or state a threshold. An empty list means Bunpro lists nothing right now, not that the learner has no weak spots
+- Limits: Bunpro's selection rule is unpublished, and the route has no grammar or vocabulary filter, so a caller separates items by `content_type`
+- Failure: the tool returns the normal Bunpro error and has no fallback route, because a fallback would change what the evidence means. If a future whitelist answers with 403, the learner sees "Bunpro rejected the Account API Token" although the token is fine. This has not been observed, so nothing is built for it
+
+`/user_stats/srs_level_details` and `/user_stats/srs_ghost_level_details` stay out of the catalog. The first takes at least 10 requests for grammar and vocabulary, has unproven completeness, and has an unreliable `review_misses`. The second returned about 730 KB with no paging on one account, and it returns Bunpro's question content and answers.
+
 ## Deliberately excluded tools
 
 Do not create these under the current project contract:

@@ -8,6 +8,7 @@ import {
   createHttpMcpHandler
 } from "../src/http-server.js";
 import type { FetchLike } from "../src/bunpro/client.js";
+import { smokeCredentialHeaders } from "../scripts/smoke-credential.js";
 
 test("the HTTP transport accepts a Bunpro token from a Bearer header", () => {
   assert.equal(bearerTokenFromAuthorization("Bearer account-token"), "account-token");
@@ -86,6 +87,45 @@ test("Streamable HTTP passes the caller's X-Bunpro-Token value to Bunpro without
       new Headers(upstreamCalls[0]?.init.headers).get("authorization"),
       `Token token=${token}`
     );
+  } finally {
+    await client.close();
+    await handler.close();
+  }
+});
+
+test("the all-tools smoke defaults to X-Bunpro-Token and reaches Bunpro with Bearer when asked", async () => {
+  const token = "synthetic-smoke-token";
+  assert.deepEqual(smokeCredentialHeaders(token, undefined), { "X-Bunpro-Token": token });
+  assert.throws(() => smokeCredentialHeaders(token, "basic"), error => {
+    assert.ok(error instanceof Error);
+    assert.doesNotMatch(error.message, /basic|synthetic-smoke-token/);
+    return true;
+  });
+
+  const upstreamAuthorizations: Array<string | null> = [];
+  const upstreamFetch: FetchLike = async (_input, init = {}) => {
+    upstreamAuthorizations.push(new Headers(init.headers).get("authorization"));
+    return new Response(
+      JSON.stringify({ user: { data: { attributes: { time_zone_iana: "Asia/Kolkata" } } } }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    );
+  };
+  const handler = createHttpMcpHandler(upstreamFetch);
+  const transport = new StreamableHTTPClientTransport(new URL("https://mcp.example/mcp"), {
+    requestInit: { headers: smokeCredentialHeaders(token, "bearer") },
+    fetch: (input, init) => handler.fetch(new Request(input, init))
+  });
+  const client = new Client({ name: "smoke-credential-test", version: "0.1.0" });
+
+  try {
+    await client.connect(transport);
+    const result = await client.callTool({ name: "get_connection_status", arguments: {} });
+    assert.equal(result.isError, undefined);
+    assert.equal(
+      (result.structuredContent as { token_source: string }).token_source,
+      "request_bearer"
+    );
+    assert.deepEqual(upstreamAuthorizations, [`Token token=${token}`]);
   } finally {
     await client.close();
     await handler.close();

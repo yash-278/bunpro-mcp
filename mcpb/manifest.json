@@ -1,0 +1,44 @@
+{
+  "manifest_version": "0.3",
+  "name": "bunpro-mcp",
+  "display_name": "Bunpro MCP (unofficial)",
+  "description": "Unofficial, experimental, read-only access to your Bunpro study data, using your own Account API Token.",
+  "long_description": "Bunpro MCP is an unofficial, experimental community project. It is not affiliated with or endorsed by Bunpro, OpenAI or Anthropic. The server runs on your computer and sends your token only to Bunpro.",
+  "author": {
+    "name": "Yash Kadam",
+    "url": "https://github.com/yash-278"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yash-278/bunpro-mcp.git"
+  },
+  "homepage": "https://bunpro.yashkadam.com/",
+  "documentation": "https://github.com/yash-278/bunpro-mcp/blob/main/docs/claude-setup.md",
+  "support": "https://github.com/yash-278/bunpro-mcp/issues",
+  "privacy_policies": ["https://github.com/yash-278/bunpro-mcp/blob/main/PRIVACY.md"],
+  "license": "MIT",
+  "keywords": ["bunpro", "japanese", "language-learning"],
+  "compatibility": {
+    "platforms": ["darwin", "win32"]
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.js"],
+      "env": {
+        "BUNPRO_API_TOKEN": "${user_config.bunpro_token}"
+      }
+    }
+  },
+  "user_config": {
+    "bunpro_token": {
+      "type": "string",
+      "title": "Bunpro Account API Token",
+      "description": "Copy it from Bunpro Settings > API. Treat it like a password.",
+      "sensitive": true,
+      "required": true
+    }
+  }
+}

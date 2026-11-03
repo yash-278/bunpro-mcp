@@ -2,7 +2,7 @@ import { createServer as createHttpServer, type IncomingMessage, type ServerResp
 import { randomUUID } from "node:crypto";
 import { createMcpHandler, validateHostHeader } from "@modelcontextprotocol/server";
 import {
-  BUNPRO_MINIMUM_REQUEST_INTERVAL_MS,
+  BUNPRO_REQUEST_BUDGET,
   BunproRequestGate,
   type FetchLike
 } from "./bunpro/client.js";
@@ -138,11 +138,7 @@ export function createHttpMcpHandler(
   fetchImplementation: FetchLike = fetch,
   clock: Clock = () => new Date()
 ) {
-  const requestGate = new BunproRequestGate({
-    maximumConcurrent: 4,
-    maximumQueued: 16,
-    minimumStartIntervalMs: BUNPRO_MINIMUM_REQUEST_INTERVAL_MS
-  });
+  const requestGate = new BunproRequestGate(BUNPRO_REQUEST_BUDGET);
   return createMcpHandler(
     context => {
       const credential = bunproCredentialFromHeaders(context.requestInfo?.headers ?? new Headers());
@@ -230,7 +226,7 @@ async function routeRequest(
         401,
         {
           error: "bunpro_token_required",
-          message: `Configure the Bunpro Account API Token in the ${BUNPRO_TOKEN_HEADER} request header.`
+          message: `Configure the Bunpro Account API Token in the ${BUNPRO_TOKEN_HEADER} request header or as Authorization: Bearer <token>. Use one method, not both.`
         }
       );
     }

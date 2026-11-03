@@ -11,12 +11,25 @@ This document explains how Bunpro MCP handles the Bunpro Account API Token and s
 
 ## Hosted Streamable HTTP mode
 
-- Your MCP host sends your Account API Token in the HTTPS `X-Bunpro-Token` header.
+- Your MCP host sends your Account API Token in the HTTPS `X-Bunpro-Token` or `Authorization: Bearer` header.
 - The server uses it only to make the Bunpro requests needed to answer that MCP call.
 - The application does not create an identity profile, account link, setup session, or database record.
 - The application does not intentionally log or persist token-bearing request headers, the token, Bunpro response bodies, or study history.
 
 The hosted operator and infrastructure provider can technically inspect application memory or traffic where TLS terminates. Stateless passthrough reduces retained data; it does not eliminate the need to trust the hosted service. If that trust boundary is unacceptable, run the stdio server locally or self-host the HTTP service.
+
+## Where Claude holds the token
+
+| Setup | Where the token is held |
+| --- | --- |
+| Plugin in Claude Code | System secure store |
+| Manual Claude Code config | Environment variable |
+| Desktop `.mcpb` | Operating system secure storage, never sent to the hosted service |
+| claude.ai | Stored by Claude as the connector's credential |
+
+## Study data in your MCP host
+
+Study data returned by a tool goes to your MCP host and its model provider. This applies on every host, including ChatGPT and Claude, and that provider's terms cover what happens to it next.
 
 ## Logs and telemetry
 
@@ -24,7 +37,15 @@ The application includes no analytics or advertising code. It emits bounded oper
 
 ## Revocation
 
-There is no MCP-side account data to disconnect or delete. To invalidate a token, rotate it through Bunpro Settings → API and update the secret in your MCP host.
+There is no MCP-side account data to disconnect or delete. To invalidate a token, rotate it through Bunpro Settings > API. Then replace it in each place you use it:
+
+| Setup | How to replace or remove the token |
+| --- | --- |
+| Plugin in Claude Code | Update the `bunpro_token` option in `/plugin`, or uninstall the plugin |
+| Manual Claude Code config | Change the `BUNPRO_API_TOKEN` environment variable |
+| Desktop `.mcpb` | Open the extension in Claude Desktop's **Extensions** settings and replace the token, or remove the extension |
+| claude.ai | Remove the connector and add it again with the new value, because authentication settings can't change after a connector is added |
+| ChatGPT and other MCP hosts | Update the secret in your MCP host |
 
 ## Security reports
 

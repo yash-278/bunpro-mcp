@@ -4,6 +4,7 @@ const OPENAI_MCP_GUIDE_URL = "https://developers.openai.com/plugins/deploy/conne
 const BUNPRO_TOKEN_HEADER = "X-Bunpro-Token";
 const SOURCE_REPOSITORY_URL = "https://github.com/yash-278/bunpro-mcp";
 const SELF_HOSTING_GUIDE_URL = `${SOURCE_REPOSITORY_URL}/blob/main/docs/self-hosting.md`;
+const CLAUDE_SETUP_GUIDE_URL = `${SOURCE_REPOSITORY_URL}/blob/main/docs/claude-setup.md`;
 
 export const HOMEPAGE_ROBOTS = `User-agent: *
 Allow: /
@@ -86,7 +87,7 @@ const tools = [
     prompt: "What did I study on 2026-08-11?"
   },
   {
-    name: "Study range",
+    name: "Study Period",
     key: "get_study_range_summary",
     icon: "layers" as const,
     description: "Look back across a week, month, or any period up to 93 days.",
@@ -126,6 +127,13 @@ const tools = [
     icon: "trend" as const,
     description: "See how your reviews, new lessons, and accuracy change over time.",
     prompt: "How has my consistency changed over the last 30 days?"
+  },
+  {
+    name: "Weak spots",
+    key: "list_weak_spots",
+    icon: "chart" as const,
+    description: "See what Bunpro currently lists as troubled, with the accuracy and streak it reports.",
+    prompt: "What does Bunpro currently list as troubled for me?"
   }
 ];
 
@@ -343,6 +351,10 @@ function setupGuide(): string {
       <aside class="auth-fallback reveal">
         <span>${icon("plug")}</span><div><b>Using another MCP app?</b><p>Use the same server URL and add your token as a protected <code>${BUNPRO_TOKEN_HEADER}</code> header. If your app only offers Bearer authentication, use your token there instead. Choose one method, never both.</p></div>
       </aside>
+
+      <aside class="auth-fallback reveal">
+        <span>${icon("message")}</span><div><b>Using Claude?</b><p>Claude Desktop, Claude Code and claude.ai each connect differently. Follow the steps for your app in the Claude setup guide.</p><a class="inline-link" href="${CLAUDE_SETUP_GUIDE_URL}" target="_blank" rel="noreferrer">Claude setup guide ${icon("external")}</a></div>
+      </aside>
     </div>
   </section>`;
 }
@@ -371,7 +383,7 @@ function toolCatalog(): string {
   return `<section class="section tools" id="tools">
     <div class="shell">
       <div class="section-heading reveal">
-        <div><span class="kicker">What you can ask</span><h2>Eight ways to understand<br><em>your learning.</em></h2></div>
+        <div><span class="kicker">What you can ask</span><h2>Nine ways to understand<br><em>your learning.</em></h2></div>
         <p>From today's workload to long-term JLPT progress, each tool answers a familiar study question without changing your Bunpro account.</p>
       </div>
       <div class="tool-grid">
@@ -429,7 +441,7 @@ function limitations(): string {
     <div class="shell limitations-grid">
       <div class="limitations-title reveal"><span class="kicker">Know before you connect</span><h2>Useful, careful,<br><em>and experimental.</em></h2></div>
       <div class="limits-list">
-        <article class="reveal"><span>01</span><div><h3>Unofficial community project</h3><p>This MCP is not affiliated with or endorsed by Bunpro or OpenAI, and it is not an official ChatGPT plugin listing.</p></div></article>
+        <article class="reveal"><span>01</span><div><h3>Unofficial community project</h3><p>This MCP is not affiliated with or endorsed by Bunpro, OpenAI or Anthropic, and it is not an official ChatGPT or Claude listing.</p></div></article>
         <article class="reveal"><span>02</span><div><h3>Bunpro access can change</h3><p>This uses Bunpro's experimental Account API Token. Bunpro may change or limit what the connection can access.</p></div></article>
         <article class="reveal"><span>03</span><div><h3>Missing does not always mean zero</h3><p>Bunpro does not provide the same amount of history for every feature. When information is missing, the answer will say so instead of assuming you did nothing.</p></div></article>
         <article class="reveal"><span>04</span><div><h3>Kept deliberately lightweight</h3><p>You can look back up to 93 days at a time. If Bunpro asks the service to slow down, it waits for you to try again rather than repeatedly sending requests.</p></div></article>
@@ -463,9 +475,9 @@ function helpItem(title: string, copy: string, extra = ""): string {
 
 function faq(): string {
   const items = [
-    ["Is this an official Bunpro or OpenAI plugin?", "No. It is an unofficial community MCP, is not affiliated with or endorsed by Bunpro or OpenAI, and is not published as an official ChatGPT plugin listing."],
+    ["Is this an official Bunpro, OpenAI or Anthropic plugin?", "No. It is an unofficial community MCP, is not affiliated with or endorsed by Bunpro, OpenAI or Anthropic, and is not published as an official ChatGPT or Claude listing."],
     ["Can a link install it or prefill the ChatGPT form?", "No supported deep link currently pre-populates the custom MCP creation form. The ChatGPT Plugins URL can take you to the area, but you must enter and review the connection values yourself."],
-    ["Can it change anything in Bunpro?", "No. All eight published tools are read only. The server does not start or submit reviews, change SRS state, add lessons, run crams, edit decks, or modify account settings."],
+    ["Can it change anything in Bunpro?", "No. All nine published tools are read only. The server does not start or submit reviews, change SRS state, add lessons, run crams, edit decks, or modify account settings."],
     ["Does the website receive my token?", "No. This page is static and contains no token field. You paste the token only into your MCP client's protected credential configuration—not into this website or a chat message."],
     ["Does the server store my data?", "No. This service has no account or saved study-history database. It uses your token and Bunpro data only while answering the current request."],
     ["Is the source code public?", `Yes. Bunpro MCP is open source under the MIT license. You can inspect, fork, and contribute to it on <a class="inline-link" href="${SOURCE_REPOSITORY_URL}" target="_blank" rel="noreferrer">GitHub ${icon("external")}</a>.`],
@@ -501,7 +513,7 @@ function footer(): string {
       <div><b>Explore</b><a href="#possibilities">What it does</a><a href="#tools">Tools</a><a href="#setup">Setup guide</a><a href="#self-host">Self-host</a><a href="#help">Troubleshooting</a></div>
       <div><b>Open source</b><a href="${SOURCE_REPOSITORY_URL}" target="_blank" rel="noreferrer">GitHub repository ${icon("external")}</a><a href="${SELF_HOSTING_GUIDE_URL}" target="_blank" rel="noreferrer">Self-hosting guide ${icon("external")}</a><a href="#privacy">Privacy and trust</a><a href="${OPENAI_MCP_GUIDE_URL}" target="_blank" rel="noreferrer">OpenAI MCP guide ${icon("external")}</a></div>
     </div>
-    <div class="shell footer-bottom"><span>© ${new Date().getUTCFullYear()} Bunpro MCP community project</span><span>Not affiliated with Bunpro or OpenAI.</span><a href="#top">Back to top ↑</a></div>
+    <div class="shell footer-bottom"><span>© ${new Date().getUTCFullYear()} Bunpro MCP community project</span><span>Not affiliated with Bunpro, OpenAI or Anthropic.</span><a href="#top">Back to top ↑</a></div>
   </footer>`;
 }
 
@@ -753,6 +765,7 @@ function styles(): string {
     .panel-check { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 20px 4px; color: var(--moss); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
     .panel-check .icon { width: 15px; }
     .auth-fallback { display: grid; grid-template-columns: 44px 1fr; gap: 16px; max-width: 900px; padding: 24px; margin: 70px auto 0; background: rgba(255,255,255,.055); border: 1px solid rgba(255,255,255,.14); }
+    .auth-fallback + .auth-fallback { margin-top: 16px; }
     .auth-fallback > span { width: 42px; height: 42px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.16); color: #dac09a; }
     .auth-fallback b { font: 400 17px/1.2 var(--serif); }
     .auth-fallback p { margin: 7px 0 0; color: rgba(255,255,255,.62); font-size: 12px; line-height: 1.65; }
@@ -771,10 +784,10 @@ function styles(): string {
     .source-actions .inline-link { color: var(--red); }
 
     .tools { background: var(--paper); }
-    .tool-grid { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); }
+    .tool-grid { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); }
     .tool-card { min-height: 360px; padding: 27px; display: flex; flex-direction: column; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: rgba(255,255,255,.17); }
-    .tool-card:nth-child(4n) { border-right: 0; }
-    .tool-card:nth-child(n+5) { border-bottom: 0; }
+    .tool-card:nth-child(3n) { border-right: 0; }
+    .tool-card:nth-child(n+7) { border-bottom: 0; }
     .tool-top { display: flex; align-items: center; justify-content: space-between; }
     .tool-icon { width: 46px; height: 46px; display: grid; place-items: center; color: var(--red); border: 1px solid var(--line); }
     .read-badge { padding: 5px 7px; color: var(--moss); border: 1px solid #adb6a8; font: 800 7px/1 var(--mono); letter-spacing: .08em; }
@@ -885,10 +898,10 @@ function styles(): string {
       .trust-grid > div:nth-child(3) { border-left: 1px solid rgba(255,255,255,.12); border-top: 1px solid rgba(255,255,255,.12); }
       .trust-grid > div:nth-child(4) { border-top: 1px solid rgba(255,255,255,.12); }
       .tool-grid { grid-template-columns: repeat(2, 1fr); }
+      .tool-card:nth-child(3n) { border-right: 1px solid var(--line); }
       .tool-card:nth-child(2n) { border-right: 0; }
-      .tool-card:nth-child(4n) { border-right: 0; }
-      .tool-card:nth-child(n+5) { border-bottom: 1px solid var(--line); }
-      .tool-card:nth-child(n+7) { border-bottom: 0; }
+      .tool-card:nth-child(n+7) { border-bottom: 1px solid var(--line); }
+      .tool-card:nth-child(n+9) { border-bottom: 0; }
       .explainer-grid, .limitations-grid { gap: 60px; }
       .flow-card { padding: 22px; }
     }
@@ -975,7 +988,7 @@ function styles(): string {
       .copy-field code { font-size: 10px; }
       .auth-fallback { grid-template-columns: 1fr; margin-top: 52px; }
       .tool-grid { grid-template-columns: 1fr; }
-      .tool-card, .tool-card:nth-child(2n), .tool-card:nth-child(4n), .tool-card:nth-child(n+5), .tool-card:nth-child(n+7) { border-right: 0; border-bottom: 1px solid var(--line); }
+      .tool-card, .tool-card:nth-child(2n), .tool-card:nth-child(3n), .tool-card:nth-child(n+7), .tool-card:nth-child(n+9) { border-right: 0; border-bottom: 1px solid var(--line); }
       .tool-card:last-child { border-bottom: 0; }
       .tool-card { min-height: 330px; }
       .prompt-row { grid-template-columns: 55px 1fr 28px; gap: 10px; }

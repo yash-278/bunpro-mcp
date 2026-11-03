@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { request as httpRequest } from "node:http";
+import { renderHomepage } from "../src/homepage.js";
 import { startHttpServer } from "../src/http-server.js";
+import { TOOL_DECLARATIONS } from "../src/tools.js";
 
 interface HttpResult {
   status: number;
@@ -46,6 +48,19 @@ async function request(
   });
 }
 
+test("the homepage labels the range tool as a Study Period", () => {
+  const homepage = renderHomepage(new URL("https://mcp.example"));
+
+  assert.match(homepage, /<h3>Study Period<\/h3>/);
+  assert.doesNotMatch(homepage, /Study range/);
+});
+
+test("the homepage names every declared tool", () => {
+  const homepage = renderHomepage(new URL("https://mcp.example"));
+
+  for (const { name } of TOOL_DECLARATIONS) assert.ok(homepage.includes(name), name);
+});
+
 test("the public HTTP service enforces its canonical host and bounded MCP request contract", async () => {
   const telemetry: unknown[] = [];
   const service = await startHttpServer({
@@ -75,6 +90,11 @@ test("the public HTTP service enforces its canonical host and bounded MCP reques
     assert.match(homepage.body, /Can I run it myself/);
     assert.match(homepage.body, /Self-hosting guide/);
     assert.match(homepage.body, /github\.com\/yash-278\/bunpro-mcp/);
+    assert.match(homepage.body, /Using Claude\?/);
+    assert.match(homepage.body, /blob\/main\/docs\/claude-setup\.md/);
+    assert.match(homepage.body, /not affiliated with or endorsed by Bunpro, OpenAI or Anthropic/);
+    assert.match(homepage.body, /Not affiliated with Bunpro, OpenAI or Anthropic/);
+    assert.doesNotMatch(homepage.body, /Bunpro or OpenAI/);
     assert.doesNotMatch(homepage.body, /Available in ChatGPT|Open in ChatGPT|data-concept=/);
     assert.doesNotMatch(homepage.body, /repository remains private|public self-hosting is not available/i);
     assert.doesNotMatch(homepage.body, /dangerously_authenticate|\/api\/frontend|Token token=/);
@@ -146,6 +166,35 @@ test("the public HTTP service enforces its canonical host and bounded MCP reques
     const serializedTelemetry = JSON.stringify(telemetry);
     assert.doesNotMatch(serializedTelemetry, /account-token|authorization|x-bunpro-token|not json/i);
     assert.match(serializedTelemetry, /"status":413/);
+  } finally {
+    await service.close();
+  }
+});
+
+test("a rejected MCP credential gets a 401 that names both methods and echoes nothing back", async () => {
+  const service = await startHttpServer({
+    config: { port: 0, publicBaseUrl: new URL("https://mcp.example") },
+    telemetry: { record: () => {} }
+  });
+  const rejectedHeaders: Array<Record<string, string>> = [
+    {},
+    { authorization: "synthetic-token-without-prefix" },
+    { authorization: "Basic synthetic-token" },
+    { authorization: "Bearer synthetic-token", "x-bunpro-token": "synthetic-token" }
+  ];
+
+  try {
+    for (const headers of rejectedHeaders) {
+      const response = await request(service.port, "/mcp", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...headers }
+      });
+      assert.equal(response.status, 401);
+      assert.doesNotMatch(response.body, /synthetic-token/);
+      const { message } = JSON.parse(response.body) as { message: string };
+      assert.match(message, /X-Bunpro-Token/);
+      assert.match(message, /Authorization: Bearer/);
+    }
   } finally {
     await service.close();
   }

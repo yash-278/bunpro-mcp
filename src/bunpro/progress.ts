@@ -12,8 +12,7 @@ export async function getLearningProgress(
   source: Pick<FrontendSource, "loadLearningProgress">,
   now: Date = new Date()
 ): Promise<LearningProgress> {
-  const operationSignal = AbortSignal.timeout(30_000);
-  const progress = await source.loadLearningProgress(operationSignal);
+  const progress = await source.loadLearningProgress();
 
   return {
     retrieved_at: now.toISOString(),

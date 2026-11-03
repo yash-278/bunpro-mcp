@@ -1,4 +1,5 @@
 import * as z from "zod/v4";
+import { ISO_DATE_PATTERN, MAX_STUDY_PERIOD_DAYS } from "./study-period.js";
 
 export const ConnectionStatusOutputSchema = z.object({
   connected: z.literal(true),
@@ -13,7 +14,7 @@ export const ConnectionStatusOutputSchema = z.object({
 export type ConnectionStatus = z.infer<typeof ConnectionStatusOutputSchema>;
 export type TokenSource = ConnectionStatus["token_source"];
 
-export const IsoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use an ISO date in YYYY-MM-DD format.");
+export const IsoDateSchema = z.string().regex(ISO_DATE_PATTERN, "Use an ISO date in YYYY-MM-DD format.");
 
 export const StudyDayInputSchema = z.object({
   date: IsoDateSchema.describe("Bunpro calendar day in YYYY-MM-DD format."),
@@ -24,7 +25,7 @@ export const StudyDayInputSchema = z.object({
 
 export const StudyRangeInputSchema = z.object({
   start_date: IsoDateSchema.describe("First inclusive Bunpro calendar day."),
-  end_date: IsoDateSchema.describe("Last inclusive Bunpro calendar day, at most 93 days after the start."),
+  end_date: IsoDateSchema.describe(`Last inclusive Bunpro calendar day. A Study Period may include at most ${MAX_STUDY_PERIOD_DAYS} Study Days, counting the start and end dates.`),
   expected_timezone: z.string().min(1).optional().describe(
     "Optional IANA timezone to compare with the Bunpro account timezone."
   )
@@ -38,6 +39,8 @@ export const DailyCountEvidenceSchema = z.object({
   component_sum: z.number().int().nonnegative().nullable(),
   consistency: z.enum(["match", "mismatch", "not_comparable"])
 });
+
+export type DailyCountEvidence = z.infer<typeof DailyCountEvidenceSchema>;
 
 export const AccuracyEvidenceSchema = z.object({
   coverage: z.enum(["available", "no_source_record", "unavailable"]),
@@ -79,18 +82,18 @@ export const StudyRangeSummaryOutputSchema = z.object({
   expected_timezone: z.string().min(1).nullable(),
   timezone_matches: z.boolean().nullable(),
   overall_query_status: z.enum(["complete", "partial"]),
-  days: z.array(StudyDayEvidenceSchema).max(93),
+  days: z.array(StudyDayEvidenceSchema).max(MAX_STUDY_PERIOD_DAYS),
   aggregates: z.object({
     reviews: z.object({
-      source_record_days: z.number().int().nonnegative(),
-      source_total: z.number().int().nonnegative()
+      source_record_days: z.number().int().nonnegative().nullable(),
+      source_total: z.number().int().nonnegative().nullable()
     }),
     new_content: z.object({
-      source_record_days: z.number().int().nonnegative(),
-      source_total: z.number().int().nonnegative()
+      source_record_days: z.number().int().nonnegative().nullable(),
+      source_total: z.number().int().nonnegative().nullable()
     }),
     accuracy: z.object({
-      source_record_days: z.number().int().nonnegative(),
+      source_record_days: z.number().int().nonnegative().nullable(),
       average_percent: z.number().nullable()
     })
   }),
@@ -204,6 +207,37 @@ export const RecentActivityOutputSchema = z.object({
 export type RecentActivityInput = z.infer<typeof RecentActivityInputSchema>;
 export type RecentActivityOutput = z.infer<typeof RecentActivityOutputSchema>;
 
+const WeakSpotPeriodSchema = z.enum(["overall", "last_month"]);
+
+export type WeakSpotPeriod = z.infer<typeof WeakSpotPeriodSchema>;
+
+export const ListWeakSpotsInputSchema = z.object({
+  period: WeakSpotPeriodSchema.default("overall").describe("Which Bunpro Troubled Content view to read."),
+  limit: z.number().int().min(1).max(100).default(20).describe("Maximum number of weak spots to return.")
+}).strict();
+
+export const ListWeakSpotsOutputSchema = z.object({
+  period: WeakSpotPeriodSchema,
+  retrieved_at: z.string().datetime(),
+  order: z.literal("lowest_accuracy_first"),
+  count: z.number().int().nonnegative(),
+  total_available: z.number().int().nonnegative(),
+  has_more: z.boolean(),
+  completeness: z.literal("bunpro_selection_rule_unpublished"),
+  weak_spots: z.array(z.object({
+    content_id: z.string().min(1),
+    content_type: z.string().min(1),
+    label: z.string(),
+    meaning: z.string(),
+    level: z.string(),
+    accuracy: z.number().min(0).max(100).nullable(),
+    streak: z.number().int().nonnegative()
+  }).strict()).max(100)
+}).strict();
+
+export type ListWeakSpotsInput = z.infer<typeof ListWeakSpotsInputSchema>;
+export type ListWeakSpotsOutput = z.infer<typeof ListWeakSpotsOutputSchema>;
+
 const SrsStageCountsSchema = z.object({
   beginner: z.number().int().nonnegative(),
   seasoned: z.number().int().nonnegative(),
@@ -261,20 +295,20 @@ export const ActivityTrendOutputSchema = z.object({
   expected_timezone: z.string().min(1).nullable(),
   timezone_matches: z.boolean().nullable(),
   overall_query_status: z.enum(["complete", "partial"]),
-  days: z.array(StudyDayEvidenceSchema).max(93),
+  days: z.array(StudyDayEvidenceSchema).max(MAX_STUDY_PERIOD_DAYS),
   metrics: z.object({
     reviews: z.object({
-      source_record_days: z.number().int().nonnegative(),
-      total: z.number().int().nonnegative(),
+      source_record_days: z.number().int().nonnegative().nullable(),
+      total: z.number().int().nonnegative().nullable(),
       average_per_source_record_day: z.number().nullable()
     }),
     new_content: z.object({
-      source_record_days: z.number().int().nonnegative(),
-      total: z.number().int().nonnegative(),
+      source_record_days: z.number().int().nonnegative().nullable(),
+      total: z.number().int().nonnegative().nullable(),
       average_per_source_record_day: z.number().nullable()
     }),
     accuracy: z.object({
-      source_record_days: z.number().int().nonnegative(),
+      source_record_days: z.number().int().nonnegative().nullable(),
       average_percent: z.number().nullable()
     })
   }),
