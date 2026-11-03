@@ -70,7 +70,7 @@ Configure the MCP client with one protected credential, as described in [Credent
 
 1. Fork or clone `https://github.com/yash-278/bunpro-mcp`.
 2. Create a Railway service from the repository.
-3. Railway will build the included `Dockerfile` and use `railway.json` for the health check.
+3. Railway builds the included `Dockerfile`. In the service settings, set the start command to `node dist/index.js` and the healthcheck path to `/healthz`.
 4. Set these variables:
 
    ```dotenv
