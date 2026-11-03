@@ -66,14 +66,14 @@ Keep the `${BUNPRO_API_TOKEN}` placeholder in the file. Never write the token it
 
 To run the server on your own computer instead, follow [Local stdio](self-hosting.md#local-stdio) and set `"BUNPRO_API_TOKEN": "${BUNPRO_API_TOKEN}"` in the server's `env`.
 
-## claude.ai web and mobile (untested)
+## claude.ai web and mobile
 
 > [!WARNING]
 > Do not use a claude.ai connector on a Team or Enterprise plan. An Owner's header value goes out on every member's requests, so an Owner's token would return the Owner's study data to every member. The server can't detect this. Use Claude Desktop or Claude Code instead.
 
 If the **Add custom connector** dialog has no **Request headers** section, claude.ai isn't available to you. Request headers are a limited Anthropic beta, and Anthropic publishes no way to apply. Use Claude Desktop or Claude Code instead. A connector added without the header should fail with "Couldn't reach the MCP server".
 
-This path is untested. No account with the beta has confirmed these steps yet, and mobile use is inferred from Anthropic's shared connector setup.
+These steps are confirmed on claude.ai in a browser. The mobile apps use the connectors you add there.
 
 On a Free, Pro, Max or Ultra plan:
 

@@ -363,7 +363,7 @@ function claudeSetup(): string {
     <div class="shell">
       <div class="setup-heading reveal">
         <div><span class="kicker kicker-light">Claude Code · Claude Desktop · claude.ai</span><h2>Connect it to Claude</h2></div>
-        <p>Each Claude app connects in its own way. The Claude Code plugin and the Claude Desktop extension work today. The claude.ai connector is untested.</p>
+        <p>Each Claude app connects in its own way. Follow the steps for the app you use.</p>
       </div>
 
       <aside class="availability-note reveal">
@@ -428,10 +428,10 @@ function claudeSetup(): string {
         </article>
 
         <article class="path-card reveal">
-          <span class="path-tag path-tag-warning">Untested</span>
+          <span class="path-tag">Needs the request-headers beta</span>
           <h3>claude.ai web and mobile</h3>
           <p class="path-warning"><b>Don't use this on a Team or Enterprise plan.</b> An Owner's header value goes out on every member's requests, so every member would get the Owner's study data. Use Claude Desktop or Claude Code instead.</p>
-          <p>Request headers are a limited Anthropic beta. If the <strong>Add custom connector</strong> dialog has no <strong>Request headers</strong> section, this path isn't open to you. No account with the beta has confirmed these steps yet.</p>
+          <p>Request headers are a limited Anthropic beta. If the <strong>Add custom connector</strong> dialog has no <strong>Request headers</strong> section, this path isn't open to you.</p>
           <ol>
             <li>On a Free, Pro, Max or Ultra plan, go to <strong>Customize &gt; Connectors</strong> and click <strong>Add custom connector</strong>.</li>
             <li>Name it <code>Bunpro MCP</code> and set the MCP server URL to this value.
@@ -873,7 +873,6 @@ function styles(): string {
     .path-heading h3 { margin: 14px 0 10px; font: 400 30px/1.15 var(--serif); }
     .path-heading p { margin: 0; color: rgba(255,255,255,.61); font-size: 13px; line-height: 1.65; }
     .path-tag { display: inline-block; padding: 5px 8px; color: #dac09a; border: 1px solid rgba(218,192,154,.45); font: 800 8px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; }
-    .path-tag-warning { color: #f0b3a6; border-color: rgba(240,179,166,.55); }
     .step p + p { margin-top: 10px; }
     .step .step-warning, .path-card .path-warning { padding: 10px 12px; border-left: 2px solid #e08b78; background: rgba(224,139,120,.08); color: rgba(255,255,255,.78); }
     .path-warning b { color: white; font-weight: 750; }
