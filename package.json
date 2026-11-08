@@ -50,7 +50,7 @@
   },
   "devDependencies": {
     "@anthropic-ai/mcpb": "^2.1.2",
-    "@modelcontextprotocol/client": "^2.3.0",
+    "@modelcontextprotocol/client": "^2.4.0",
     "@types/node": "^24.0.0",
     "esbuild": "^0.28.2",
     "railway": "^3.16.0",
